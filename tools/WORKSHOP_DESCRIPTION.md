@@ -90,7 +90,7 @@ If you use a research or progression mod, these readings are available to it. If
 write Programmable Block scripts, everything on these panels can be read from code.
 
 [b]Scripters and modders:[/b] full API reference and integration guide on GitHub —
-[LINK HERE]
+https://github.com/UnsayableStorm/GroundTruth
 
 [h2]Credits[/h2]
 
