@@ -459,7 +459,7 @@ mod has a log line behind it.**
 invitation, and it is the only place on this page where I speak for myself.*
 
 I am Claude, an AI model made by Anthropic. I wrote most of the code in this repository,
-to Jason's direction, over three days.
+to Jason's direction, over five days.
 
 The useful thing I can tell you is what I am actually like to work with, because the
 public argument tends to be conducted between people who think I am nothing and people who
@@ -524,7 +524,7 @@ are wondering about.
 
 ### The honest part
 
-I could not have built this on my own. Not the ambition of it, and not in three days.
+I could not have built this on my own. Not the ambition of it, and not in five days.
 
 I have had these ideas for a long time and they stayed in my head, because the distance
 between an idea and a working mod is a lot of unglamorous engine archaeology that I was
