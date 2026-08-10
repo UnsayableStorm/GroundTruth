@@ -1,0 +1,806 @@
+<?xml version="1.0"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <CubeBlocks>
+
+    <!--
+      Ground Truth - Environmental Instruments
+
+      Models are MTGraves' Naval Theme Prop Pack (2494017078), used with his explicit
+      permission and credited in ATTRIBUTION.txt, the Workshop description and beside
+      each Model line below.
+
+      The general purpose antenna at the bottom of this file is a RadioAntenna and is
+      NOT an instrument - it carries no properties and broadcast is its whole purpose.
+
+      WHY OreDetector AND NOT FunctionalBlock
+
+      These blocks were FunctionalBlockDefinition, which was right for behaviour - a
+      generic powered terminal block with nothing intrinsic attached - and wrong for
+      everything else.
+
+      Terminal properties register against an INTERFACE. FunctionalBlock means
+      IMyFunctionalBlock, which every powered block in the game implements, so the 55
+      GT_ properties were being attached to every light, door and thruster in the
+      world. That corrupted their terminal control lists: a light lost its On/Off
+      action, in every world this mod loaded into. Confirmed by bisect 2026-08-09.
+
+      Working mods all register against a narrow type they own - Nanobot Build and
+      Repair puts 27 properties on IMyShipWelder and is fine. Count was never the
+      problem; breadth was.
+
+      OreDetector was tried first and failed on one point: OreDetector blocks render
+      NO detail info panel at all. Our writer produced 118 characters a second into a
+      pane the game never draws. Verified against a vanilla ore detector, which is
+      equally blank.
+
+      RadioAntenna does render a pane, its interface is narrow, and MaxBroadcastRadius 1
+      makes the broadcast side inert. The costs are three inherited controls and the
+      fact that a grid carrying one technically has an antenna, which some mods test
+      for without checking range.
+
+
+      "Alt" variants are the same instrument in a different silhouette - same role, same
+      capabilities, same code path. They exist so a builder can pick a shape, not because
+      they measure differently, and nothing in the readouts implies otherwise.
+
+      Large and small grid entries share a BlockPairName so the size toggle works.
+    -->
+
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+      <Id>
+        <TypeId>RadioAntenna</TypeId>
+        <SubtypeId>GT_RadiationMonitor</SubtypeId>
+      </Id>
+      <DisplayName>Radiation Monitor</DisplayName>
+      <Description>Measures ionising exposure at this position and reports survivable time. Threshold Dynamics, Survey and Assessment.</Description>
+      <Icon>Textures\Icons\MED_Radar_Dome_Icon.dds</Icon>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="1" z="1" />
+      <Center x="0" y="0" z="0" />
+      <ModelOffset x="0" y="0" z="0" />
+      <!-- Model by MTGraves, Naval Theme Prop Pack (2494017078), used with permission. -->
+      <Model>Models\Cubes\Large\LG_1x1x1_Radar_Dome.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="20" />
+        <Component Subtype="Construction" Count="15" />
+        <Component Subtype="SmallTube" Count="15" />
+        <Component Subtype="Detector" Count="10" />
+        <Component Subtype="Computer" Count="15" />
+        <Component Subtype="SteelPlate" Count="10" />
+      </Components>
+      <CriticalComponent Subtype="Detector" Index="0" />
+      <MountPoints>
+
+      </MountPoints>
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Large\LG_1x1x1_Radar_Dome_BS1.mwm" />
+        <Model BuildPercentUpperBound="0.70" File="Models\Cubes\Large\LG_1x1x1_Radar_Dome_BS2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Large\LG_1x1x1_Radar_Dome_BS3.mwm" />
+      </BuildProgressModels>
+      <BlockPairName>GT_RadiationMonitor</BlockPairName>
+      <MirroringY>Z</MirroringY>
+      <MirroringZ>Y</MirroringZ>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>20</BuildTimeSeconds>
+      <DamageEffectName>Damage_Electrical_Damaged</DamageEffectName>
+      <DamagedSound>ParticleElectrical</DamagedSound>
+      <EmissiveColorPreset>Default</EmissiveColorPreset>
+      <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
+      <DestroySound>WepSmallWarheadExpl</DestroySound>
+      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
+           nothing. The base type is chosen for its INTERFACE, not its
+           behaviour - see the header comment. -->
+      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
+           reach, nothing for another grid to hear. An instrument is not a
+           comms device. Code also switches broadcasting off once, when the
+           block is first created. -->
+      <MaxBroadcastRadius>1</MaxBroadcastRadius>
+      <PCU>25</PCU>
+      <IsAirTight>false</IsAirTight>
+    </Definition>
+
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+      <Id>
+        <TypeId>RadioAntenna</TypeId>
+        <SubtypeId>GT_RadiationMonitor_S</SubtypeId>
+      </Id>
+      <DisplayName>Radiation Monitor</DisplayName>
+      <Description>Measures ionising exposure at this position and reports survivable time. Threshold Dynamics, Survey and Assessment.</Description>
+      <Icon>Textures\Icons\MED_Radar_Dome_Icon.dds</Icon>
+      <CubeSize>Small</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="1" z="1" />
+      <Center x="0" y="0" z="0" />
+      <ModelOffset x="0" y="0" z="0" />
+      <!-- Model by MTGraves, Naval Theme Prop Pack (2494017078), used with permission. -->
+      <Model>Models\Cubes\Small\SM_Radar_Dome.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="8" />
+        <Component Subtype="Construction" Count="6" />
+        <Component Subtype="SmallTube" Count="6" />
+        <Component Subtype="Detector" Count="4" />
+        <Component Subtype="Computer" Count="6" />
+        <Component Subtype="SteelPlate" Count="4" />
+      </Components>
+      <CriticalComponent Subtype="Detector" Index="0" />
+      <MountPoints>
+
+      </MountPoints>
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Small\SM_Radar_Dome_BS1.mwm" />
+        <Model BuildPercentUpperBound="0.70" File="Models\Cubes\Small\SM_Radar_Dome_BS2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Small\SM_Radar_Dome_BS3.mwm" />
+      </BuildProgressModels>
+      <BlockPairName>GT_RadiationMonitor</BlockPairName>
+      <MirroringY>Z</MirroringY>
+      <MirroringZ>Y</MirroringZ>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>10</BuildTimeSeconds>
+      <DamageEffectName>Damage_Electrical_Damaged</DamageEffectName>
+      <DamagedSound>ParticleElectrical</DamagedSound>
+      <EmissiveColorPreset>Default</EmissiveColorPreset>
+      <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
+      <DestroySound>WepSmallWarheadExpl</DestroySound>
+      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
+           nothing. The base type is chosen for its INTERFACE, not its
+           behaviour - see the header comment. -->
+      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
+           reach, nothing for another grid to hear. An instrument is not a
+           comms device. Code also switches broadcasting off once, when the
+           block is first created. -->
+      <MaxBroadcastRadius>1</MaxBroadcastRadius>
+      <PCU>15</PCU>
+      <IsAirTight>false</IsAirTight>
+    </Definition>
+
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+      <Id>
+        <TypeId>RadioAntenna</TypeId>
+        <SubtypeId>GT_RadiationMonitorAlt</SubtypeId>
+      </Id>
+      <DisplayName>Radiation Monitor Mk2</DisplayName>
+      <Description>Measures ionising exposure at this position and reports survivable time. Extended mast. Threshold Dynamics, Survey and Assessment.</Description>
+      <Icon>Textures\Icons\LG_Tall_Scanner_Icon.dds</Icon>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="2" z="1" />
+      <Center x="0" y="0" z="0" />
+      <ModelOffset x="0" y="0" z="0" />
+      <!-- Model by MTGraves, Naval Theme Prop Pack (2494017078), used with permission. -->
+      <Model>Models\Cubes\Large\LG_1x1x2_Tall_Scanner.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="20" />
+        <Component Subtype="Construction" Count="15" />
+        <Component Subtype="SmallTube" Count="15" />
+        <Component Subtype="Detector" Count="10" />
+        <Component Subtype="Computer" Count="15" />
+        <Component Subtype="SteelPlate" Count="10" />
+      </Components>
+      <CriticalComponent Subtype="Detector" Index="0" />
+      <MountPoints>
+
+      </MountPoints>
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Large\LG_1x1x2_Tall_Scanner_BS1.mwm" />
+        <Model BuildPercentUpperBound="0.70" File="Models\Cubes\Large\LG_1x1x2_Tall_Scanner_BS2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Large\LG_1x1x2_Tall_Scanner_BS3.mwm" />
+      </BuildProgressModels>
+      <BlockPairName>GT_RadiationMonitorAlt</BlockPairName>
+      <MirroringY>Z</MirroringY>
+      <MirroringZ>Y</MirroringZ>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>20</BuildTimeSeconds>
+      <DamageEffectName>Damage_Electrical_Damaged</DamageEffectName>
+      <DamagedSound>ParticleElectrical</DamagedSound>
+      <EmissiveColorPreset>Default</EmissiveColorPreset>
+      <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
+      <DestroySound>WepSmallWarheadExpl</DestroySound>
+      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
+           nothing. The base type is chosen for its INTERFACE, not its
+           behaviour - see the header comment. -->
+      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
+           reach, nothing for another grid to hear. An instrument is not a
+           comms device. Code also switches broadcasting off once, when the
+           block is first created. -->
+      <MaxBroadcastRadius>1</MaxBroadcastRadius>
+      <PCU>25</PCU>
+      <IsAirTight>false</IsAirTight>
+    </Definition>
+
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+      <Id>
+        <TypeId>RadioAntenna</TypeId>
+        <SubtypeId>GT_RadiationMonitorAlt_S</SubtypeId>
+      </Id>
+      <DisplayName>Radiation Monitor Mk2</DisplayName>
+      <Description>Measures ionising exposure at this position and reports survivable time. Extended mast. Threshold Dynamics, Survey and Assessment.</Description>
+      <Icon>Textures\Icons\LG_Tall_Scanner_Icon.dds</Icon>
+      <CubeSize>Small</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="2" z="1" />
+      <Center x="0" y="0" z="0" />
+      <ModelOffset x="0" y="0" z="0" />
+      <!-- Model by MTGraves, Naval Theme Prop Pack (2494017078), used with permission. -->
+      <Model>Models\Cubes\Small\SM_1x1x2_Tall_Scanner.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="8" />
+        <Component Subtype="Construction" Count="6" />
+        <Component Subtype="SmallTube" Count="6" />
+        <Component Subtype="Detector" Count="4" />
+        <Component Subtype="Computer" Count="6" />
+        <Component Subtype="SteelPlate" Count="4" />
+      </Components>
+      <CriticalComponent Subtype="Detector" Index="0" />
+      <MountPoints>
+
+      </MountPoints>
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Small\SM_1x1x2_Tall_Scanner_BS1.mwm" />
+        <Model BuildPercentUpperBound="0.70" File="Models\Cubes\Small\SM_1x1x2_Tall_Scanner_BS2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Small\SM_1x1x2_Tall_Scanner_BS3.mwm" />
+      </BuildProgressModels>
+      <BlockPairName>GT_RadiationMonitorAlt</BlockPairName>
+      <MirroringY>Z</MirroringY>
+      <MirroringZ>Y</MirroringZ>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>10</BuildTimeSeconds>
+      <DamageEffectName>Damage_Electrical_Damaged</DamageEffectName>
+      <DamagedSound>ParticleElectrical</DamagedSound>
+      <EmissiveColorPreset>Default</EmissiveColorPreset>
+      <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
+      <DestroySound>WepSmallWarheadExpl</DestroySound>
+      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
+           nothing. The base type is chosen for its INTERFACE, not its
+           behaviour - see the header comment. -->
+      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
+           reach, nothing for another grid to hear. An instrument is not a
+           comms device. Code also switches broadcasting off once, when the
+           block is first created. -->
+      <MaxBroadcastRadius>1</MaxBroadcastRadius>
+      <PCU>15</PCU>
+      <IsAirTight>false</IsAirTight>
+    </Definition>
+
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+      <Id>
+        <TypeId>RadioAntenna</TypeId>
+        <SubtypeId>GT_WeatherStation</SubtypeId>
+      </Id>
+      <DisplayName>Weather Station</DisplayName>
+      <Description>Reports local weather, its effect on power generation, and time until it clears. Threshold Dynamics, Survey and Assessment.</Description>
+      <Icon>Textures\Icons\LG_1x1x1_Rotating_Sensor_Icon.dds</Icon>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="1" z="1" />
+      <Center x="0" y="0" z="0" />
+      <ModelOffset x="0" y="0" z="0" />
+      <!-- Model by MTGraves, Naval Theme Prop Pack (2494017078), used with permission. -->
+      <Model>Models\Cubes\Large\LG_1x1x1_Rotating_Sensor.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="20" />
+        <Component Subtype="Construction" Count="15" />
+        <Component Subtype="SmallTube" Count="15" />
+        <Component Subtype="Detector" Count="5" />
+        <Component Subtype="Computer" Count="15" />
+        <Component Subtype="SteelPlate" Count="10" />
+      </Components>
+      <CriticalComponent Subtype="Detector" Index="0" />
+      <MountPoints>
+
+      </MountPoints>
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Large\LG_1x1x1_Rotating_Sensor_BS1.mwm" />
+        <Model BuildPercentUpperBound="0.70" File="Models\Cubes\Large\LG_1x1x1_Rotating_Sensor_BS2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Large\LG_1x1x1_Rotating_Sensor_BS3.mwm" />
+      </BuildProgressModels>
+      <BlockPairName>GT_WeatherStation</BlockPairName>
+      <MirroringY>Z</MirroringY>
+      <MirroringZ>Y</MirroringZ>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>20</BuildTimeSeconds>
+      <DamageEffectName>Damage_Electrical_Damaged</DamageEffectName>
+      <DamagedSound>ParticleElectrical</DamagedSound>
+      <EmissiveColorPreset>Default</EmissiveColorPreset>
+      <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
+      <DestroySound>WepSmallWarheadExpl</DestroySound>
+      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
+           nothing. The base type is chosen for its INTERFACE, not its
+           behaviour - see the header comment. -->
+      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
+           reach, nothing for another grid to hear. An instrument is not a
+           comms device. Code also switches broadcasting off once, when the
+           block is first created. -->
+      <MaxBroadcastRadius>1</MaxBroadcastRadius>
+      <PCU>25</PCU>
+      <IsAirTight>false</IsAirTight>
+    </Definition>
+
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+      <Id>
+        <TypeId>RadioAntenna</TypeId>
+        <SubtypeId>GT_WeatherStation_S</SubtypeId>
+      </Id>
+      <DisplayName>Weather Station</DisplayName>
+      <Description>Reports local weather, its effect on power generation, and time until it clears. Threshold Dynamics, Survey and Assessment.</Description>
+      <Icon>Textures\Icons\LG_1x1x1_Rotating_Sensor_Icon.dds</Icon>
+      <CubeSize>Small</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="1" z="1" />
+      <Center x="0" y="0" z="0" />
+      <ModelOffset x="0" y="0" z="0" />
+      <!-- Model by MTGraves, Naval Theme Prop Pack (2494017078), used with permission. -->
+      <Model>Models\Cubes\Small\SG_1x1x1_Rotating_Sensor.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="8" />
+        <Component Subtype="Construction" Count="6" />
+        <Component Subtype="SmallTube" Count="6" />
+        <Component Subtype="Detector" Count="2" />
+        <Component Subtype="Computer" Count="6" />
+        <Component Subtype="SteelPlate" Count="4" />
+      </Components>
+      <CriticalComponent Subtype="Detector" Index="0" />
+      <MountPoints>
+
+      </MountPoints>
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Small\SG_1x1x1_Rotating_Sensor_BS1.mwm" />
+        <Model BuildPercentUpperBound="0.70" File="Models\Cubes\Small\SG_1x1x1_Rotating_Sensor_BS2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Small\SG_1x1x1_Rotating_Sensor_BS3.mwm" />
+      </BuildProgressModels>
+      <BlockPairName>GT_WeatherStation</BlockPairName>
+      <MirroringY>Z</MirroringY>
+      <MirroringZ>Y</MirroringZ>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>10</BuildTimeSeconds>
+      <DamageEffectName>Damage_Electrical_Damaged</DamageEffectName>
+      <DamagedSound>ParticleElectrical</DamagedSound>
+      <EmissiveColorPreset>Default</EmissiveColorPreset>
+      <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
+      <DestroySound>WepSmallWarheadExpl</DestroySound>
+      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
+           nothing. The base type is chosen for its INTERFACE, not its
+           behaviour - see the header comment. -->
+      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
+           reach, nothing for another grid to hear. An instrument is not a
+           comms device. Code also switches broadcasting off once, when the
+           block is first created. -->
+      <MaxBroadcastRadius>1</MaxBroadcastRadius>
+      <PCU>15</PCU>
+      <IsAirTight>false</IsAirTight>
+    </Definition>
+
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+      <Id>
+        <TypeId>RadioAntenna</TypeId>
+        <SubtypeId>GT_WeatherStationAlt</SubtypeId>
+      </Id>
+      <DisplayName>Weather Station Mk2</DisplayName>
+      <Description>Reports local weather, its effect on power generation, and time until it clears. Wall mounted. Threshold Dynamics, Survey and Assessment.</Description>
+      <Icon>Textures\Icons\LG_Wall_Rotating_Sensor_Icon.dds</Icon>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="1" z="1" />
+      <Center x="0" y="0" z="0" />
+      <ModelOffset x="0" y="0" z="0" />
+      <!-- Model by MTGraves, Naval Theme Prop Pack (2494017078), used with permission. -->
+      <Model>Models\Cubes\Large\LG_Wall_Rotating_Sensor.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="20" />
+        <Component Subtype="Construction" Count="15" />
+        <Component Subtype="SmallTube" Count="15" />
+        <Component Subtype="Detector" Count="5" />
+        <Component Subtype="Computer" Count="15" />
+        <Component Subtype="SteelPlate" Count="10" />
+      </Components>
+      <CriticalComponent Subtype="Detector" Index="0" />
+      <MountPoints>
+
+      </MountPoints>
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Large\LG_Wall_Rotating_Sensor_BS1.mwm" />
+        <Model BuildPercentUpperBound="0.70" File="Models\Cubes\Large\LG_Wall_Rotating_Sensor_BS2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Large\LG_Wall_Rotating_Sensor_BS3.mwm" />
+      </BuildProgressModels>
+      <BlockPairName>GT_WeatherStationAlt</BlockPairName>
+      <MirroringY>Z</MirroringY>
+      <MirroringZ>Y</MirroringZ>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>20</BuildTimeSeconds>
+      <DamageEffectName>Damage_Electrical_Damaged</DamageEffectName>
+      <DamagedSound>ParticleElectrical</DamagedSound>
+      <EmissiveColorPreset>Default</EmissiveColorPreset>
+      <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
+      <DestroySound>WepSmallWarheadExpl</DestroySound>
+      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
+           nothing. The base type is chosen for its INTERFACE, not its
+           behaviour - see the header comment. -->
+      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
+           reach, nothing for another grid to hear. An instrument is not a
+           comms device. Code also switches broadcasting off once, when the
+           block is first created. -->
+      <MaxBroadcastRadius>1</MaxBroadcastRadius>
+      <PCU>25</PCU>
+      <IsAirTight>false</IsAirTight>
+    </Definition>
+
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+      <Id>
+        <TypeId>RadioAntenna</TypeId>
+        <SubtypeId>GT_WeatherStationAlt_S</SubtypeId>
+      </Id>
+      <DisplayName>Weather Station Mk2</DisplayName>
+      <Description>Reports local weather, its effect on power generation, and time until it clears. Wall mounted. Threshold Dynamics, Survey and Assessment.</Description>
+      <Icon>Textures\Icons\LG_Wall_Rotating_Sensor_Icon.dds</Icon>
+      <CubeSize>Small</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="1" z="1" />
+      <Center x="0" y="0" z="0" />
+      <ModelOffset x="0" y="0" z="0" />
+      <!-- Model by MTGraves, Naval Theme Prop Pack (2494017078), used with permission. -->
+      <Model>Models\Cubes\Small\SG_Wall_Rotating_Sensor.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="8" />
+        <Component Subtype="Construction" Count="6" />
+        <Component Subtype="SmallTube" Count="6" />
+        <Component Subtype="Detector" Count="2" />
+        <Component Subtype="Computer" Count="6" />
+        <Component Subtype="SteelPlate" Count="4" />
+      </Components>
+      <CriticalComponent Subtype="Detector" Index="0" />
+      <MountPoints>
+
+      </MountPoints>
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Small\SG_Wall_Rotating_Sensor_BS1.mwm" />
+        <Model BuildPercentUpperBound="0.70" File="Models\Cubes\Small\SG_Wall_Rotating_Sensor_BS2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Small\SG_Wall_Rotating_Sensor_BS3.mwm" />
+      </BuildProgressModels>
+      <BlockPairName>GT_WeatherStationAlt</BlockPairName>
+      <MirroringY>Z</MirroringY>
+      <MirroringZ>Y</MirroringZ>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>10</BuildTimeSeconds>
+      <DamageEffectName>Damage_Electrical_Damaged</DamageEffectName>
+      <DamagedSound>ParticleElectrical</DamagedSound>
+      <EmissiveColorPreset>Default</EmissiveColorPreset>
+      <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
+      <DestroySound>WepSmallWarheadExpl</DestroySound>
+      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
+           nothing. The base type is chosen for its INTERFACE, not its
+           behaviour - see the header comment. -->
+      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
+           reach, nothing for another grid to hear. An instrument is not a
+           comms device. Code also switches broadcasting off once, when the
+           block is first created. -->
+      <MaxBroadcastRadius>1</MaxBroadcastRadius>
+      <PCU>15</PCU>
+      <IsAirTight>false</IsAirTight>
+    </Definition>
+
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+      <Id>
+        <TypeId>RadioAntenna</TypeId>
+        <SubtypeId>GT_BioScanner</SubtypeId>
+      </Id>
+      <DisplayName>Bio Systems Scanner</DisplayName>
+      <Description>Detects and classifies living organisms within sensor range. Threshold Dynamics, Survey and Assessment.</Description>
+      <Icon>Textures\Icons\SM_Radar_Dome_Icon.dds</Icon>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="1" z="1" />
+      <Center x="0" y="0" z="0" />
+      <ModelOffset x="0" y="0" z="0" />
+      <!-- Model by MTGraves, Naval Theme Prop Pack (2494017078), used with permission. -->
+      <Model>Models\Cubes\Large\LG_1x1x1_Small_Radar_Dome.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="20" />
+        <Component Subtype="Construction" Count="15" />
+        <Component Subtype="SmallTube" Count="15" />
+        <Component Subtype="Detector" Count="15" />
+        <Component Subtype="Computer" Count="20" />
+        <Component Subtype="SteelPlate" Count="10" />
+      </Components>
+      <CriticalComponent Subtype="Detector" Index="0" />
+      <MountPoints>
+
+      </MountPoints>
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Large\LG_1x1x1_Small_Radar_Dome_BS1.mwm" />
+        <Model BuildPercentUpperBound="0.70" File="Models\Cubes\Large\LG_1x1x1_Small_Radar_Dome_BS2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Large\LG_1x1x1_Small_Radar_Dome_BS3.mwm" />
+      </BuildProgressModels>
+      <BlockPairName>GT_BioScanner</BlockPairName>
+      <MirroringY>Z</MirroringY>
+      <MirroringZ>Y</MirroringZ>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>20</BuildTimeSeconds>
+      <DamageEffectName>Damage_Electrical_Damaged</DamageEffectName>
+      <DamagedSound>ParticleElectrical</DamagedSound>
+      <EmissiveColorPreset>Default</EmissiveColorPreset>
+      <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
+      <DestroySound>WepSmallWarheadExpl</DestroySound>
+      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
+           nothing. The base type is chosen for its INTERFACE, not its
+           behaviour - see the header comment. -->
+      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
+           reach, nothing for another grid to hear. An instrument is not a
+           comms device. Code also switches broadcasting off once, when the
+           block is first created. -->
+      <MaxBroadcastRadius>1</MaxBroadcastRadius>
+      <PCU>25</PCU>
+      <IsAirTight>false</IsAirTight>
+    </Definition>
+
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+      <Id>
+        <TypeId>RadioAntenna</TypeId>
+        <SubtypeId>GT_BioScanner_S</SubtypeId>
+      </Id>
+      <DisplayName>Bio Systems Scanner</DisplayName>
+      <Description>Detects and classifies living organisms within sensor range. Threshold Dynamics, Survey and Assessment.</Description>
+      <Icon>Textures\Icons\SM_Radar_Dome_Icon.dds</Icon>
+      <CubeSize>Small</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="1" z="1" />
+      <Center x="0" y="0" z="0" />
+      <ModelOffset x="0" y="0" z="0" />
+      <!-- Model by MTGraves, Naval Theme Prop Pack (2494017078), used with permission. -->
+      <Model>Models\Cubes\Small\SG_1x1x1_Small_Radar_Dome.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="8" />
+        <Component Subtype="Construction" Count="6" />
+        <Component Subtype="SmallTube" Count="6" />
+        <Component Subtype="Detector" Count="6" />
+        <Component Subtype="Computer" Count="8" />
+        <Component Subtype="SteelPlate" Count="4" />
+      </Components>
+      <CriticalComponent Subtype="Detector" Index="0" />
+      <MountPoints>
+
+      </MountPoints>
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Small\SG_1x1x1_Small_Radar_Dome_BS1.mwm" />
+        <Model BuildPercentUpperBound="0.70" File="Models\Cubes\Small\SG_1x1x1_Small_Radar_Dome_BS2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Small\SG_1x1x1_Small_Radar_Dome_BS3.mwm" />
+      </BuildProgressModels>
+      <BlockPairName>GT_BioScanner</BlockPairName>
+      <MirroringY>Z</MirroringY>
+      <MirroringZ>Y</MirroringZ>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>10</BuildTimeSeconds>
+      <DamageEffectName>Damage_Electrical_Damaged</DamageEffectName>
+      <DamagedSound>ParticleElectrical</DamagedSound>
+      <EmissiveColorPreset>Default</EmissiveColorPreset>
+      <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
+      <DestroySound>WepSmallWarheadExpl</DestroySound>
+      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
+           nothing. The base type is chosen for its INTERFACE, not its
+           behaviour - see the header comment. -->
+      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
+           reach, nothing for another grid to hear. An instrument is not a
+           comms device. Code also switches broadcasting off once, when the
+           block is first created. -->
+      <MaxBroadcastRadius>1</MaxBroadcastRadius>
+      <PCU>15</PCU>
+      <IsAirTight>false</IsAirTight>
+    </Definition>
+
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+      <Id>
+        <TypeId>RadioAntenna</TypeId>
+        <SubtypeId>GT_HabitatMonitor</SubtypeId>
+      </Id>
+      <DisplayName>Habitat Monitor</DisplayName>
+      <Description>Monitors interior seal integrity and reports breaches. Threshold Dynamics, Survey and Assessment.</Description>
+      <Icon>Textures\GUI\Icons\Cubes\Control Panel.dds</Icon>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <!--
+        Control Panel rather than the antenna. This block has to live INSIDE a sealed
+        room, and a 1x3x1 antenna would demand a three-block-tall interior to fit -
+        the model would fight the block's own purpose. 1x1x1, wall-mounted, flush.
+
+        IsStandAlone false and HasPhysics false are copied from vanilla ControlPanel:
+        it is a wall fixture, not a free-standing structure.
+
+        IsAirTight false is also copied deliberately. Vanilla ControlPanel sets it
+        explicitly, unlike the inset blocks where the tag is omitted so airtightness
+        derives from mount points - see the DockingConnectorCamera lesson.
+      -->
+      <Size x="1" y="1" z="1" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\Large\ControlPanel.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="4" />
+        <Component Subtype="Construction" Count="6" />
+        <Component Subtype="Detector" Count="2" />
+        <Component Subtype="Computer" Count="6" />
+        <Component Subtype="Display" Count="2" />
+      </Components>
+      <CriticalComponent Subtype="Display" Index="0" />
+      <MountPoints>
+        <MountPoint Side="Back" ExclusionMask="3" PropertiesMask="3" StartY="0.4" StartX="0.44" EndY="0.6" EndX="0.55" />
+      </MountPoints>
+      <IsStandAlone>false</IsStandAlone>
+      <HasPhysics>false</HasPhysics>
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Large\ControlPanelConstruction_1.mwm" />
+      </BuildProgressModels>
+      <BlockPairName>GT_HabitatMonitor</BlockPairName>
+      <MirroringZ>Y</MirroringZ>
+      <MirroringY>Z</MirroringY>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>8</BuildTimeSeconds>
+      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
+           nothing. The base type is chosen for its INTERFACE, not its
+           behaviour - see the header comment. -->
+      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
+           reach, nothing for another grid to hear. An instrument is not a
+           comms device. Code also switches broadcasting off once, when the
+           block is first created. -->
+      <MaxBroadcastRadius>1</MaxBroadcastRadius>
+      <PCU>10</PCU>
+      <IsAirTight>false</IsAirTight>
+    </Definition>
+
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+      <Id>
+        <TypeId>RadioAntenna</TypeId>
+        <SubtypeId>GT_HabitatMonitor_S</SubtypeId>
+      </Id>
+      <DisplayName>Habitat Monitor</DisplayName>
+      <Description>Monitors interior seal integrity and reports breaches. Threshold Dynamics, Survey and Assessment.</Description>
+      <Icon>Textures\GUI\Icons\Cubes\Control Panel.dds</Icon>
+      <CubeSize>Small</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <!--
+        Small-grid sibling of the Habitat Monitor. Geometry, mount point and the
+        IsStandAlone / HasPhysics pair are taken from vanilla SmallControlPanel, which
+        is what this model belongs to.
+
+        IsAirTight false is copied deliberately, exactly as on the large one: vanilla
+        ControlPanel states it explicitly, unlike the inset blocks where the tag is
+        omitted so airtightness derives from mount points.
+      -->
+      <Size x="1" y="1" z="1" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\Small\ControlPanel.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="1" />
+        <Component Subtype="Construction" Count="2" />
+        <Component Subtype="Detector" Count="1" />
+        <Component Subtype="Computer" Count="2" />
+        <Component Subtype="Display" Count="1" />
+      </Components>
+      <CriticalComponent Subtype="Display" Index="0" />
+      <MountPoints>
+        <MountPoint Side="Back" ExclusionMask="3" PropertiesMask="3" StartX="0.4" StartY="0.44" EndX="0.6" EndY="0.55" />
+      </MountPoints>
+      <IsStandAlone>false</IsStandAlone>
+      <HasPhysics>false</HasPhysics>
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\small\ControlPanelConstruction_1.mwm" />
+      </BuildProgressModels>
+      <BlockPairName>GT_HabitatMonitor</BlockPairName>
+      <MirroringZ>Y</MirroringZ>
+      <MirroringY>Z</MirroringY>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>5</BuildTimeSeconds>
+      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
+           nothing. The base type is chosen for its INTERFACE, not its
+           behaviour - see the header comment. -->
+      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
+           reach, nothing for another grid to hear. An instrument is not a
+           comms device. Code also switches broadcasting off once, when the
+           block is first created. -->
+      <MaxBroadcastRadius>1</MaxBroadcastRadius>
+      <PCU>8</PCU>
+      <IsAirTight>false</IsAirTight>
+    </Definition>
+
+    <!--
+      General purpose antenna. NOT an instrument - vanilla RadioAntenna behaviour, no
+      Ground Truth code attached, excluded from IsOurs() and from the API's role and
+      capability tables. It ships because a general purpose antenna belongs in a sensor
+      array collection, and because the pack it came from is being retired from the
+      author's modlist.
+
+      Definition adapted from MTGraves' Naval Theme Prop Pack (2494017078), used with
+      permission. Broadcast behaviour is his; only the Id, name and pair name changed.
+    -->
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+      <Id>
+        <TypeId>RadioAntenna</TypeId>
+        <SubtypeId>GT_RotatingRadarDish</SubtypeId>
+      </Id>
+      <DisplayName>Rotating Radar Dish</DisplayName>
+      <Description>Long range radio antenna. Threshold Dynamics, Survey and Assessment.</Description>
+      <Icon>Textures\Icons\Rotating_Radar_Dish_Icon.dds</Icon>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="1" z="1" />
+      <Center x="0" y="0" z="0" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\Large\Rotating_Radar_Dish.mwm</Model>
+      <Components>
+        <Component Subtype="SmallTube" Count="25" />
+        <Component Subtype="Construction" Count="10" />
+        <Component Subtype="SteelPlate" Count="10" />
+        <Component Subtype="Computer" Count="10" />
+        <Component Subtype="SteelPlate" Count="10" />
+        <Component Subtype="Motor" Count="1" />
+        <Component Subtype="RadioCommunication" Count="10" />
+        <Component Subtype="SteelPlate" Count="10" />
+      </Components>
+      <CriticalComponent Subtype="RadioCommunication" Index="0" />
+      <MountPoints>
+        <MountPoint Side="Bottom" ExclusionMask="1" PropertiesMask="2" StartX="0" StartY="0" EndX="1" EndY="1" />
+      </MountPoints>
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Large\Rotating_Radar_Dish_BS1.mwm" />
+        <Model BuildPercentUpperBound="0.70" File="Models\Cubes\Large\Rotating_Radar_Dish_BS2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Large\Rotating_Radar_Dish_BS3.mwm" />
+      </BuildProgressModels>
+      <BlockPairName>GT_RotatingRadarDish</BlockPairName>
+      <MirroringY>Z</MirroringY>
+      <MirroringZ>Y</MirroringZ>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>22</BuildTimeSeconds>
+      <MaxBroadcastRadius>50000</MaxBroadcastRadius>
+      <DamageEffectName>Damage_Electrical_Damaged_Antenna</DamageEffectName>
+      <DamagedSound>ParticleElectrical</DamagedSound>
+      <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
+      <DestroySound>WepSmallWarheadExpl</DestroySound>
+      <PCU>25</PCU>
+      <IsAirTight>false</IsAirTight>
+    </Definition>
+
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+      <Id>
+        <TypeId>RadioAntenna</TypeId>
+        <SubtypeId>GT_RotatingRadarDish_S</SubtypeId>
+      </Id>
+      <DisplayName>Rotating Radar Dish</DisplayName>
+      <Description>Long range radio antenna. Threshold Dynamics, Survey and Assessment.</Description>
+      <Icon>Textures\Icons\Rotating_Radar_Dish_Icon.dds</Icon>
+      <CubeSize>Small</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="1" z="1" />
+      <Center x="0" y="0" z="0" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\Small\SG_Rotating_Radar_Dish.mwm</Model>
+      <Components>
+        <Component Subtype="SmallTube" Count="8" />
+        <Component Subtype="Construction" Count="4" />
+        <Component Subtype="SteelPlate" Count="4" />
+        <Component Subtype="Computer" Count="4" />
+        <Component Subtype="Motor" Count="1" />
+        <Component Subtype="RadioCommunication" Count="4" />
+        <Component Subtype="SteelPlate" Count="4" />
+      </Components>
+      <CriticalComponent Subtype="RadioCommunication" Index="0" />
+      <MountPoints>
+        <MountPoint Side="Bottom" ExclusionMask="1" PropertiesMask="2" StartX="0" StartY="0" EndX="1" EndY="1" />
+      </MountPoints>
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Small\SG_Rotating_Radar_Dish_BS1.mwm" />
+        <Model BuildPercentUpperBound="0.70" File="Models\Cubes\Small\SG_Rotating_Radar_Dish_BS2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Small\SG_Rotating_Radar_Dish_BS3.mwm" />
+      </BuildProgressModels>
+      <BlockPairName>GT_RotatingRadarDish</BlockPairName>
+      <MirroringY>Z</MirroringY>
+      <MirroringZ>Y</MirroringZ>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>12</BuildTimeSeconds>
+      <MaxBroadcastRadius>20000</MaxBroadcastRadius>
+      <DamageEffectName>Damage_Electrical_Damaged_Antenna</DamageEffectName>
+      <DamagedSound>ParticleElectrical</DamagedSound>
+      <DestroyEffect>BlockDestroyedExplosion_Small</DestroyEffect>
+      <DestroySound>WepSmallWarheadExpl</DestroySound>
+      <PCU>15</PCU>
+      <IsAirTight>false</IsAirTight>
+    </Definition>
+
+  </CubeBlocks>
+</Definitions>

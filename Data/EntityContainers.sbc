@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <EntityContainers>
+
+    <!--
+      Attaches the event component to every Event Controller block.
+
+      *** THE RISK IN THIS FILE ***
+
+      Vanilla declares all 22 stock events in one container keyed EventControllerBlock/*.
+      If SE REPLACES a redeclared container rather than MERGING its DefaultComponents,
+      this file removes every stock event from the game.
+
+      That cannot be determined by reading, so it is tested directly: load, open an
+      Event Controller, and count the dropdown. Stock events present alongside ours
+      means merge. Only ours means replace - delete this file immediately and find
+      another route.
+
+      This is the same class of trap as the SubtypeId collision that made wolves
+      snow-only for months: two mods declaring the same id, one silently winning.
+    -->
+    <Container>
+      <Id>
+        <TypeId>EventControllerBlock</TypeId>
+        <SubtypeId>*</SubtypeId>
+      </Id>
+      <DefaultComponents>
+        <Component BuilderType="MyObjectBuilder_GTEventWeatherIntensity" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
+        <Component BuilderType="MyObjectBuilder_GTEventWeatherType" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
+        <Component BuilderType="MyObjectBuilder_GTEventRadAccumulating" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
+        <Component BuilderType="MyObjectBuilder_GTEventShelterLost" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
+        <Component BuilderType="MyObjectBuilder_GTEventSealBreached" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
+        <Component BuilderType="MyObjectBuilder_GTEventWeatherHazard" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
+        <Component BuilderType="MyObjectBuilder_GTEventTimeToCritical" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
+        <Component BuilderType="MyObjectBuilder_GTEventSolarOutput" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
+        <Component BuilderType="MyObjectBuilder_GTEventOxygen" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
+        <Component BuilderType="MyObjectBuilder_GTEventBioCount" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
+        <Component BuilderType="MyObjectBuilder_GTEventBioContacts" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
+      </DefaultComponents>
+    </Container>
+
+  </EntityContainers>
+</Definitions>

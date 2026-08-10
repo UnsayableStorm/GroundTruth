@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <CategoryClasses>
+
+    <!--
+      Threshold Dynamics shelf in the G menu.
+
+      SE keys categories by <Name>, not by SubtypeId - which is how mods add blocks to
+      vanilla categories like LargeBlocks without wiping them. Same Name appends.
+      So every Threshold Dynamics mod ships this same file with the same <Name> and its
+      own ItemIds, and they merge into one shelf.
+
+      TWO RULES for the other mods:
+        1. <Name> must be byte-identical everywhere: ThresholdDynamics
+        2. <SubtypeId> must be UNIQUE per mod, so nothing collides on the id
+
+      ItemIds are TypeId/SubtypeId, taken from each block's own Id element.
+    -->
+    <Category xsi:type="MyObjectBuilder_GuiBlockCategoryDefinition">
+      <Id>
+        <TypeId>GuiBlockCategoryDefinition</TypeId>
+        <SubtypeId>TD_GroundTruth</SubtypeId>
+      </Id>
+      <DisplayName>Threshold Dynamics</DisplayName>
+      <Name>ThresholdDynamics</Name>
+      <StrictSearch>true</StrictSearch>
+      <ItemIds>
+        <string>RadioAntenna/GT_RadiationMonitor</string>
+        <string>RadioAntenna/GT_RadiationMonitor_S</string>
+        <string>RadioAntenna/GT_RadiationMonitorAlt</string>
+        <string>RadioAntenna/GT_RadiationMonitorAlt_S</string>
+        <string>RadioAntenna/GT_WeatherStation</string>
+        <string>RadioAntenna/GT_WeatherStation_S</string>
+        <string>RadioAntenna/GT_WeatherStationAlt</string>
+        <string>RadioAntenna/GT_WeatherStationAlt_S</string>
+        <string>RadioAntenna/GT_BioScanner</string>
+        <string>RadioAntenna/GT_BioScanner_S</string>
+        <string>RadioAntenna/GT_HabitatMonitor</string>
+        <string>RadioAntenna/GT_HabitatMonitor_S</string>
+        <string>RadioAntenna/GT_RotatingRadarDish</string>
+        <string>RadioAntenna/GT_RotatingRadarDish_S</string>
+      </ItemIds>
+    </Category>
+
+  </CategoryClasses>
+</Definitions>

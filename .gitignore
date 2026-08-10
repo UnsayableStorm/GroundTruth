@@ -1,0 +1,4 @@
+# Build scratch and backups, not source.
+*.bak
+*.bak-*
+tools/emoji_src/

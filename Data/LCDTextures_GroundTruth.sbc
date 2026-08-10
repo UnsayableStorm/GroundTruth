@@ -1,0 +1,88 @@
+<?xml version="1.0"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <LCDTextures>
+
+    <!--
+      Life Detection species icons.
+
+      LCDTextureDefinition, NOT TransparentMaterialDefinition. Sprites drawn by a
+      text surface script resolve from the LCD texture list - vanilla "Danger" and
+      "Cross" are defined exactly this way. A transparent material registers fine
+      and then draws nothing, with no error logged.
+
+      Each texture is a finished unit - squircle backplate with the creature already
+      composited onto it - so the panel draws one sprite and the plate can never
+      drift out of register with the glyph at any LCD size.
+
+      Baked by tools/build_bio_icons.py. Source art is Twemoji, CC-BY 4.0,
+      https://github.com/jdecked/twemoji - attribution required, see ATTRIBUTION.txt.
+
+      A side effect of this registration: the icons also appear in the LCD's own
+      image list, where a player can select them directly. That is harmless.
+    -->
+
+    <LCDTextureDefinition>
+      <Id>
+        <TypeId>LCDTextureDefinition</TypeId>
+        <SubtypeId>GT_Bio_Cow</SubtypeId>
+      </Id>
+      <TexturePath>Textures\Sprites\GT_Bio_Cow.dds</TexturePath>
+      <SpritePath>Textures\Sprites\GT_Bio_Cow.dds</SpritePath>
+    </LCDTextureDefinition>
+
+    <LCDTextureDefinition>
+      <Id>
+        <TypeId>LCDTextureDefinition</TypeId>
+        <SubtypeId>GT_Bio_Horse</SubtypeId>
+      </Id>
+      <TexturePath>Textures\Sprites\GT_Bio_Horse.dds</TexturePath>
+      <SpritePath>Textures\Sprites\GT_Bio_Horse.dds</SpritePath>
+    </LCDTextureDefinition>
+
+    <LCDTextureDefinition>
+      <Id>
+        <TypeId>LCDTextureDefinition</TypeId>
+        <SubtypeId>GT_Bio_Sheep</SubtypeId>
+      </Id>
+      <TexturePath>Textures\Sprites\GT_Bio_Sheep.dds</TexturePath>
+      <SpritePath>Textures\Sprites\GT_Bio_Sheep.dds</SpritePath>
+    </LCDTextureDefinition>
+
+    <LCDTextureDefinition>
+      <Id>
+        <TypeId>LCDTextureDefinition</TypeId>
+        <SubtypeId>GT_Bio_Wolf</SubtypeId>
+      </Id>
+      <TexturePath>Textures\Sprites\GT_Bio_Wolf.dds</TexturePath>
+      <SpritePath>Textures\Sprites\GT_Bio_Wolf.dds</SpritePath>
+    </LCDTextureDefinition>
+
+    <LCDTextureDefinition>
+      <Id>
+        <TypeId>LCDTextureDefinition</TypeId>
+        <SubtypeId>GT_Bio_Spider</SubtypeId>
+      </Id>
+      <TexturePath>Textures\Sprites\GT_Bio_Spider.dds</TexturePath>
+      <SpritePath>Textures\Sprites\GT_Bio_Spider.dds</SpritePath>
+    </LCDTextureDefinition>
+
+    <LCDTextureDefinition>
+      <Id>
+        <TypeId>LCDTextureDefinition</TypeId>
+        <SubtypeId>GT_Bio_Unknown</SubtypeId>
+      </Id>
+      <TexturePath>Textures\Sprites\GT_Bio_Unknown.dds</TexturePath>
+      <SpritePath>Textures\Sprites\GT_Bio_Unknown.dds</SpritePath>
+    </LCDTextureDefinition>
+
+    <LCDTextureDefinition>
+      <Id>
+        <TypeId>LCDTextureDefinition</TypeId>
+        <SubtypeId>GT_Bio_Robot</SubtypeId>
+      </Id>
+      <TexturePath>Textures\Sprites\GT_Bio_Robot.dds</TexturePath>
+      <SpritePath>Textures\Sprites\GT_Bio_Robot.dds</SpritePath>
+    </LCDTextureDefinition>
+
+  </LCDTextures>
+</Definitions>
