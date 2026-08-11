@@ -325,4 +325,43 @@ namespace GroundTruth
             return n >= 1f;
         }
     }
+
+    // ------------------------------------------------------------------
+    // 1013 - something alive is here
+    //
+    // Twin of 1012, for organisms rather than contacts. Both replaced slider events
+    // that asked "how many" against a full scale nobody could see: 20 on a 0-100 dial
+    // meant 10 animals. "Is there wildlife out there" is the question people actually
+    // wire to a door.
+
+    [ProtoBuf.ProtoContract]
+    [MyObjectBuilderDefinition]
+    public class MyObjectBuilder_GTEventBioLifePresent : MyObjectBuilder_ComponentBase { }
+
+    [MyComponentType(typeof(GTEventBioLifePresent))]
+    [MyEntityDependencyType(typeof(IMyEventControllerBlock))]
+    [MyComponentBuilder(typeof(MyObjectBuilder_GTEventBioLifePresent), true)]
+    public class GTEventBioLifePresent : GTBooleanEvent
+    {
+        public const long SelectionId = 1013L;
+
+        public override string ComponentTypeDebugString { get { return "GT_BioLifePresent"; } }
+        public override MyStringId EventDisplayName
+        { get { return MyStringId.GetOrCompute("Wildlife detected [Ground Truth]"); } }
+        public override long UniqueSelectionId { get { return SelectionId; } }
+        public override string YesNoToolbarYesDescription { get { return "Wildlife came into range"; } }
+        public override string YesNoToolbarNoDescription { get { return "Wildlife gone"; } }
+
+        protected override float WantedRole { get { return Instruments.RoleBio; } }
+
+        // Organisms only - GT_BioCount excludes bots and armed humanoids, which are
+        // counted as contacts and belong to event 1012. A wolf and a soldier should
+        // not ring the same bell.
+        protected override bool? Evaluate(IMyTerminalBlock b)
+        {
+            float n = Read(b, "GT_BioCount");
+            if (n < 0) return null;
+            return n >= 1f;
+        }
+    }
 }

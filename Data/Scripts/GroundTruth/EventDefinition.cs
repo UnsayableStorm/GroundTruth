@@ -212,47 +212,7 @@ namespace GroundTruth
         }
     }
 
-    [ProtoContract]
-    [MyObjectBuilderDefinition]
-    public class MyObjectBuilder_GTEventBioCountDefinition : MyObjectBuilder_ComponentDefinitionBase
-    {
-        [ProtoMember(1)]
-        public long UniqueSelectionId;
-    }
 
-    [MyDefinitionType(typeof(MyObjectBuilder_GTEventBioCountDefinition))]
-    public class GTEventBioCountDefinition : MyComponentDefinitionBase
-    {
-        public long UniqueSelectionId;
-
-        protected override void Init(MyObjectBuilder_DefinitionBase builder)
-        {
-            base.Init(builder);
-            var ob = builder as MyObjectBuilder_GTEventBioCountDefinition;
-            if (ob != null) UniqueSelectionId = ob.UniqueSelectionId;
-        }
-    }
-
-    [ProtoContract]
-    [MyObjectBuilderDefinition]
-    public class MyObjectBuilder_GTEventBioContactsDefinition : MyObjectBuilder_ComponentDefinitionBase
-    {
-        [ProtoMember(1)]
-        public long UniqueSelectionId;
-    }
-
-    [MyDefinitionType(typeof(MyObjectBuilder_GTEventBioContactsDefinition))]
-    public class GTEventBioContactsDefinition : MyComponentDefinitionBase
-    {
-        public long UniqueSelectionId;
-
-        protected override void Init(MyObjectBuilder_DefinitionBase builder)
-        {
-            base.Init(builder);
-            var ob = builder as MyObjectBuilder_GTEventBioContactsDefinition;
-            if (ob != null) UniqueSelectionId = ob.UniqueSelectionId;
-        }
-    }
 
     [ProtoContract]
     [MyObjectBuilderDefinition]
@@ -271,6 +231,27 @@ namespace GroundTruth
         {
             base.Init(builder);
             var ob = builder as MyObjectBuilder_GTEventBioContactPresentDefinition;
+            if (ob != null) UniqueSelectionId = ob.UniqueSelectionId;
+        }
+    }
+
+    [ProtoContract]
+    [MyObjectBuilderDefinition]
+    public class MyObjectBuilder_GTEventBioLifePresentDefinition : MyObjectBuilder_ComponentDefinitionBase
+    {
+        [ProtoMember(1)]
+        public long UniqueSelectionId;
+    }
+
+    [MyDefinitionType(typeof(MyObjectBuilder_GTEventBioLifePresentDefinition))]
+    public class GTEventBioLifePresentDefinition : MyComponentDefinitionBase
+    {
+        public long UniqueSelectionId;
+
+        protected override void Init(MyObjectBuilder_DefinitionBase builder)
+        {
+            base.Init(builder);
+            var ob = builder as MyObjectBuilder_GTEventBioLifePresentDefinition;
             if (ob != null) UniqueSelectionId = ob.UniqueSelectionId;
         }
     }

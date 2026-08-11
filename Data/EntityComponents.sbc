@@ -86,28 +86,20 @@
       <UniqueSelectionId>1009</UniqueSelectionId>
     </EntityComponent>
 
-    <EntityComponent xsi:type="MyObjectBuilder_GTEventBioCountDefinition">
-      <Id>
-        <TypeId>GTEventBioCount</TypeId>
-        <SubtypeId>EventControllerBlockComponent</SubtypeId>
-      </Id>
-      <UniqueSelectionId>1010</UniqueSelectionId>
-    </EntityComponent>
-
-    <EntityComponent xsi:type="MyObjectBuilder_GTEventBioContactsDefinition">
-      <Id>
-        <TypeId>GTEventBioContacts</TypeId>
-        <SubtypeId>EventControllerBlockComponent</SubtypeId>
-      </Id>
-      <UniqueSelectionId>1011</UniqueSelectionId>
-    </EntityComponent>
-
     <EntityComponent xsi:type="MyObjectBuilder_GTEventBioContactPresentDefinition">
       <Id>
         <TypeId>GTEventBioContactPresent</TypeId>
         <SubtypeId>EventControllerBlockComponent</SubtypeId>
       </Id>
       <UniqueSelectionId>1012</UniqueSelectionId>
+    </EntityComponent>
+
+    <EntityComponent xsi:type="MyObjectBuilder_GTEventBioLifePresentDefinition">
+      <Id>
+        <TypeId>GTEventBioLifePresent</TypeId>
+        <SubtypeId>EventControllerBlockComponent</SubtypeId>
+      </Id>
+      <UniqueSelectionId>1013</UniqueSelectionId>
     </EntityComponent>
 
   </EntityComponents>

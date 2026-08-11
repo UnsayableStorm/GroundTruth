@@ -34,9 +34,8 @@
         <Component BuilderType="MyObjectBuilder_GTEventTimeToCritical" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
         <Component BuilderType="MyObjectBuilder_GTEventSolarOutput" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
         <Component BuilderType="MyObjectBuilder_GTEventOxygen" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
-        <Component BuilderType="MyObjectBuilder_GTEventBioCount" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
-        <Component BuilderType="MyObjectBuilder_GTEventBioContacts" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
         <Component BuilderType="MyObjectBuilder_GTEventBioContactPresent" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
+        <Component BuilderType="MyObjectBuilder_GTEventBioLifePresent" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
       </DefaultComponents>
     </Container>
 
