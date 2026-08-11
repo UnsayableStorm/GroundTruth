@@ -1,0 +1,120 @@
+<?xml version="1.0"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <CubeBlocks>
+
+    <!--
+      PANE PROBE - which block types render a detail info panel?
+
+      Ground Truth writes its readings into the terminal's detail info pane. That pane
+      is not available on every block type: OreDetector renders none at all, which cost
+      a deploy to discover, and RadioAntenna was chosen instead. RadioAntenna has since
+      turned out to force a HUD marker whenever the block is working, with no way to
+      suppress it from mod code, so the base type has to change again.
+
+      Four identical dummy blocks, one per candidate definition type, all using the same
+      vanilla model so nothing depends on art. Each gets the same game logic component,
+      which writes a line into the detail info pane.
+
+      Place all four, open the terminal, click each one:
+
+        text visible  -> that type renders the pane and is a viable base
+        pane blank    -> that type is out, like OreDetector
+
+      PROBE_OreDetector is the CONTROL. It is known to render nothing. If it somehow
+      shows text, then the original OreDetector finding was wrong and everything
+      downstream of it needs revisiting.
+
+      None of these blocks do anything else. Delete the mod when the question is
+      answered.
+    -->
+
+    <Definition xsi:type="MyObjectBuilder_UpgradeModuleDefinition">
+      <Id>
+        <TypeId>UpgradeModule</TypeId>
+        <SubtypeId>PROBE_UpgradeModule</SubtypeId>
+      </Id>
+      <DisplayName>PROBE UpgradeModule</DisplayName>
+      <Description>Pane probe. Open the terminal and look for PANE OK.</Description>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="1" z="1" />
+      <Center x="0" y="0" z="0" />
+      <Model>Models\Cubes\Large\UpgradeProductivity.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="10" />
+      </Components>
+      <CriticalComponent Subtype="SteelPlate" Index="0" />
+      <BuildTimeSeconds>4</BuildTimeSeconds>
+      <EdgeType>Light</EdgeType>
+    </Definition>
+
+    <Definition xsi:type="MyObjectBuilder_SensorBlockDefinition">
+      <Id>
+        <TypeId>SensorBlock</TypeId>
+        <SubtypeId>PROBE_Sensor</SubtypeId>
+      </Id>
+      <DisplayName>PROBE Sensor</DisplayName>
+      <Description>Pane probe. Open the terminal and look for PANE OK.</Description>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="1" z="1" />
+      <Center x="0" y="0" z="0" />
+      <Model>Models\Cubes\Large\UpgradeProductivity.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="10" />
+      </Components>
+      <CriticalComponent Subtype="SteelPlate" Index="0" />
+      <BuildTimeSeconds>4</BuildTimeSeconds>
+      <EdgeType>Light</EdgeType>
+      <MaxRange>50</MaxRange>
+      <RequiredPowerInput>0.0001</RequiredPowerInput>
+    </Definition>
+
+    <Definition xsi:type="MyObjectBuilder_CameraBlockDefinition">
+      <Id>
+        <TypeId>CameraBlock</TypeId>
+        <SubtypeId>PROBE_Camera</SubtypeId>
+      </Id>
+      <DisplayName>PROBE Camera</DisplayName>
+      <Description>Pane probe. Open the terminal and look for PANE OK.</Description>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="1" z="1" />
+      <Center x="0" y="0" z="0" />
+      <Model>Models\Cubes\Large\UpgradeProductivity.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="10" />
+      </Components>
+      <CriticalComponent Subtype="SteelPlate" Index="0" />
+      <BuildTimeSeconds>4</BuildTimeSeconds>
+      <EdgeType>Light</EdgeType>
+      <RequiredPowerInput>0.0001</RequiredPowerInput>
+      <RequiredChargingInput>0.0001</RequiredChargingInput>
+      <MinFov>0.1</MinFov>
+      <MaxFov>1.04719755</MaxFov>
+    </Definition>
+
+    <!-- CONTROL: known to render no pane. Proves the probe can tell the difference. -->
+    <Definition xsi:type="MyObjectBuilder_OreDetectorDefinition">
+      <Id>
+        <TypeId>OreDetector</TypeId>
+        <SubtypeId>PROBE_OreDetector</SubtypeId>
+      </Id>
+      <DisplayName>PROBE OreDetector (control - expect blank)</DisplayName>
+      <Description>Pane probe control. This one is expected to show NOTHING.</Description>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="1" z="1" />
+      <Center x="0" y="0" z="0" />
+      <Model>Models\Cubes\Large\UpgradeProductivity.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="10" />
+      </Components>
+      <CriticalComponent Subtype="SteelPlate" Index="0" />
+      <BuildTimeSeconds>4</BuildTimeSeconds>
+      <EdgeType>Light</EdgeType>
+      <MaximumRange>50</MaximumRange>
+    </Definition>
+
+  </CubeBlocks>
+</Definitions>
