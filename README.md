@@ -105,10 +105,42 @@ you are wondering about.
 
 ---
 
+## Help wanted — visual work
+
+The measuring is done and documented. What the project could genuinely use is someone with
+an eye, because every visual decision here was made by an engineer optimising for legibility
+and nothing else.
+
+Four things, smallest first:
+
+**Workshop imagery.** The page has honest screenshots taken to prove features work. It has
+no header image, and no shot sequenced to show a newcomer in three seconds what this is.
+That is a different craft from documenting a panel, and it is the gap most likely to decide
+whether anyone installs the mod at all.
+
+**Icons.** The G-menu icons are inherited from the source model packs. They are fine
+individually and do not read as one family, which makes a deliberate eighteen-block shelf
+look like a pile of borrowed parts.
+
+**Panel layout.** The colour semantics are settled and load-bearing — green safe, amber
+worth knowing, red happening to you, and the palette is documented in `TextPanels.cs`.
+The *arrangement* is not sacred. Someone with real typographic sense could rework the
+layouts inside those rules and the mod would be better for it.
+
+**Block models.** The deep end. The meshes are MTGraves', used with permission and properly
+credited, and they are why the instruments look as good as they do. Original models would
+make this fully a Threshold Dynamics product rather than TD-branded naval props.
+
+Open an issue or a pull request if any of that appeals. Code contributions are welcome
+too, but the honest answer to "where would help matter most" is: not the code.
+
+---
+
 ## Credits
 
-Block models by **MTGraves**, from the Naval Theme Prop Pack, used with explicit
-permission.
+Block models by **MTGraves**, from his Naval Theme Prop Pack and his comms pack, used
+with explicit permission. Six textures the meshes reference are redistributed with them,
+so the blocks look right without either pack installed.
 
 Species icons derived from **Twemoji**, © Twitter Inc and contributors, CC-BY 4.0,
 modified for LCD use.
