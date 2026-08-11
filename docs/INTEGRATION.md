@@ -353,6 +353,15 @@ writes to `IMyTextSurface.Script`, and what the LCD's script list stores.
 | `GT_Overview` | Ground Truth: Overview | all four, layout branches on aspect ratio |
 | `GT_Strip` | Ground Truth: Strip (corner LCD) | small label over large value, one column each |
 
+![Overview](images/panel-overview.png)
+
+![Strip on a corner LCD](images/panel-strip-corner-lcd.png)
+
+The Strip above is the same four instruments as the Overview, on a surface where a 2x2
+grid would be illegible. Note `RADIATION OUTSIDE` rather than a bare countdown, and
+`HABITAT PRESSURE / OPEN` in amber rather than red — the platform has no sealed volume,
+which is a fact worth stating and not an emergency.
+
 Every app finds its own instruments: it searches **its own grid** for the first block of
 each role. Subgrids are excluded deliberately, so a docked ship's sensors do not feed the
 station's panel, and if two instruments share a role one is chosen and the other ignored.

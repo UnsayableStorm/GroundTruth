@@ -8,6 +8,39 @@ readings is your business.
 
 **Workshop:** https://steamcommunity.com/sharedfiles/filedetails/?id=3781444888
 
+![The instruments, large grid](docs/images/blocks-array.png)
+
+Radar domes, rotating sensor pods, wall-mounted dishes and the 1×5 comms mast — every
+instrument comes in two silhouettes and both grid sizes, so an array can be built to look
+like something rather than to look uniform.
+
+---
+
+## Screens
+
+Each panel is an LCD app. No name tags and no setup — every app finds its own instruments
+on its own grid.
+
+| | |
+|---|---|
+| ![Overview](docs/images/panel-overview.png) | ![Strip](docs/images/panel-strip-corner-lcd.png) |
+| **Overview** — all four systems, laid out to fit the surface it is on. | **Strip** — for corner LCDs, where the other apps are unreadable. Small label, large value, colour for severity. |
+
+| | |
+|---|---|
+| ![Radiation, exposed](docs/images/panel-radiation-exposed.png) | ![Radiation, safe](docs/images/panel-radiation-safe.png) |
+| Exposed: dose accruing, shelter state `EXPOSED`, and how long you have. | Sheltered: the sun occluded, exposure genuinely zero. |
+
+| | |
+|---|---|
+| ![Weather](docs/images/panel-weather-snow.png) | ![Habitat](docs/images/panel-habitat-open.png) |
+| Weather, with what it is doing to solar, wind and oxygen — and an honest `UNKNOWN` for a clearing time whose onset was never observed. | Habitat: no sealed volume here, so planetary radiation is `NOT BLOCKED`. |
+
+![Life detection](docs/images/panel-life-detection.png)
+
+Life Detection reporting a nil return — *"no returns; the instrument has no opinion as to
+why"*. An instrument that finds nothing has not proved the place is empty.
+
 ---
 
 ## What is in this repository
