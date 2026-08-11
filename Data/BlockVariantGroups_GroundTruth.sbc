@@ -6,7 +6,7 @@
       One scrollable set for the whole pack.
 
       The Threshold Dynamics shelf shows a single icon; the mouse wheel cycles all
-      fourteen blocks. Vanilla does the same thing with armour, and mixes large and
+      eighteen blocks. Vanilla does the same thing with armour, and mixes large and
       small grid inside one group, so both sizes live here together.
 
       ORDER IS THE UI. This list is the scroll order, so it runs by instrument -
@@ -34,7 +34,9 @@
         <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_WeatherStation" />
         <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_WeatherStationAlt" />
         <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_BioScanner" />
+        <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_BioScannerAlt" />
         <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_HabitatMonitor" />
+        <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_HabitatMonitorAlt" />
         <Block Type="MyObjectBuilder_RadioAntenna" Subtype="GT_RotatingRadarDish" />
 
         <!-- small grid, same sequence -->
@@ -43,7 +45,9 @@
         <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_WeatherStation_S" />
         <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_WeatherStationAlt_S" />
         <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_BioScanner_S" />
+        <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_BioScannerAlt_S" />
         <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_HabitatMonitor_S" />
+        <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_HabitatMonitorAlt_S" />
         <Block Type="MyObjectBuilder_RadioAntenna" Subtype="GT_RotatingRadarDish_S" />
       </Blocks>
     </BlockVariantGroup>

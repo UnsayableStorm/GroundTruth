@@ -35,8 +35,12 @@
         <string>UpgradeModule/GT_WeatherStationAlt_S</string>
         <string>UpgradeModule/GT_BioScanner</string>
         <string>UpgradeModule/GT_BioScanner_S</string>
+        <string>UpgradeModule/GT_BioScannerAlt</string>
+        <string>UpgradeModule/GT_BioScannerAlt_S</string>
         <string>UpgradeModule/GT_HabitatMonitor</string>
         <string>UpgradeModule/GT_HabitatMonitor_S</string>
+        <string>UpgradeModule/GT_HabitatMonitorAlt</string>
+        <string>UpgradeModule/GT_HabitatMonitorAlt_S</string>
         <string>RadioAntenna/GT_RotatingRadarDish</string>
         <string>RadioAntenna/GT_RotatingRadarDish_S</string>
       </ItemIds>

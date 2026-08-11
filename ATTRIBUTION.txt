@@ -14,17 +14,25 @@ Source: https://github.com/jdecked/twemoji
 The graphics have been modified: each glyph was resized and composited onto
 a light squircle backplate to produce a single LCD sprite.
 --------------------------------------------------------------------------
-Block models (Models\Cubes\Large\*, Models\Cubes\Small\*) and four
-textures (Dome_Glass_cm, TacScreen_cm, rgby_add, rgby_ng)
+Block models (Models\Cubes\Large\*, Models\Cubes\Small\*) and six
+textures (Dome_Glass_cm, Dampener_cm, TacScreen_cm, TacScreen_2_cm,
+rgby_add, rgby_ng)
 
-By MTGraves, from the Naval Theme Prop Pack:
-https://steamcommunity.com/sharedfiles/filedetails/?id=2494017078
+By MTGraves, from two of his packs:
+  Naval Theme Prop Pack
+  https://steamcommunity.com/sharedfiles/filedetails/?id=2494017078
+  Comms pack
+  https://steamcommunity.com/sharedfiles/filedetails/?id=3504671538
+
+The textures are here because the meshes reference them by path. Without
+them a subscriber who does not own those packs would see untextured blocks -
+and it would look correct to anyone testing with the packs installed.
 
 Used with his explicit permission, granted 2026-08-09. His words: "thank you
 for asking first, and good luck!"
 
 The models are redistributed unmodified. The block definitions around them
-are original; the Rotating Radar Dish definition is adapted from his.
+are original; the Rotating Antenna definition is adapted from his.
 
 Subpart rotation code derives from Digi's public spinning-subpart example,
 by way of the same pack.

@@ -63,6 +63,8 @@ namespace GroundTruth
 
             { "GT_HabitatMonitor",        New(RoleHabitat,   CapEnv | CapHab | CapRad, null, PowerHabitat) },
             { "GT_HabitatMonitor_S",      New(RoleHabitat,   CapEnv | CapHab | CapRad, null, PowerHabitat) },
+            { "GT_HabitatMonitorAlt",     New(RoleHabitat,   CapEnv | CapHab | CapRad, null, PowerHabitat) },
+            { "GT_HabitatMonitorAlt_S",   New(RoleHabitat,   CapEnv | CapHab | CapRad, null, PowerHabitat) },
 
             { "GT_WeatherStation",        New(RoleWeather,   CapEnv | CapSun | CapWx, "SensorPod", PowerWeather) },
             { "GT_WeatherStation_S",      New(RoleWeather,   CapEnv | CapSun | CapWx, "SG_SensorPod", PowerWeather) },
@@ -71,6 +73,8 @@ namespace GroundTruth
 
             { "GT_BioScanner",            New(RoleBio,       CapEnv | CapBio, null, PowerBio) },
             { "GT_BioScanner_S",          New(RoleBio,       CapEnv | CapBio, null, PowerBio) },
+            { "GT_BioScannerAlt",         New(RoleBio,       CapEnv | CapBio, null, PowerBio) },
+            { "GT_BioScannerAlt_S",       New(RoleBio,       CapEnv | CapBio, null, PowerBio) },
         };
 
         // Deliberately NOT in the table: GT_RotatingRadarDish. It is a vanilla radio

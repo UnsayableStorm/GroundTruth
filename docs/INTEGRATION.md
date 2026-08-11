@@ -77,7 +77,7 @@ int caps = (int)block.GetValueFloat("GT_SysCapabilities");
 if ((caps & CapWx) != 0) { /* this block has weather readings */ }
 ```
 
-There are already ten block subtypes behind four instruments, with variants and both grid
+There are already sixteen block subtypes behind four instruments, with variants and both grid
 sizes. A subtype list will break; a capability test will not.
 
 ---
