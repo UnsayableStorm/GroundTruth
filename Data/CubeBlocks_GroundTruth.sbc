@@ -106,13 +106,6 @@
       <EmissiveColorPreset>Default</EmissiveColorPreset>
       <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
       <DestroySound>WepSmallWarheadExpl</DestroySound>
-      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
-           nothing. The base type is chosen for its INTERFACE, not its
-           behaviour - see the header comment. -->
-      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
-           reach, nothing for another grid to hear. An instrument is not a
-           comms device. Code also switches broadcasting off once, when the
-           block is first created. -->
       <PCU>25</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
@@ -159,13 +152,6 @@
       <EmissiveColorPreset>Default</EmissiveColorPreset>
       <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
       <DestroySound>WepSmallWarheadExpl</DestroySound>
-      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
-           nothing. The base type is chosen for its INTERFACE, not its
-           behaviour - see the header comment. -->
-      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
-           reach, nothing for another grid to hear. An instrument is not a
-           comms device. Code also switches broadcasting off once, when the
-           block is first created. -->
       <PCU>15</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
@@ -212,13 +198,6 @@
       <EmissiveColorPreset>Default</EmissiveColorPreset>
       <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
       <DestroySound>WepSmallWarheadExpl</DestroySound>
-      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
-           nothing. The base type is chosen for its INTERFACE, not its
-           behaviour - see the header comment. -->
-      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
-           reach, nothing for another grid to hear. An instrument is not a
-           comms device. Code also switches broadcasting off once, when the
-           block is first created. -->
       <PCU>25</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
@@ -265,13 +244,6 @@
       <EmissiveColorPreset>Default</EmissiveColorPreset>
       <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
       <DestroySound>WepSmallWarheadExpl</DestroySound>
-      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
-           nothing. The base type is chosen for its INTERFACE, not its
-           behaviour - see the header comment. -->
-      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
-           reach, nothing for another grid to hear. An instrument is not a
-           comms device. Code also switches broadcasting off once, when the
-           block is first created. -->
       <PCU>15</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
@@ -318,13 +290,6 @@
       <EmissiveColorPreset>Default</EmissiveColorPreset>
       <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
       <DestroySound>WepSmallWarheadExpl</DestroySound>
-      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
-           nothing. The base type is chosen for its INTERFACE, not its
-           behaviour - see the header comment. -->
-      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
-           reach, nothing for another grid to hear. An instrument is not a
-           comms device. Code also switches broadcasting off once, when the
-           block is first created. -->
       <PCU>25</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
@@ -371,13 +336,6 @@
       <EmissiveColorPreset>Default</EmissiveColorPreset>
       <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
       <DestroySound>WepSmallWarheadExpl</DestroySound>
-      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
-           nothing. The base type is chosen for its INTERFACE, not its
-           behaviour - see the header comment. -->
-      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
-           reach, nothing for another grid to hear. An instrument is not a
-           comms device. Code also switches broadcasting off once, when the
-           block is first created. -->
       <PCU>15</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
@@ -424,13 +382,6 @@
       <EmissiveColorPreset>Default</EmissiveColorPreset>
       <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
       <DestroySound>WepSmallWarheadExpl</DestroySound>
-      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
-           nothing. The base type is chosen for its INTERFACE, not its
-           behaviour - see the header comment. -->
-      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
-           reach, nothing for another grid to hear. An instrument is not a
-           comms device. Code also switches broadcasting off once, when the
-           block is first created. -->
       <PCU>25</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
@@ -477,13 +428,6 @@
       <EmissiveColorPreset>Default</EmissiveColorPreset>
       <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
       <DestroySound>WepSmallWarheadExpl</DestroySound>
-      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
-           nothing. The base type is chosen for its INTERFACE, not its
-           behaviour - see the header comment. -->
-      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
-           reach, nothing for another grid to hear. An instrument is not a
-           comms device. Code also switches broadcasting off once, when the
-           block is first created. -->
       <PCU>15</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
@@ -530,13 +474,6 @@
       <EmissiveColorPreset>Default</EmissiveColorPreset>
       <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
       <DestroySound>WepSmallWarheadExpl</DestroySound>
-      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
-           nothing. The base type is chosen for its INTERFACE, not its
-           behaviour - see the header comment. -->
-      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
-           reach, nothing for another grid to hear. An instrument is not a
-           comms device. Code also switches broadcasting off once, when the
-           block is first created. -->
       <PCU>25</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
@@ -583,13 +520,6 @@
       <EmissiveColorPreset>Default</EmissiveColorPreset>
       <DestroyEffect>BlockDestroyedExplosion_Large</DestroyEffect>
       <DestroySound>WepSmallWarheadExpl</DestroySound>
-      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
-           nothing. The base type is chosen for its INTERFACE, not its
-           behaviour - see the header comment. -->
-      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
-           reach, nothing for another grid to hear. An instrument is not a
-           comms device. Code also switches broadcasting off once, when the
-           block is first created. -->
       <PCU>15</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
@@ -640,13 +570,6 @@
       <MirroringY>Z</MirroringY>
       <EdgeType>Light</EdgeType>
       <BuildTimeSeconds>8</BuildTimeSeconds>
-      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
-           nothing. The base type is chosen for its INTERFACE, not its
-           behaviour - see the header comment. -->
-      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
-           reach, nothing for another grid to hear. An instrument is not a
-           comms device. Code also switches broadcasting off once, when the
-           block is first created. -->
       <PCU>10</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
@@ -694,13 +617,6 @@
       <MirroringY>Z</MirroringY>
       <EdgeType>Light</EdgeType>
       <BuildTimeSeconds>5</BuildTimeSeconds>
-      <!-- Inherited from OreDetector and deliberately neutered: 1m finds
-           nothing. The base type is chosen for its INTERFACE, not its
-           behaviour - see the header comment. -->
-      <!-- 1m. Broadcasting is meaningless at this range: no HUD marker, no
-           reach, nothing for another grid to hear. An instrument is not a
-           comms device. Code also switches broadcasting off once, when the
-           block is first created. -->
       <PCU>8</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
@@ -720,7 +636,7 @@
         <TypeId>RadioAntenna</TypeId>
         <SubtypeId>GT_RotatingRadarDish</SubtypeId>
       </Id>
-      <DisplayName>Rotating Radar Dish</DisplayName>
+      <DisplayName>Rotating Antenna</DisplayName>
       <Description>Long range radio antenna. Threshold Dynamics, Survey and Assessment.</Description>
       <Icon>Textures\Icons\Rotating_Radar_Dish_Icon.dds</Icon>
       <CubeSize>Large</CubeSize>
@@ -767,7 +683,7 @@
         <TypeId>RadioAntenna</TypeId>
         <SubtypeId>GT_RotatingRadarDish_S</SubtypeId>
       </Id>
-      <DisplayName>Rotating Radar Dish</DisplayName>
+      <DisplayName>Rotating Antenna</DisplayName>
       <Description>Long range radio antenna. Threshold Dynamics, Survey and Assessment.</Description>
       <Icon>Textures\Icons\Rotating_Radar_Dish_Icon.dds</Icon>
       <CubeSize>Small</CubeSize>

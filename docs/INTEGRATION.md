@@ -52,7 +52,7 @@ and `IMyUpgradeModule` is the narrowest one that also renders a detail info pane
 declare no `<Upgrades>`, so they do nothing at all next to a refinery — the base type is a
 means, not a purpose.
 
-The two Rotating Radar Dishes are the exception: those are real `RadioAntenna` blocks,
+The two Rotating Antennas are the exception: those are real `RadioAntenna` blocks,
 they carry no `GT_` properties, and broadcasting is their entire point.
 
 ---

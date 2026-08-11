@@ -36,7 +36,7 @@ watches.
 What is alive nearby, what kind, how far away and which direction. Counts robots and
 armed humanoids separately from wildlife.
 
-[b]Rotating Radar Dish[/b]
+[b]Rotating Antenna[/b]
 A working antenna. Not an instrument — it is here because a sensor array looks wrong
 without one.
 
