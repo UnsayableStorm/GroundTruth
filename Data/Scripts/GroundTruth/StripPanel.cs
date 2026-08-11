@@ -149,11 +149,19 @@ namespace GroundTruth
             {
                 double left = rad.Rad.SecondsToCritical;
                 bool indoors = rad.Airtight;
-                string label = indoors ? "RADIATION" : "EXT RAD";
 
-                token = new Token(left >= 0 ? label + "  " + Clock(left) : label,
-                                  indoors ? (left >= 0 && left < 300 ? Danger : Caution)
-                                          : Caution);
+                // OUTSIDE for the hull-mounted case, which is where a radiation monitor
+                // almost always lives. It is a fact about the vacuum, not a countdown
+                // for whoever is reading the screen, so it stays amber - useful before
+                // an EVA, not a reason to panic in a pressurised cabin.
+                //
+                // A monitor that is INSIDE a sealed volume and still accumulating is the
+                // rare and genuinely alarming case: the seal is not protecting you. That
+                // one gets the bare word and the red.
+                token = indoors
+                    ? new Token(left >= 0 ? "RADIATION  " + Clock(left) : "RADIATION",
+                                left >= 0 && left < 300 ? Danger : Caution)
+                    : new Token(left >= 0 ? "OUTSIDE  " + Clock(left) : "OUTSIDE", Caution);
                 return true;
             }
 
@@ -209,10 +217,11 @@ namespace GroundTruth
             if (!s.Rad.Enabled || s.Rad.IntensitySetting <= 0) return new Token("RAD", fg * 0.4f);
             if (!s.Rad.Accumulates) return new Token("RAD", Ok);
 
-            // Same distinction as the alarm: an exposed sensor names itself EXT so the
-            // token is not read as a fact about the room the screen is in.
+            // In the all-clear row the word stays RAD and the colour does the work:
+            // amber for a hull sensor in the open, red only when a sealed volume is
+            // failing to protect whoever is inside it.
             double left = s.Rad.SecondsToCritical;
-            if (!s.Airtight) return new Token("EXT RAD", Caution);
+            if (!s.Airtight) return new Token("RAD", Caution);
             return new Token("RAD", left >= 0 && left < 300 ? Danger : Caution);
         }
 
