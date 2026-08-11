@@ -5,115 +5,183 @@
     <!--
       PANE PROBE - which block types render a detail info panel?
 
-      Ground Truth writes its readings into the terminal's detail info pane. That pane
-      is not available on every block type: OreDetector renders none at all, which cost
-      a deploy to discover, and RadioAntenna was chosen instead. RadioAntenna has since
-      turned out to force a HUD marker whenever the block is working, with no way to
-      suppress it from mod code, so the base type has to change again.
+      Ground Truth writes its readings into the terminal's detail info pane. Not every
+      block type draws that pane: OreDetector renders none at all, which cost a deploy
+      to find, and RadioAntenna was picked instead. RadioAntenna has since turned out to
+      force a HUD marker whenever the block is working, computed from IsWorking and
+      unsuppressable from mod code, so the base type has to change again. This decides
+      what it changes to.
 
-      Four identical dummy blocks, one per candidate definition type, all using the same
-      vanilla model so nothing depends on art. Each gets the same game logic component,
-      which writes a line into the detail info pane.
+      EACH DEFINITION BELOW IS A FAITHFUL CLONE OF A VANILLA BLOCK.
 
-      Place all four, open the terminal, click each one:
+      The first version of this probe hung four different block types off one borrowed
+      model with an invented 1x1x1 size, and placing one crashed the game outright:
 
-        text visible  -> that type renders the pane and is a viable base
-        pane blank    -> that type is out, like OreDetector
+        System.ArgumentException: An item with the same key has already been added
+          at MyCubeGrid.AddCubeBlock
 
-      PROBE_OreDetector is the CONTROL. It is known to render nothing. If it somehow
-      shows text, then the original OreDetector finding was wrong and everything
-      downstream of it needs revisiting.
+      A block definition is not a free-form document. Sizes, mount points, centres,
+      build stages and type-specific fields are load-bearing, and a plausible-looking
+      hand-written definition is not the same thing as a working one. So each block here
+      is its vanilla original with only the Id, DisplayName, BlockPairName and Icon
+      changed - which means anything that still breaks is OUR COMPONENT, not the
+      definition, and that is the answer this probe exists to give.
 
-      None of these blocks do anything else. Delete the mod when the question is
-      answered.
+      Place all four, open the terminal, click each:
+
+        text visible  -> that type renders the pane and can host the instruments
+        pane blank    -> that type is out, the way OreDetector is
+
+      PROBE_OreDetector is the CONTROL. It is expected to show nothing. If it does show
+      text, the original OreDetector finding was wrong and everything built on it needs
+      revisiting.
     -->
 
+    <!-- Clone of LargeProductivityModule. IMyUpgradeModule: narrow, no broadcaster. -->
     <Definition xsi:type="MyObjectBuilder_UpgradeModuleDefinition">
       <Id>
         <TypeId>UpgradeModule</TypeId>
         <SubtypeId>PROBE_UpgradeModule</SubtypeId>
       </Id>
       <DisplayName>PROBE UpgradeModule</DisplayName>
+      <Icon>Textures\GUI\Icons\Cubes\UpgradeProductivity.dds</Icon>
       <Description>Pane probe. Open the terminal and look for PANE OK.</Description>
       <CubeSize>Large</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
-      <Size x="1" y="1" z="1" />
-      <Center x="0" y="0" z="0" />
+      <Size x="1" y="1" z="2" />
+      <ModelOffset x="0" y="0" z="0" />
       <Model>Models\Cubes\Large\UpgradeProductivity.mwm</Model>
       <Components>
         <Component Subtype="SteelPlate" Count="10" />
+        <Component Subtype="Motor" Count="1" />
       </Components>
-      <CriticalComponent Subtype="SteelPlate" Index="0" />
-      <BuildTimeSeconds>4</BuildTimeSeconds>
+      <CriticalComponent Subtype="Motor" Index="0" />
+      <MountPoints>
+        <MountPoint Side="Right" StartX="0.15" StartY="0.15" EndX="1.85" EndY="0.85" Default="true" />
+        <MountPoint Side="Left" StartX="0.15" StartY="0.15" EndX="1.85" EndY="0.85" />
+        <MountPoint Side="Top" StartX="0.15" StartY="0.15" EndX="0.85" EndY="1.85" />
+        <MountPoint Side="Bottom" StartX="0.15" StartY="0.15" EndX="0.85" EndY="1.85" />
+        <MountPoint Side="Front" StartX="0.15" StartY="0.15" EndX="0.85" EndY="0.85" />
+        <MountPoint Side="Back" StartX="0.15" StartY="0.15" EndX="0.85" EndY="0.85" />
+      </MountPoints>
+      <BlockPairName>PROBE_UpgradeModule</BlockPairName>
+      <MirroringX>Z</MirroringX>
+      <MirroringZ>X</MirroringZ>
       <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>4</BuildTimeSeconds>
+      <Upgrades>
+        <MyUpgradeModuleInfo>
+          <UpgradeType>Productivity</UpgradeType>
+          <Modifier>0.5</Modifier>
+          <ModifierType>Additive</ModifierType>
+        </MyUpgradeModuleInfo>
+      </Upgrades>
     </Definition>
 
+    <!-- Clone of LargeBlockSensor, with GuiVisible restored so it can be found. -->
     <Definition xsi:type="MyObjectBuilder_SensorBlockDefinition">
       <Id>
         <TypeId>SensorBlock</TypeId>
         <SubtypeId>PROBE_Sensor</SubtypeId>
       </Id>
       <DisplayName>PROBE Sensor</DisplayName>
+      <Icon>Textures\GUI\Icons\Cubes\Sensor.dds</Icon>
       <Description>Pane probe. Open the terminal and look for PANE OK.</Description>
       <CubeSize>Large</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
       <Size x="1" y="1" z="1" />
-      <Center x="0" y="0" z="0" />
-      <Model>Models\Cubes\Large\UpgradeProductivity.mwm</Model>
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\Large\Sensor.mwm</Model>
       <Components>
-        <Component Subtype="SteelPlate" Count="10" />
+        <Component Subtype="InteriorPlate" Count="5" />
+        <Component Subtype="Detector" Count="1" />
       </Components>
-      <CriticalComponent Subtype="SteelPlate" Index="0" />
-      <BuildTimeSeconds>4</BuildTimeSeconds>
+      <CriticalComponent Subtype="Detector" Index="0" />
+      <MountPoints>
+        <MountPoint Side="Back" StartX="0.4" StartY="0.4" EndX="0.6" EndY="0.6" />
+      </MountPoints>
+      <IsStandAlone>false</IsStandAlone>
+      <HasPhysics>false</HasPhysics>
+      <BlockPairName>PROBE_Sensor</BlockPairName>
       <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>4</BuildTimeSeconds>
       <MaxRange>50</MaxRange>
-      <RequiredPowerInput>0.0001</RequiredPowerInput>
     </Definition>
 
+    <!-- Clone of LargeCameraBlock. -->
     <Definition xsi:type="MyObjectBuilder_CameraBlockDefinition">
       <Id>
         <TypeId>CameraBlock</TypeId>
         <SubtypeId>PROBE_Camera</SubtypeId>
       </Id>
       <DisplayName>PROBE Camera</DisplayName>
+      <Icon>Textures\GUI\Icons\Camera.dds</Icon>
       <Description>Pane probe. Open the terminal and look for PANE OK.</Description>
       <CubeSize>Large</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
       <Size x="1" y="1" z="1" />
-      <Center x="0" y="0" z="0" />
-      <Model>Models\Cubes\Large\UpgradeProductivity.mwm</Model>
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\Large\Camera.mwm</Model>
       <Components>
-        <Component Subtype="SteelPlate" Count="10" />
+        <Component Subtype="SteelPlate" Count="1" />
+        <Component Subtype="Computer" Count="3" />
       </Components>
-      <CriticalComponent Subtype="SteelPlate" Index="0" />
-      <BuildTimeSeconds>4</BuildTimeSeconds>
+      <CriticalComponent Subtype="Computer" Index="0" />
+      <MountPoints>
+        <MountPoint Side="Back" ExclusionMask="3" PropertiesMask="3" StartX="0.4" StartY="0.44" EndX="0.6" EndY="0.55" />
+      </MountPoints>
+      <IsStandAlone>false</IsStandAlone>
+      <HasPhysics>false</HasPhysics>
+      <MirroringY>Z</MirroringY>
+      <MirroringZ>Y</MirroringZ>
+      <BlockPairName>PROBE_Camera</BlockPairName>
+      <BuildTimeSeconds>6</BuildTimeSeconds>
       <EdgeType>Light</EdgeType>
-      <RequiredPowerInput>0.0001</RequiredPowerInput>
-      <RequiredChargingInput>0.0001</RequiredChargingInput>
+      <ResourceSinkGroup>Utility</ResourceSinkGroup>
+      <RequiredPowerInput>0.00003</RequiredPowerInput>
+      <RequiredChargingInput>0.001</RequiredChargingInput>
+      <OverlayTexture>Textures\GUI\Screens\camera_overlay.dds</OverlayTexture>
       <MinFov>0.1</MinFov>
       <MaxFov>1.04719755</MaxFov>
+      <RaycastConeLimit>45</RaycastConeLimit>
+      <RaycastDistanceLimit>-1</RaycastDistanceLimit>
+      <RaycastTimeMultiplier>2.0</RaycastTimeMultiplier>
     </Definition>
 
-    <!-- CONTROL: known to render no pane. Proves the probe can tell the difference. -->
+    <!-- Clone of LargeOreDetector. CONTROL - expected to render nothing. -->
     <Definition xsi:type="MyObjectBuilder_OreDetectorDefinition">
       <Id>
         <TypeId>OreDetector</TypeId>
         <SubtypeId>PROBE_OreDetector</SubtypeId>
       </Id>
       <DisplayName>PROBE OreDetector (control - expect blank)</DisplayName>
+      <Icon>Textures\GUI\Icons\Cubes\detector.dds</Icon>
       <Description>Pane probe control. This one is expected to show NOTHING.</Description>
       <CubeSize>Large</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
-      <Size x="1" y="1" z="1" />
-      <Center x="0" y="0" z="0" />
-      <Model>Models\Cubes\Large\UpgradeProductivity.mwm</Model>
+      <Size x="1" y="1" z="2" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\Large\OreDetector.mwm</Model>
       <Components>
         <Component Subtype="SteelPlate" Count="10" />
+        <Component Subtype="Detector" Count="1" />
       </Components>
-      <CriticalComponent Subtype="SteelPlate" Index="0" />
-      <BuildTimeSeconds>4</BuildTimeSeconds>
+      <CriticalComponent Subtype="Detector" Index="0" />
+      <Center x="0" y="0" z="1" />
+      <MountPoints>
+        <MountPoint Side="Back" StartX="0" StartY="0" EndX="1" EndY="1" Default="true" />
+        <MountPoint Side="Left" StartX="1" StartY="0" EndX="2" EndY="1" />
+        <MountPoint Side="Right" StartX="0" StartY="0" EndX="1" EndY="1" />
+        <MountPoint Side="Bottom" StartX="0" StartY="1" EndX="1" EndY="2" />
+        <MountPoint Side="Top" StartX="0" StartY="0" EndX="1" EndY="1" />
+      </MountPoints>
+      <BlockPairName>PROBE_OreDetector</BlockPairName>
+      <MirroringY>Z</MirroringY>
+      <MirroringZ>Y</MirroringZ>
       <EdgeType>Light</EdgeType>
-      <MaximumRange>50</MaximumRange>
+      <BuildTimeSeconds>10</BuildTimeSeconds>
+      <ResourceSinkGroup>Utility</ResourceSinkGroup>
+      <MaximumRange>150</MaximumRange>
     </Definition>
 
   </CubeBlocks>
