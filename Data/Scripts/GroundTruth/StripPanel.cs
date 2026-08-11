@@ -1,5 +1,5 @@
 using System;
-using System.Text;
+using System.Collections.Generic;
 using Sandbox.Game.GameSystems.TextSurfaceScripts;
 using Sandbox.ModAPI;
 using VRage.Game.GUI.TextPanel;
@@ -52,36 +52,83 @@ namespace GroundTruth
 
         protected override bool DrawsChrome { get { return false; } }
 
-        protected override void DrawStandalone(MySpriteDrawFrame frame, Color fg)
+        // A token is a word plus the colour that carries its meaning. The word names
+        // the SYSTEM, the colour reports its STATE - so "WEATHER" in green says more
+        // than "CLEAR" ever did, and needs no legend.
+        private struct Token
         {
-            string text;
-            Color color;
-            if (!Alarm(fg, out text, out color))
-                text = AllClear(fg, out color);
-
-            // Fill the strip: as large as the shorter of the two constraints allows.
-            // Height is capped at 62% so descenders and the surface bezel do not clip
-            // the line.
-            float byHeight = (Canvas * 0.62f) / LineHeight;
-            float byWidth = (CanvasWidth - Pad * 2f) / Math.Max(1, text.Length * CharWidth);
-            float scale = Math.Max(0.6f, Math.Min(byHeight, byWidth));
-
-            // Centred both ways. A strip has no reading order to establish.
-            Text(frame, text, CanvasWidth * 0.5f, (Canvas - LineHeight * scale) * 0.5f,
-                 scale, color, TextAlignment.CENTER);
+            public string Text;
+            public Color Color;
+            public Token(string text, Color color) { Text = text; Color = color; }
         }
 
-        // ---- what is wrong, worst first ----
-
-        private bool Alarm(Color fg, out string text, out Color color)
+        protected override void DrawStandalone(MySpriteDrawFrame frame, Color fg)
         {
-            text = null;
-            color = Danger;
+            var tokens = Build(fg);
+
+            // Width in canvas units at scale 1, including a gap of one and a half
+            // characters between tokens.
+            float chars = 0f;
+            for (int i = 0; i < tokens.Count; i++) chars += tokens[i].Text.Length;
+            chars += 1.5f * Math.Max(0, tokens.Count - 1);
+
+            float byHeight = (Canvas * 0.62f) / LineHeight;
+            float byWidth = (CanvasWidth - Pad * 2f) / Math.Max(1f, chars * CharWidth);
+            float scale = Math.Max(0.6f, Math.Min(byHeight, byWidth));
+
+            float total = chars * CharWidth * scale;
+            float x = (CanvasWidth - total) * 0.5f;
+            float y = (Canvas - LineHeight * scale) * 0.5f;
+            float gap = 1.5f * CharWidth * scale;
+
+            for (int i = 0; i < tokens.Count; i++)
+            {
+                Text(frame, tokens[i].Text, x, y, scale, tokens[i].Color, TextAlignment.LEFT);
+                x += tokens[i].Text.Length * CharWidth * scale + gap;
+            }
+        }
+
+        // ---- what to show ----
+        //
+        // One alarm fills the strip alone: while a seal is open, nothing else matters
+        // and a row of reassuring green beside it would be worse than useless.
+        //
+        // Otherwise every present instrument contributes one token. Order is fixed so
+        // the strip does not reshuffle as conditions change - a display that moves is a
+        // display you have to read rather than glance at.
+        private List<Token> Build(Color fg)
+        {
+            var list = new List<Token>();
+
+            Token alarm;
+            if (Alarm(out alarm)) { list.Add(alarm); return list; }
+
+            var wx = StateForRole(Instruments.RoleWeather);
+            if (wx != null) list.Add(WeatherToken(wx, fg));
+
+            var rad = StateForRole(Instruments.RoleRadiation);
+            if (rad != null) list.Add(RadToken(rad, fg));
+
+            var hab = StateForRole(Instruments.RoleHabitat);
+            if (hab != null) list.Add(HabToken(hab, fg));
+
+            var bio = StateForRole(Instruments.RoleBio);
+            if (bio != null) list.Add(BioToken(bio, fg));
+
+            if (list.Count == 0) list.Add(new Token("NO INSTRUMENTS", fg * 0.5f));
+            return list;
+        }
+
+        // ---- alarms, ordered by how fast the thing kills you ----
+
+        private bool Alarm(out Token token)
+        {
+            token = new Token();
 
             var hab = StateForRole(Instruments.RoleHabitat);
             if (hab != null && !hab.Airtight && hab.Breached)
             {
-                text = "SEAL BREACHED";
+                token = new Token("SEAL BREACHED", Danger);
                 return true;
             }
 
@@ -89,80 +136,83 @@ namespace GroundTruth
             if (rad != null && rad.Rad.Enabled && rad.Rad.Accumulates)
             {
                 double left = rad.Rad.SecondsToCritical;
-                text = left >= 0 ? "RADIATION  " + Clock(left) : "RADIATION";
-                color = left >= 0 && left < 300 ? Danger : Caution;
+                token = new Token(left >= 0 ? "RADIATION  " + Clock(left) : "RADIATION",
+                                  left >= 0 && left < 300 ? Danger : Caution);
                 return true;
             }
 
             var wx = StateForRole(Instruments.RoleWeather);
-            if (wx != null && !string.IsNullOrEmpty(wx.Weather)
-                && (wx.Effect.HasHealth || (wx.Effect.HasRadiation && wx.Effect.RadiationGain > 0)))
+            if (wx != null && !string.IsNullOrEmpty(wx.Weather) && Hazardous(wx))
             {
-                text = wx.Weather.ToUpperInvariant();
-                color = Danger;
+                token = new Token(wx.Weather.ToUpperInvariant(), Danger);
                 return true;
             }
 
             var bio = StateForRole(Instruments.RoleBio);
             if (bio != null && bio.Bio.Valid && bio.Bio.Contacts > 0)
             {
-                text = bio.Bio.Contacts == 1 ? "CONTACT" : bio.Bio.Contacts + " CONTACTS";
-                color = Caution;
+                token = new Token(bio.Bio.Contacts == 1 ? "CONTACT"
+                                  : bio.Bio.Contacts + " CONTACTS", Caution);
                 return true;
             }
 
             return false;
         }
 
-        // ---- nothing wrong: prove the instruments are awake ----
-
-        private string AllClear(Color fg, out Color color)
+        private static bool Hazardous(GroundTruthSession.BlockState s)
         {
-            color = Ok;
-            var sb = new StringBuilder();
-            int present = 0;
+            return s.Effect.HasHealth || (s.Effect.HasRadiation && s.Effect.RadiationGain > 0);
+        }
 
-            var wx = StateForRole(Instruments.RoleWeather);
-            if (wx != null)
-            {
-                present++;
-                sb.Append(!wx.BodyHasWeather ? "NO WX"
-                          : (string.IsNullOrEmpty(wx.Weather) ? "CLEAR" : wx.Weather.ToUpperInvariant()));
-            }
+        // ---- one token per system ----
 
-            var rad = StateForRole(Instruments.RoleRadiation);
-            if (rad != null)
-            {
-                present++;
-                if (sb.Length > 0) sb.Append("  ");
-                sb.Append(!rad.Rad.Enabled || rad.Rad.IntensitySetting <= 0 ? "RAD OFF" : "RAD SAFE");
-            }
+        // Clear weather is the word WEATHER in green: the system is named, the colour
+        // says it is fine. When something IS happening the name of the effect is worth
+        // the space, coloured by what that effect DOES rather than by what it is
+        // called - so a modded storm nobody has heard of still lands on a sensible
+        // colour.
+        private Token WeatherToken(GroundTruthSession.BlockState s, Color fg)
+        {
+            if (!s.BodyHasWeather) return new Token("WEATHER", fg * 0.4f);
+            if (string.IsNullOrEmpty(s.Weather)) return new Token("WEATHER", Ok);
 
-            var hab = StateForRole(Instruments.RoleHabitat);
-            if (hab != null)
-            {
-                present++;
-                if (sb.Length > 0) sb.Append("  ");
-                sb.Append(hab.Airtight ? "SEALED" : "OPEN");
-            }
+            string name = s.Weather.ToUpperInvariant();
 
-            var bio = StateForRole(Instruments.RoleBio);
-            if (bio != null)
-            {
-                present++;
-                if (sb.Length > 0) sb.Append("  ");
-                sb.Append(!bio.Bio.Valid ? "LIFE --" : "LIFE " + bio.Bio.Count);
-            }
+            if (s.Effect.HasHealth) return new Token(name, Danger);
+            if (s.Effect.HasRadiation && s.Effect.RadiationGain > 0) return new Token(name, Cosmic);
+            if (s.Effect.Oxygen < 0.999f) return new Token(name, Oxy);
+            if (s.Effect.RadiationGain < 0) return new Token(name, Wind);   // rain: shelter
+            if (s.Effect.Solar < 0.9f) return new Token(name, Solar);
+            return new Token(name, Caution);
+        }
 
-            // No instruments at all is a real state and says so, rather than showing an
-            // all-clear nobody measured.
-            if (present == 0)
-            {
-                color = fg * 0.5f;
-                return "NO INSTRUMENTS";
-            }
+        // RAD never changes its word. Green safe, amber accumulating, red running out,
+        // dim when the world has radiation switched off entirely.
+        private Token RadToken(GroundTruthSession.BlockState s, Color fg)
+        {
+            if (!s.Rad.Enabled || s.Rad.IntensitySetting <= 0) return new Token("RAD", fg * 0.4f);
+            if (!s.Rad.Accumulates) return new Token("RAD", Ok);
 
-            return sb.ToString();
+            double left = s.Rad.SecondsToCritical;
+            return new Token("RAD", left >= 0 && left < 300 ? Danger : Caution);
+        }
+
+        // The word changes here because SEALED and OPEN are different facts, not
+        // different severities of one fact. The colour still does the shouting.
+        private Token HabToken(GroundTruthSession.BlockState s, Color fg)
+        {
+            if (s.Airtight) return new Token("SEALED", Ok);
+            return new Token(s.Breached ? "BREACH" : "OPEN", s.Breached ? Danger : Caution);
+        }
+
+        // Life is a count, so the number has to be there. Green while it is only
+        // wildlife; contacts promote the whole token to amber, and are the one thing
+        // here that also raises an alarm on its own.
+        private Token BioToken(GroundTruthSession.BlockState s, Color fg)
+        {
+            if (!s.Bio.Valid) return new Token("LIFE --", fg * 0.4f);
+            if (s.Bio.Contacts > 0) return new Token("LIFE " + s.Bio.Count, Caution);
+            return new Token("LIFE " + s.Bio.Count, s.Bio.Count > 0 ? Ok : Ok * 0.7f);
         }
     }
 }
