@@ -92,6 +92,23 @@ write Programmable Block scripts, everything on these panels can be read from co
 [b]Scripters and modders:[/b] full API reference and integration guide on GitHub —
 https://github.com/UnsayableStorm/GroundTruth
 
+[h2]Tell me what is wrong with it[/h2]
+
+Feedback is genuinely wanted, and acted on. Most of what is good about this mod came from
+using it and finding something awkward.
+
+A recent example: the alarms for wildlife and for robots used to be sliders, where 20 on a
+0-100 dial secretly meant ten animals. It was correct and nobody could have guessed it. The
+sliders are gone and there is now simply [i]something is out there[/i]. That change came
+from one round of testing and one complaint.
+
+So if a reading looks wrong, a panel is unreadable on your screen size, an event does not
+fire when you expect it to, or a block will not sit where it ought to - say so in the
+comments. Bug reports and "this is annoying" are equally useful, and "I expected X and got
+Y" is the most useful of all.
+
+Issues and pull requests are welcome on GitHub too, if that is more your thing.
+
 [h2]Credits[/h2]
 
 Block models from [b]MTGraves'[/b] Naval Theme Prop Pack, used with his explicit
