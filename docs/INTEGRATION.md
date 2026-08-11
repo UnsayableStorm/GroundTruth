@@ -26,6 +26,7 @@ when it is missing.
 - [Conventions that matter](#conventions-that-matter)
 - [Property reference](#property-reference)
 - [Event Controller events](#event-controller-events)
+- [LCD apps](#lcd-apps)
 - [Cost model](#cost-model)
 - [Known limits](#known-limits)
 - [Versioning](#versioning)
@@ -335,6 +336,48 @@ alarm into a different one.
 - A **powered-down instrument is skipped**, not read as false. A dark sensor never clears
   an alarm.
 - Ids are permanent and never recycled. Saved controllers store them.
+
+---
+
+## LCD apps
+
+Six text surface scripts ship with the mod. The script id is what a Programmable Block
+writes to `IMyTextSurface.Script`, and what the LCD's script list stores.
+
+| Script id | Name | Notes |
+|---|---|---|
+| `GT_Radiation` | Ground Truth: Radiation | one instrument, full detail |
+| `GT_Habitat` | Ground Truth: Habitat | |
+| `GT_Weather` | Ground Truth: Weather | |
+| `GT_Bio` | Ground Truth: Life Detection | species icons |
+| `GT_Overview` | Ground Truth: Overview | all four, layout branches on aspect ratio |
+| `GT_Strip` | Ground Truth: Strip (corner LCD) | small label over large value, one column each |
+
+Every app finds its own instruments: it searches **its own grid** for the first block of
+each role. Subgrids are excluded deliberately, so a docked ship's sensors do not feed the
+station's panel, and if two instruments share a role one is chosen and the other ignored.
+
+An absent instrument produces **no column and no error**. That is a real state, and it
+differs from a present instrument with nothing to report: on the Strip a missing Weather
+Station shows nothing at all, while one in space shows a dimmed `WEATHER / NONE` —
+because "this body has no weather system" is not the same claim as "the weather is calm".
+
+### Whose reading is it
+
+Worth reading before you build a display of your own, because it is the mistake this mod
+made and had to correct in play.
+
+A radiation monitor lives on the hull, so it measures the vacuum — not the room the screen
+is in. An early Strip rendered that as a full-width red countdown inside a sealed ship in
+space. Every number was correct and the framing was a lie: it read as a countdown for the
+person looking at it. The column is now labelled `OUTSIDE, TO CRITICAL DOSE` and stays
+amber, and only a **pressure breach** clears the display and blinks — the one condition
+that is happening to the reader rather than to the world.
+
+If you consume `GT_RadRate` or `GT_RadTimeToCritical` from a hull-mounted block,
+you are reading the outside world. **`GT_HabAirtight` is the only property that speaks
+for the observer's own environment**, which is why the Habitat Monitor is the one
+instrument normally mounted indoors.
 
 ---
 

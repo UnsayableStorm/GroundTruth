@@ -47,8 +47,16 @@ Every block comes in [b]large and small grid[/b].
 Pick a Ground Truth app from any LCD's script list. No name tags, no setup — each panel
 finds its instrument on its own.
 
-There are four dedicated panels and an [b]Overview[/b] that shows everything at once and
-rearranges itself to fit whatever screen it is on, including cockpit and corner displays.
+There are four dedicated panels, one per instrument, and two that show everything at once:
+
+[list]
+[*][b]Overview[/b] - all four systems, rearranging itself to fit the screen it is on, from
+a cockpit display to a full 2.5 m panel.
+[*][b]Strip[/b] - built for [b]corner LCDs[/b], where the others are unreadable. Small
+labels over large values, so a glance from across the room says what is measured and how
+much to care. A pressure breach is the one thing that clears the screen and blinks;
+everything else keeps its place and explains itself.
+[/list]
 
 [h2]Alarms and automation, without scripting[/h2]
 
