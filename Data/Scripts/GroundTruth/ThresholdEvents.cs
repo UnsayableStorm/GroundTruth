@@ -163,57 +163,6 @@ namespace GroundTruth
     }
 
     // ------------------------------------------------------------------
-    // 1007 - minutes of life left
-
-    [ProtoBuf.ProtoContract]
-    [MyObjectBuilderDefinition]
-    public class MyObjectBuilder_GTEventTimeToCritical : MyObjectBuilder_ComponentBase { }
-
-    [MyComponentType(typeof(GTEventTimeToCritical))]
-    [MyEntityDependencyType(typeof(IMyEventControllerBlock))]
-    [MyComponentBuilder(typeof(MyObjectBuilder_GTEventTimeToCritical), true)]
-    public class GTEventTimeToCritical : GTThresholdEvent
-    {
-        public const long SelectionId = 1007L;
-
-        public override string ComponentTypeDebugString { get { return "GT_TimeToCritical"; } }
-        public override MyStringId EventDisplayName
-        { get { return MyStringId.GetOrCompute("Radiation time to critical, 100 = 30 min [Ground Truth]"); } }
-        public override long UniqueSelectionId { get { return SelectionId; } }
-        public override string YesNoToolbarYesDescription { get { return "Time to critical reached"; } }
-        public override string YesNoToolbarNoDescription { get { return "Time to critical cleared"; } }
-
-        protected override float WantedRole { get { return Instruments.RoleRadiation; } }
-
-        // Minutes, so the slider reads as a decision: set 5, get five minutes of margin.
-        //
-        // Returns null when nothing is accumulating - there is no time to critical, and
-        // reporting a huge number would be as wrong as reporting zero. That also means a
-        // "below 5 minutes" alarm stays silent in safety rather than firing on 0.
-        // FULL SCALE IS 30 MINUTES. The slider reports 0-1, so 50 on it is 15 minutes
-        // and 10 is 3 minutes. Stated in the event name too - it cannot be guessed.
-        public const float FullScaleMinutes = 30f;
-
-        protected override float? Value(IMyTerminalBlock b)
-        {
-            // Not accumulating means time to critical is unbounded, which is the TOP of
-            // the scale - not "no reading".
-            //
-            // Returning null here looked safer and was worse: the event abstained, the
-            // latched state never changed, and an alarm set to "below 6 minutes" could
-            // never clear once the player reached shelter. Full scale clears it, and
-            // still cannot trip a below-threshold alarm.
-            if (!ReadFlag(b, "GT_RadEnabled")) return null;   // radiation off: no opinion
-            if (!ReadFlag(b, "GT_RadAccumulates")) return 1f;
-
-            float seconds = Read(b, "GT_RadTimeToCritical");
-            if (seconds < 0) return 1f;
-
-            return Math.Min(1f, (seconds / 60f) / FullScaleMinutes);
-        }
-    }
-
-    // ------------------------------------------------------------------
     // 1008 - solar output, as a percentage of unobstructed
 
     [ProtoBuf.ProtoContract]

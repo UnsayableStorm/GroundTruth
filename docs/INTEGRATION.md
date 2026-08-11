@@ -272,8 +272,8 @@ always relative to the grid and needs no compass mod.
 
 ## Event Controller events
 
-Eleven events, usable with no scripting. They read the same properties documented above,
-so an event and a script watching the same instrument cannot disagree.
+Ten events, usable with no scripting. They read the same properties documented above, so
+an event and a script watching the same instrument cannot disagree.
 
 Each offers a block list filtered to instruments that can answer it, and honours the
 controller's AND/OR mode.
@@ -286,27 +286,46 @@ controller's AND/OR mode.
 | Shelter lost | 1004 | Radiation Monitor |
 | Seal breached | 1005 | Habitat Monitor |
 | Weather hazard active | 1006 | Weather Station |
+| Non-biological contact detected | 1012 | Bio Scanner |
+| Wildlife detected | 1013 | Bio Scanner |
+
+The two Bio events are deliberately separate. `GT_BioCount` excludes bots and armed
+humanoids, which are counted as contacts — a wolf and a soldier should not ring the same
+bell.
 
 ### Threshold — slider plus above/below
 
-**The Event Controller slider is labelled 0-100 and reports 0-1.** Readings that are
-naturally percentages compare directly; the rest map onto a stated full scale, named in
-the event title.
+**The Event Controller slider is labelled 0-100 and reports 0-1.** Every threshold event
+that survives is a **percentage**, so the slider means what it appears to mean.
 
 | Event | Id | 100 on the slider |
 |---|---|---|
 | Weather intensity | 1001 | 100% |
 | Solar output percent | 1008 | full output — weather **and** daylight |
 | Outside oxygen percent | 1009 | 100% breathable |
-| Radiation time to critical | 1007 | **30 minutes** |
-| Biosignature count | 1010 | **50 animals** |
-| Non-biological contacts | 1011 | **20 contacts** |
 
 ### Selection
 
 | Event | Id | Notes |
 |---|---|---|
 | Weather type | 1002 | choices populated from the planet's own generator |
+
+### Ids 1007, 1010 and 1011 are retired
+
+Time to critical, biosignature count and contact count were threshold events over
+quantities that are not percentages — minutes and populations — mapped onto a full scale
+that existed only in the event's name. `20` on a 0-100 dial meaning *10 animals* is
+correct arithmetic and an unusable control, and no player should have to reason about it
+at a terminal.
+
+They were replaced by the presence flags above, which ask the question people actually
+wire to a door. **The underlying properties are unaffected**: `GT_BioCount`,
+`GT_BioContacts` and `GT_RadTimeToCritical` are still published, and a script wanting
+"more than six animals" can still ask.
+
+Those three ids are **retired, not recycled**. A saved controller referencing one finds
+nothing, which is the correct outcome; reusing the number would silently turn an old
+alarm into a different one.
 
 ### Shared behaviour
 
@@ -315,7 +334,7 @@ the event title.
   not raise an alarm for an event nobody saw start
 - A **powered-down instrument is skipped**, not read as false. A dark sensor never clears
   an alarm.
-- Ids 1001–1011 are permanent. Saved controllers store them.
+- Ids are permanent and never recycled. Saved controllers store them.
 
 ---
 

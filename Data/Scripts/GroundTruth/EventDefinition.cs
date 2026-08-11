@@ -149,26 +149,6 @@ namespace GroundTruth
         }
     }
 
-    [ProtoContract]
-    [MyObjectBuilderDefinition]
-    public class MyObjectBuilder_GTEventTimeToCriticalDefinition : MyObjectBuilder_ComponentDefinitionBase
-    {
-        [ProtoMember(1)]
-        public long UniqueSelectionId;
-    }
-
-    [MyDefinitionType(typeof(MyObjectBuilder_GTEventTimeToCriticalDefinition))]
-    public class GTEventTimeToCriticalDefinition : MyComponentDefinitionBase
-    {
-        public long UniqueSelectionId;
-
-        protected override void Init(MyObjectBuilder_DefinitionBase builder)
-        {
-            base.Init(builder);
-            var ob = builder as MyObjectBuilder_GTEventTimeToCriticalDefinition;
-            if (ob != null) UniqueSelectionId = ob.UniqueSelectionId;
-        }
-    }
 
     [ProtoContract]
     [MyObjectBuilderDefinition]

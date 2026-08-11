@@ -28,7 +28,7 @@ readings is your business.
 ## For scripters and modders
 
 Start with [`docs/INTEGRATION.md`](docs/INTEGRATION.md). Around 75 terminal properties,
-eleven Event Controller events, documented conventions, and a stated version contract.
+ten Event Controller events, documented conventions, and a stated version contract.
 
 Short version:
 

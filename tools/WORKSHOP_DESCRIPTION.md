@@ -52,18 +52,18 @@ rearranges itself to fit whatever screen it is on, including cockpit and corner 
 
 [h2]Alarms and automation, without scripting[/h2]
 
-Eleven new options appear in the vanilla [b]Event Controller[/b]. Pick one, choose a
+Ten new options appear in the vanilla [b]Event Controller[/b]. Pick one, choose a
 sensor, and wire it to anything.
 
 [list]
 [*]Seal breached — shut the doors, sound the alarm
 [*]Radiation building, or shelter lost
-[*]Radiation time to critical below your limit
 [*]Dangerous weather started
 [*]A specific weather type began — sandstorms, thunderstorms, whatever your planet has
 [*]Solar output dropped — start the reactor
 [*]Outside oxygen dropped
-[*]Wildlife nearby, or something that is not wildlife
+[*]Wildlife detected
+[*]Something that is not wildlife detected — robots and armed humanoids are counted apart
 [/list]
 
 They fire once when something changes, not over and over, and they do not go off the

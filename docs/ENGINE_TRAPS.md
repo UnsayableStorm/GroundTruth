@@ -327,10 +327,11 @@ correct explanation only appeared once the numbers were printed side by side.
 
 Percentage-like readings are usually already 0-1 - pass them through unscaled.
 
-### Non-percentage readings need a stated full scale
+### Non-percentage readings do not belong on that slider at all
 
-Minutes and counts cannot live on a 0-1 slider. Map them onto a full-scale range and
-**put the range in the event name**, because nothing in the UI can express it:
+Minutes and counts cannot live on a 0-1 slider. The obvious workaround is to map them
+onto a full-scale range and put the range in the event name, since nothing in the UI can
+express it:
 
 ```
 "Radiation time to critical, 100 = 30 min"
@@ -338,9 +339,24 @@ Minutes and counts cannot live on a 0-1 slider. Map them onto a full-scale range
 "Non-biological contacts, 100 = 20"
 ```
 
-The alternative is a custom slider with real units, which the stock
-`MyEventGridSpeedChanged` does by declaring its own `Sync<float>` and building its own
-control. That is the better answer for a shipping mod with time to spend on it.
+**This was tried, shipped, tested and withdrawn.** It is correct arithmetic and an
+unusable control. Setting `20` to mean *ten animals* requires the player to hold a
+conversion in their head that exists nowhere in the interface, and the first thing the
+mod author said on meeting it in game was that the slider was very confusing - having
+written the mapping himself.
+
+Two better answers, in order of cost:
+
+1. **Ask a boolean question instead.** Most uses of "how many animals" are really "is
+   there an animal", which needs no slider and no explanation. Three count events were
+   replaced by two presence events, and the feature got smaller and clearer.
+2. **Build a custom slider with real units**, which the stock
+   `MyEventGridSpeedChanged` does by declaring its own `Sync<float>` and its own control.
+   That is the right answer when the quantity genuinely matters.
+
+The underlying properties stayed published either way, so a script can still ask the
+numeric question. A terminal control and an API are not obliged to offer the same
+granularity.
 
 ### Print the numbers before explaining the behaviour
 

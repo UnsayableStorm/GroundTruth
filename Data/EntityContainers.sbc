@@ -31,7 +31,6 @@
         <Component BuilderType="MyObjectBuilder_GTEventShelterLost" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
         <Component BuilderType="MyObjectBuilder_GTEventSealBreached" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
         <Component BuilderType="MyObjectBuilder_GTEventWeatherHazard" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
-        <Component BuilderType="MyObjectBuilder_GTEventTimeToCritical" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
         <Component BuilderType="MyObjectBuilder_GTEventSolarOutput" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
         <Component BuilderType="MyObjectBuilder_GTEventOxygen" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />
         <Component BuilderType="MyObjectBuilder_GTEventBioContactPresent" SubtypeId="EventControllerBlockComponent" ForceCreate="true" />

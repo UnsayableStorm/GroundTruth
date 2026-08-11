@@ -62,14 +62,6 @@
       <UniqueSelectionId>1006</UniqueSelectionId>
     </EntityComponent>
 
-    <EntityComponent xsi:type="MyObjectBuilder_GTEventTimeToCriticalDefinition">
-      <Id>
-        <TypeId>GTEventTimeToCritical</TypeId>
-        <SubtypeId>EventControllerBlockComponent</SubtypeId>
-      </Id>
-      <UniqueSelectionId>1007</UniqueSelectionId>
-    </EntityComponent>
-
     <EntityComponent xsi:type="MyObjectBuilder_GTEventSolarOutputDefinition">
       <Id>
         <TypeId>GTEventSolarOutput</TypeId>
