@@ -6,7 +6,7 @@ and report it accurately. Radiation, weather, atmosphere, life.
 No progression, no gating, no tech tree. The instruments measure; what you do with the
 readings is your business.
 
-**Workshop:** *(link once published — publishing shortly)*
+**Workshop:** https://steamcommunity.com/sharedfiles/filedetails/?id=3781444888
 
 ---
 
