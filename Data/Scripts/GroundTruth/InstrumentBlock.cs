@@ -1,5 +1,7 @@
 using System;
 using Sandbox.Common.ObjectBuilders;
+using Sandbox.Game.EntityComponents;   // MyModStorageComponent - NOT VRage.Game.Components,
+                                       // which only has the abstract MyModStorageComponentBase
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.Components;
