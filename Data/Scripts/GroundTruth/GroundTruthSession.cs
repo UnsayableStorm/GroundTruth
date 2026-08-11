@@ -35,6 +35,14 @@ namespace GroundTruth
         private int _tick;
         private bool _registered;
 
+        /// <summary>
+        /// Frames since load, for anything that needs a cadence faster than the
+        /// one-second recompute - currently only the corner strip's breach blink.
+        /// Deliberately a plain counter rather than a clock API: it needs no whitelist
+        /// question answered and cannot drift from the frame the panel is drawn on.
+        /// </summary>
+        public static int Frames;
+
         private readonly Dictionary<long, BlockState> _state = new Dictionary<long, BlockState>();
 
         // Public because TerminalApi reads it. Never mutated from outside.
@@ -252,6 +260,8 @@ namespace GroundTruth
 
         public override void UpdateAfterSimulation()
         {
+            Frames++;
+
             // Freshly opened panes first, on the next frame. Not inside the control
             // getter itself - refreshing while SE builds the control list is re-entrant.
             if (_pending.Count > 0)

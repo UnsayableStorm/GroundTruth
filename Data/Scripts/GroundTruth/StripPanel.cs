@@ -30,14 +30,14 @@ namespace GroundTruth
     // much to care. None of the three has to do another's job, and the number stops
     // needing to be self-explanatory.
     //
-    // ALARM STATE: one column, filling the strip. While a seal is open nothing else
-    // matters, and a row of reassuring green beside it would be worse than useless.
-    //
-    // ALL CLEAR: one column per instrument, fixed order, so the strip does not reshuffle
+    // NORMAL: one column per instrument, fixed order, so the strip does not reshuffle
     // as conditions change. A display that moves is one you read rather than glance at.
+    // Severity lives in the colour, so a storm or a dose outside is visible without
+    // displacing anything else.
     //
-    // Priority among alarms is by how fast the thing kills you: vacuum, then dose, then
-    // storm, then whatever is walking towards you.
+    // BREACH: the single exception, and the only state that clears the strip and
+    // blinks. Everything else here describes the world; a breach describes the room the
+    // reader is standing in.
     //
     // No title bar and no rule: DrawsChrome is false, a hook on TssBase added for
     // exactly this. The first attempt overrode Run and tried to reach past TssBase to
@@ -166,58 +166,35 @@ namespace GroundTruth
             return list;
         }
 
-        // ---- alarms, ordered by how fast the thing kills you ----
-
+        // ---- the one alarm that takes the whole strip ----
+        //
+        // ONLY a pressure breach. Everything else - dose outside the hull, a storm, a
+        // squad of bots on the horizon - is information about the world and belongs in
+        // its column, coloured according to how much it matters.
+        //
+        // The first version promoted any of those to a full-width takeover, and the
+        // result was a strip permanently showing the radiation outside a sealed ship in
+        // space, with the other three instruments invisible behind it. An alarm that is
+        // always on is not an alarm, it is a nameplate.
+        //
+        // A breach is different in kind: it is happening to the person reading the
+        // screen, it is happening now, and there is nothing else they should be looking
+        // at. So it clears the strip and blinks.
         private bool Alarm(out Entry entry)
         {
             entry = new Entry();
 
             var hab = StateForRole(Instruments.RoleHabitat);
-            if (hab != null && !hab.Airtight && hab.Breached)
-            {
-                entry = new Entry("HABITAT PRESSURE", "SEAL BREACHED", Danger);
-                return true;
-            }
+            if (hab == null || hab.Airtight || !hab.Breached) return false;
 
-            // WHOSE dose is this?
-            //
-            // An instrument measures at ITS position, and a radiation monitor lives on
-            // the hull, so it reports the vacuum rather than the room the screen is in.
-            // The context line is what makes that survivable: the number is a limit on
-            // going outside, and now says so.
-            //
-            // A monitor INSIDE a sealed volume that is still accumulating is the rare
-            // and genuinely alarming case - the seal is not protecting anyone - and is
-            // the only radiation state allowed to turn the strip red.
-            var rad = StateForRole(Instruments.RoleRadiation);
-            if (rad != null && rad.Rad.Enabled && rad.Rad.Accumulates)
-            {
-                double left = rad.Rad.SecondsToCritical;
-                string value = left >= 0 ? Clock(left) : "RISING";
-
-                entry = rad.Airtight
-                    ? new Entry("RADIATION INSIDE THE SEAL", value,
-                                left >= 0 && left < 300 ? Danger : Caution)
-                    : new Entry("OUTSIDE, TO CRITICAL DOSE", value, Caution);
-                return true;
-            }
-
-            var wx = StateForRole(Instruments.RoleWeather);
-            if (wx != null && !string.IsNullOrEmpty(wx.Weather) && Hazardous(wx))
-            {
-                entry = new Entry("WEATHER, HARMFUL", wx.Weather.ToUpperInvariant(), Danger);
-                return true;
-            }
-
-            var bio = StateForRole(Instruments.RoleBio);
-            if (bio != null && bio.Bio.Valid && bio.Bio.Contacts > 0)
-            {
-                entry = new Entry("CONTACTS, NOT WILDLIFE",
-                                  bio.Bio.Contacts.ToString(), Caution);
-                return true;
-            }
-
-            return false;
+            // Half a second on, half a second off, driven by the session frame counter
+            // so every strip in the world blinks together. Dimmed rather than blanked:
+            // a display that empties reads as a fault, and this one is reporting a fault
+            // of its own.
+            bool on = (GroundTruthSession.Frames / 30) % 2 == 0;
+            entry = new Entry("HABITAT PRESSURE", "SEAL BREACHED",
+                              on ? Danger : Danger * 0.28f);
+            return true;
         }
 
         private static bool Hazardous(GroundTruthSession.BlockState s)
