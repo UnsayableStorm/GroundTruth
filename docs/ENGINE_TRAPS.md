@@ -347,3 +347,127 @@ control. That is the better answer for a shipping mod with time to spend on it.
 Two rounds of plausible reasoning about ramp curves were beaten by one log line carrying
 `value` and `thr` together. A wrong comparison and a correct-sounding story about game
 mechanics are indistinguishable until the operands are visible.
+
+---
+
+## 11. Borrowing a block type inherits everything it does, including what it draws
+
+**Symptom.** Instrument blocks put a marker on the owner's HUD. Four sensors on a rover
+is four markers in your face. Every relevant terminal box — *Show on HUD*, *Show ship
+name*, *Broadcast* — is switched off, and the markers stay.
+
+The blocks were `RadioAntenna`, chosen for its interface and its detail info pane, with
+`MaxBroadcastRadius` set to 1 so the radio side did nothing. The radio side was never the
+problem.
+
+**The marker is not driven by any flag a player or a definition can set.**
+`MyRadioBroadcaster.ShowOnHud` is:
+
+- **computed**, not stored — get-only, and virtual on both the derived type and
+  `MyDataBroadcaster`
+- **derived from the block working**. Powering a block off removes its marker; that is
+  the only input we could find
+- **unreachable** — `MyRadioBroadcaster` is prohibited to mods, so even a settable flag
+  would be out of reach
+
+```
+Error: The type or member 'MyRadioBroadcaster' is prohibited
+Error: Property 'MyRadioBroadcaster.ShowOnHud' cannot be assigned to -- it is read only
+```
+
+**Confirmed against a vanilla antenna**, all boxes unchecked, from the probe's own log:
+
+```
+HUDPROBE SmallBlockRadioAntenna working=True broadcast=False hud=False shipname=False
+```
+
+Stock behaviour. Nothing to do with the mod.
+
+**Removing the component works, then kills the game.** `MyDataBroadcaster` — the base —
+*is* reachable, and `Components.Remove<MyDataBroadcaster>()` succeeds on all nine
+instruments. Two seconds later NREs start on background threads, and clicking any block
+in the terminal takes the process down in
+`MyGuiControlGenericFunctionalBlock..ctor`. `MyRadioAntenna` dereferences the component it
+no longer has. A suppression that works and then crashes is not a suppression.
+
+**The lesson is the general one.** A block type is not a bundle of features you can
+subset. `RadioAntenna` also brought `LightningRodRadiusLarge` and
+`LightningRodRadiusSmall` — the instruments were quietly acting as lightning rods on
+storm planets, which nobody had asked for and nothing in the definition mentioned.
+
+Ground Truth moved to `UpgradeModule`: `IMyUpgradeModule` adds two members to
+`IMyFunctionalBlock`, it renders the detail pane, and it has no broadcaster, no HUD
+behaviour and no lightning rod. **Choose a base type for what it does not do.**
+
+---
+
+## 12. A test that never ran your code is not a negative result
+
+**Symptom.** You conclude a block type cannot do something. It can. The design goes down
+a worse path for a day.
+
+The claim, written into an SBC header, this document and a published guide:
+
+> OreDetector blocks render NO detail info panel at all. Verified against a vanilla ore
+> detector, which is equally blank.
+
+**It renders the pane perfectly.** Proved by `probes/PaneProbe`, where four block types —
+upgrade module, sensor, camera and an ore detector clone — all display their text. The
+ore detector was in that probe as the *control*, expected to stay blank, and it did not.
+
+What actually happened is that the original attempt never called `RefreshCustomInfo`, so
+the game never asked the writer for text. The pane was **empty, not absent**, and a
+vanilla ore detector has nothing to say either — so the "control" confirmed the wrong
+thing. Both halves of the evidence were consistent with a false conclusion.
+
+That conclusion is what sent the design to `RadioAntenna`, which is what produced trap 11.
+
+**How to not do this.** Instrument the mechanism, not the outcome. The probe logs
+`PANEPROBE writer called for X` from inside the writer, which separates the two failures
+that look identical on screen:
+
+| Log line | Meaning |
+|---|---|
+| writer called, no text on screen | the pane genuinely does not render |
+| no log line at all | the game never asked — your test proved nothing |
+
+**A negative result needs the same rigour as a positive one.** "It didn't work" is a
+claim about the engine only if you can show your code ran.
+
+---
+
+## 13. `UpgradeModule` has no power draw, and adding one has two steps
+
+Useful if you want a functional block with no inherited behaviour:
+`MyObjectBuilder_UpgradeModuleDefinition` declares exactly one field, `Upgrades`. No
+`ResourceSinkGroup`, no `RequiredPowerInput`. With no `<Upgrades>` element it also does
+nothing at all beside a refinery.
+
+The cost is that power must be attached in code, and the obvious version is silently
+wrong:
+
+```csharp
+var sink = new MyResourceSinkComponent();
+sink.Init(MyStringHash.GetOrCompute("Utility"), info);
+Entity.Components.Add<MyResourceSinkComponent>(sink);
+// pane reports: required 0.0000 MW, powered: True
+```
+
+**A sink that asks for nothing is always satisfied**, so `IsPoweredByType` returns true
+and means nothing. Attaching the component is not the same as entering the grid's power
+ledger:
+
+```csharp
+sink.SetMaxRequiredInputByType(id, mw);
+sink.SetRequiredInputByType(id, mw);
+sink.Update();
+// pane reports: max 0.0200, required 0.0200, current 0.0200
+```
+
+`current` tracking `required` is the proof the distributor is actually supplying it —
+read all three, because required-without-current is a sink nobody is feeding.
+
+**It does gate the block.** With the sink wired, cutting grid power drops `IsWorking` to
+false, verified in game. That matters beyond flavour: if readings are served behind
+`IsWorking`, an unpowered instrument stops answering instead of quietly serving stale
+numbers.

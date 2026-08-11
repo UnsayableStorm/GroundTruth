@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <BlockVariantGroups>
+
+    <!--
+      One scrollable set for the whole pack.
+
+      The Threshold Dynamics shelf shows a single icon; the mouse wheel cycles all
+      fourteen blocks. Vanilla does the same thing with armour, and mixes large and
+      small grid inside one group, so both sizes live here together.
+
+      ORDER IS THE UI. This list is the scroll order, so it runs by instrument -
+      radiation, weather, bio, habitat, antenna - with large grid first and the small
+      grid entries in the same sequence after. Reordering this file reorders what a
+      player scrolls through.
+
+      SUBTYPE MUST STAY UNIQUE ACROSS MODS. A variant group is a single definition
+      keyed by its SubtypeId, and duplicate SubtypeIds do not merge - one silently
+      wins (see docs/ENGINE_TRAPS.md). This is the opposite of BlockCategories, where
+      an identical <Name> is exactly how mods share the Threshold Dynamics shelf. So
+      every TD mod contributes its own GROUP to the shared CATEGORY, and no two mods
+      may ever declare TD_GroundTruth.
+    -->
+
+    <BlockVariantGroup>
+      <Id Type="MyObjectBuilder_BlockVariantGroup" Subtype="TD_GroundTruth" />
+      <Icon>Textures\Icons\MED_Radar_Dome_Icon.dds</Icon>
+      <DisplayName>Ground Truth Instruments</DisplayName>
+      <Description>Environmental instruments. Threshold Dynamics, Survey and Assessment.</Description>
+      <Blocks>
+        <!-- large grid -->
+        <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_RadiationMonitor" />
+        <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_RadiationMonitorAlt" />
+        <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_WeatherStation" />
+        <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_WeatherStationAlt" />
+        <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_BioScanner" />
+        <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_HabitatMonitor" />
+        <Block Type="MyObjectBuilder_RadioAntenna" Subtype="GT_RotatingRadarDish" />
+
+        <!-- small grid, same sequence -->
+        <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_RadiationMonitor_S" />
+        <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_RadiationMonitorAlt_S" />
+        <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_WeatherStation_S" />
+        <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_WeatherStationAlt_S" />
+        <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_BioScanner_S" />
+        <Block Type="MyObjectBuilder_UpgradeModule" Subtype="GT_HabitatMonitor_S" />
+        <Block Type="MyObjectBuilder_RadioAntenna" Subtype="GT_RotatingRadarDish_S" />
+      </Blocks>
+    </BlockVariantGroup>
+
+  </BlockVariantGroups>
+</Definitions>

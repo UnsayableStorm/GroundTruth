@@ -17,7 +17,7 @@ readings is your business.
 | `Data/` | the mod — block definitions, scripts, LCD textures |
 | `Models/`, `Textures/` | art |
 | `docs/INTEGRATION.md` | **API reference and integration guide** for scripters and modders |
-| `docs/ENGINE_TRAPS.md` | **engine findings** — ten things that cost real time, published so nobody else pays for them twice |
+| `docs/ENGINE_TRAPS.md` | **engine findings** — thirteen things that cost real time, published so nobody else pays for them twice |
 | `probes/` | whitelist probe mods, ready to copy |
 | `tools/` | the icon build pipeline |
 
@@ -57,10 +57,18 @@ you meet them:
 - The complete recipe for a **custom Event Controller event**, which the wiki describes in
   one sentence and which is otherwise most of a day of reverse engineering
 - The Event Controller threshold slider that is labelled 0-100 and reports 0-1
+- Antennas that draw a HUD marker with every box unchecked, why no mod can stop it, and
+  what happens if you rip the component out anyway
+- Why a test that produced nothing may have proved nothing — a false negative that cost a
+  day and picked the wrong block type
+- Giving a block a power draw in code, and why the obvious version reports `powered: True`
+  while asking for 0.0000 MW
 
-`probes/` holds the probe mods these came from. They are tiny, they execute nothing behind
-a `const false` guard, and they answer "can mod code reach this" in one game load. Copy one
-and point it at whatever you are wondering about.
+`probes/` holds the probe mods these came from. Most are tiny and execute nothing behind a
+`const false` guard, answering "can mod code reach this" in one game load. Two of them do
+run — `PaneProbe` places candidate block types and reports what the terminal draws, and
+`HudMarkerProbe` strips a component to see what breaks. Copy one and point it at whatever
+you are wondering about.
 
 ---
 

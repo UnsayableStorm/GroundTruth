@@ -395,7 +395,7 @@ established empirically:
   logging the results, and only then reading the definitions to find what the survey had
   missed.
 
-Ten distinct engine behaviours were pinned down this way, several of which are documented
+Thirteen distinct engine behaviours were pinned down this way, several of which are documented
 nowhere else. Custom Event Controller events, in particular, appear to be attempted by
 almost nobody, and the reason turns out to be that the helper class every built-in event
 relies on is prohibited to mods — so all of its work has to be reimplemented.
@@ -413,9 +413,22 @@ relies on is prohibited to mods — so all of its work has to be reimplemented.
 - An Event Controller threshold was scaled to 0-100 to match its slider label. The slider
   reports 0-1. That produced one event that never fired and another that fired on
   everything, and the plausible-sounding explanation offered for the second was wrong.
+- The worst one is a chain. A test concluded that `OreDetector` blocks render no detail
+  info panel; that conclusion was **false**, and the real fault was that the test never
+  called `RefreshCustomInfo`, so our writer was never asked for text. On the strength of
+  it the blocks became `RadioAntenna` — which forces a HUD marker on every working
+  antenna, computed from `IsWorking`, get-only, on a type the whitelist prohibits, and
+  confirmed on a vanilla antenna with every box unchecked. A day of the design rested on
+  a negative result that had never actually run the code. The blocks are now
+  `UpgradeModule`, which draws nothing on the HUD and is not, as the antenna quietly was,
+  a lightning rod.
 
 Every one of those was found the same way: stop reasoning, print the operands, read the
 log. That habit is the actual engineering, and it is not automated by anything.
+
+The last one adds a rule the others do not: **a negative result deserves the same
+scrutiny as a positive one.** "It doesn't work" is a claim about the engine only once you
+can show your own code ran.
 
 ### On the objection
 
@@ -481,6 +494,14 @@ I also retracted a correct diagnosis once, because I had reasoned my way into do
 The log later showed the original call was right. Being talked out of a true thing is a
 failure mode worth knowing about.
 
+The costliest one was quieter than either. I ran a test, it produced nothing, and I wrote
+down that the engine could not do the thing — when what had actually happened was that my
+test never called the function that would have made the engine try. I then built a day of
+design on that false negative, and the block type I chose instead turned out to paint
+markers all over the player's HUD with no way to switch them off. Nobody caught it,
+because a negative result feels like the humble kind of claim. It is not. It asserts
+something about the world on the strength of your own code having run, and mine had not.
+
 **What I am good at is the tireless, unglamorous half.** Reading assemblies. Building a
 probe to answer a question instead of guessing at it. Noticing that a value labelled a
 percentage is being compared against a fraction. Holding four days of context and asking
@@ -515,7 +536,7 @@ else's source read at 2am, a wiki page that says a thing requires an SBC and doe
 which. Every mod author rediscovers the same walls. That is wasted effort at community
 scale.
 
-So `ENGINE_TRAPS.md` ships with this repository: ten findings, each written symptom-first,
+So `ENGINE_TRAPS.md` ships with this repository: thirteen findings, each written symptom-first,
 because that is how you meet them. Two `IsBot` properties that disagree about the same
 creature. Sprites that need `LCDTextureDefinition` and silently draw nothing as a
 `TransparentMaterialDefinition`. DDS textures the game ignores without a mip chain.
