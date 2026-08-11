@@ -121,11 +121,35 @@ namespace PaneProbe
                 _sink.Init(MyStringHash.GetOrCompute("Utility"), info);
                 Entity.Components.Add<MyResourceSinkComponent>(_sink);
                 _sinkNote = "added in Init";
+
+                // First run reported required=0.0000: attaching the component is not
+                // the same as asking for power. The func is only consulted on Update,
+                // and the explicit Set is what the distributor actually reads.
+                NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
             }
             catch (Exception e)
             {
                 _sinkNote = "THREW: " + e.Message;
                 MyLog.Default.WriteLineAndConsole("PANEPROBE sink failed: " + e);
+            }
+        }
+
+        public override void UpdateOnceBeforeFrame()
+        {
+            if (_sink == null) return;
+
+            try
+            {
+                var id = MyResourceDistributorComponent.ElectricityId;
+                _sink.SetMaxRequiredInputByType(id, Draw);
+                _sink.SetRequiredInputByType(id, Draw);
+                _sink.Update();
+                _sinkNote += ", Set+Update once on grid";
+            }
+            catch (Exception e)
+            {
+                _sinkNote += ", update THREW: " + e.Message;
+                MyLog.Default.WriteLineAndConsole("PANEPROBE sink update failed: " + e);
             }
         }
 
@@ -145,6 +169,8 @@ namespace PaneProbe
                 try
                 {
                     var id = MyResourceDistributorComponent.ElectricityId;
+                    _sink.Update();   // pull fresh numbers rather than trusting a cache
+                    sb.AppendLine(string.Format("max      {0:F4} MW", _sink.MaxRequiredInputByType(id)));
                     sb.AppendLine(string.Format("required {0:F4} MW", _sink.RequiredInputByType(id)));
                     sb.AppendLine(string.Format("current  {0:F4} MW", _sink.CurrentInputByType(id)));
                     sb.AppendLine("powered: " + _sink.IsPoweredByType(id));
