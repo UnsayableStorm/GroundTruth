@@ -35,8 +35,8 @@ when it is missing.
 ## Quick start
 
 ```csharp
-// Every instrument is a RadioAntenna block. Filter by role to exclude real antennas.
-var sensors = new List<IMyRadioAntenna>();
+// Every instrument is an UpgradeModule block. Filter by role to exclude other modules.
+var sensors = new List<IMyUpgradeModule>();
 GridTerminalSystem.GetBlocksOfType(sensors, b => b.GetValueFloat("GT_SysBlockRole") > 0);
 
 foreach (var s in sensors)
@@ -47,9 +47,13 @@ foreach (var s in sensors)
 }
 ```
 
-Blocks are `RadioAntenna` because terminal properties register against a block interface,
-and that is the narrowest one these blocks implement. They broadcast at 1 m and switch
-broadcasting off when placed — the base type is a means, not a purpose.
+Blocks are `UpgradeModule` because terminal properties register against a block interface,
+and `IMyUpgradeModule` is the narrowest one that also renders a detail info pane. They
+declare no `<Upgrades>`, so they do nothing at all next to a refinery — the base type is a
+means, not a purpose.
+
+The two Rotating Radar Dishes are the exception: those are real `RadioAntenna` blocks,
+they carry no `GT_` properties, and broadcasting is their entire point.
 
 ---
 

@@ -33,7 +33,7 @@ eleven Event Controller events, documented conventions, and a stated version con
 Short version:
 
 ```csharp
-var sensors = new List<IMyRadioAntenna>();
+var sensors = new List<IMyUpgradeModule>();
 GridTerminalSystem.GetBlocksOfType(sensors, b => b.GetValueFloat("GT_SysBlockRole") > 0);
 
 float rads = sensors[0].GetValueFloat("GT_RadRate");   // -1 means "no reading"

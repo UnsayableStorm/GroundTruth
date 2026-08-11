@@ -25,18 +25,18 @@
       <Name>ThresholdDynamics</Name>
       <StrictSearch>true</StrictSearch>
       <ItemIds>
-        <string>RadioAntenna/GT_RadiationMonitor</string>
-        <string>RadioAntenna/GT_RadiationMonitor_S</string>
-        <string>RadioAntenna/GT_RadiationMonitorAlt</string>
-        <string>RadioAntenna/GT_RadiationMonitorAlt_S</string>
-        <string>RadioAntenna/GT_WeatherStation</string>
-        <string>RadioAntenna/GT_WeatherStation_S</string>
-        <string>RadioAntenna/GT_WeatherStationAlt</string>
-        <string>RadioAntenna/GT_WeatherStationAlt_S</string>
-        <string>RadioAntenna/GT_BioScanner</string>
-        <string>RadioAntenna/GT_BioScanner_S</string>
-        <string>RadioAntenna/GT_HabitatMonitor</string>
-        <string>RadioAntenna/GT_HabitatMonitor_S</string>
+        <string>UpgradeModule/GT_RadiationMonitor</string>
+        <string>UpgradeModule/GT_RadiationMonitor_S</string>
+        <string>UpgradeModule/GT_RadiationMonitorAlt</string>
+        <string>UpgradeModule/GT_RadiationMonitorAlt_S</string>
+        <string>UpgradeModule/GT_WeatherStation</string>
+        <string>UpgradeModule/GT_WeatherStation_S</string>
+        <string>UpgradeModule/GT_WeatherStationAlt</string>
+        <string>UpgradeModule/GT_WeatherStationAlt_S</string>
+        <string>UpgradeModule/GT_BioScanner</string>
+        <string>UpgradeModule/GT_BioScanner_S</string>
+        <string>UpgradeModule/GT_HabitatMonitor</string>
+        <string>UpgradeModule/GT_HabitatMonitor_S</string>
         <string>RadioAntenna/GT_RotatingRadarDish</string>
         <string>RadioAntenna/GT_RotatingRadarDish_S</string>
       </ItemIds>

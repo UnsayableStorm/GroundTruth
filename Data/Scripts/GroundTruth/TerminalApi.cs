@@ -240,20 +240,22 @@ namespace GroundTruth
             return Instruments.CapabilitiesOf(b.BlockDefinition.SubtypeName);
         }
 
-        // Properties attach to IMyRadioAntenna - the narrowest interface our blocks
-        // implement, and the reason they are OreDetector blocks at all.
+        // Properties attach to IMyUpgradeModule - the narrowest interface our blocks
+        // implement, which is most of why they are UpgradeModule blocks at all.
         //
         // This was IMyFunctionalBlock, which every powered block in the game implements.
         // The result was 55 properties on every light, door and thruster, which corrupted
         // their terminal control lists - a light lost its On/Off action, in every world
         // this mod loaded into. Bisected 2026-08-09. Register narrow.
         //
-        // Vanilla antennas still receive these properties; that is unavoidable and
+        // Vanilla upgrade modules still receive these properties; that is unavoidable and
         // harmless. Every getter returns a sentinel unless the block is genuinely ours -
-        // a comms antenna asked for GT_RadTotal answers -1, not a plausible-looking lie.
+        // a productivity module asked for GT_RadTotal answers -1, not a plausible-looking
+        // lie. Note the two Rotating Radar Dishes are real RadioAntenna blocks and so do
+        // NOT carry these properties, which is correct: they are not instruments.
         private static void Num(string id, Func<IMyTerminalBlock, GroundTruthSession.BlockState, float> read)
         {
-            var p = MyAPIGateway.TerminalControls.CreateProperty<float, IMyRadioAntenna>(id);
+            var p = MyAPIGateway.TerminalControls.CreateProperty<float, IMyUpgradeModule>(id);
             p.Getter = b =>
             {
                 var s = GroundTruthSession.StateFor(b);
@@ -274,12 +276,12 @@ namespace GroundTruth
             //
             // Scoping is handled where it actually works - the getter returns -1 for any
             // block that is not one of ours.
-            MyAPIGateway.TerminalControls.AddControl<IMyRadioAntenna>(p);
+            MyAPIGateway.TerminalControls.AddControl<IMyUpgradeModule>(p);
         }
 
         private static void Flag(string id, Func<IMyTerminalBlock, GroundTruthSession.BlockState, bool> read)
         {
-            var p = MyAPIGateway.TerminalControls.CreateProperty<bool, IMyRadioAntenna>(id);
+            var p = MyAPIGateway.TerminalControls.CreateProperty<bool, IMyUpgradeModule>(id);
             p.Getter = b =>
             {
                 var s = GroundTruthSession.StateFor(b);
@@ -288,7 +290,7 @@ namespace GroundTruth
                 catch { return false; }
             };
             p.Setter = (b, v) => { };
-            MyAPIGateway.TerminalControls.AddControl<IMyRadioAntenna>(p);
+            MyAPIGateway.TerminalControls.AddControl<IMyUpgradeModule>(p);
         }
     }
 }

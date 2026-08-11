@@ -12,31 +12,49 @@
       The general purpose antenna at the bottom of this file is a RadioAntenna and is
       NOT an instrument - it carries no properties and broadcast is its whole purpose.
 
-      WHY OreDetector AND NOT FunctionalBlock
+      WHY UpgradeModule
 
-      These blocks were FunctionalBlockDefinition, which was right for behaviour - a
-      generic powered terminal block with nothing intrinsic attached - and wrong for
-      everything else.
+      Instruments need two things from their base type: a NARROW interface, and a
+      detail info pane to write readings into. Getting here took three attempts and one
+      wrong conclusion, all of which are worth recording.
 
-      Terminal properties register against an INTERFACE. FunctionalBlock means
-      IMyFunctionalBlock, which every powered block in the game implements, so the 55
-      GT_ properties were being attached to every light, door and thruster in the
-      world. That corrupted their terminal control lists: a light lost its On/Off
-      action, in every world this mod loaded into. Confirmed by bisect 2026-08-09.
+      FunctionalBlockDefinition was first. Behaviourally right - a generic powered
+      terminal block with nothing intrinsic attached - and wrong on the interface.
+      Terminal properties register against an INTERFACE, and FunctionalBlock means
+      IMyFunctionalBlock, which every powered block in the game implements. The 55 GT_
+      properties landed on every light, door and thruster in the world and corrupted
+      their terminal control lists: a light lost its On/Off action, in every world this
+      mod loaded into. Confirmed by bisect 2026-08-09. Working mods all register
+      against a narrow type they own - Nanobot Build and Repair puts 27 properties on
+      IMyShipWelder and is fine. Count was never the problem; breadth was.
 
-      Working mods all register against a narrow type they own - Nanobot Build and
-      Repair puts 27 properties on IMyShipWelder and is fine. Count was never the
-      problem; breadth was.
+      OreDetector was second, and was rejected on a finding that turned out to be
+      FALSE. The claim was "OreDetector renders no detail info panel at all". It does
+      render one. What actually happened is that the test never called
+      RefreshCustomInfo, so the game never asked our writer for text and the pane was
+      empty rather than absent. Proved by probes/PaneProbe 2026-08-10, where an
+      OreDetector clone shows the text perfectly. A wrong conclusion, held for a day,
+      that sent the whole design down the third path.
 
-      OreDetector was tried first and failed on one point: OreDetector blocks render
-      NO detail info panel at all. Our writer produced 118 characters a second into a
-      pane the game never draws. Verified against a vanilla ore detector, which is
-      equally blank.
+      RadioAntenna was third, and shipped for a day. It renders a pane and its
+      interface is narrow, and MaxBroadcastRadius 1 made the radio side inert. What it
+      could not do is stop drawing on the HUD. Every working antenna puts a marker on
+      its owner's HUD, four instruments put four markers in your face, and the flag
+      behind it - MyRadioBroadcaster.ShowOnHud - is computed from IsWorking, is
+      get-only, and sits on a type the mod whitelist prohibits. Verified on a VANILLA
+      antenna with every terminal box unchecked. Removing the broadcaster component
+      does suppress it and then crashes the game when the terminal opens. There is no
+      route to a marker-free antenna from mod code.
 
-      RadioAntenna does render a pane, its interface is narrow, and MaxBroadcastRadius 1
-      makes the broadcast side inert. The costs are three inherited controls and the
-      fact that a grid carrying one technically has an antenna, which some mods test
-      for without checking range.
+      UpgradeModule is where this lands. IMyUpgradeModule extends IMyFunctionalBlock
+      with two members, so it is narrower than the antenna was. It renders the pane. It
+      has no broadcaster, so no HUD marker. It is not a lightning rod, which the
+      antenna quietly was. With no <Upgrades> element it does nothing at all when
+      placed beside a refinery.
+
+      The one thing it does not inherit is a power draw - MyObjectBuilder_
+      UpgradeModuleDefinition has exactly one field, Upgrades, and no ResourceSinkGroup.
+      Any power cost these blocks have must be attached in code.
 
 
       "Alt" variants are the same instrument in a different silhouette - same role, same
@@ -46,9 +64,9 @@
       Large and small grid entries share a BlockPairName so the size toggle works.
     -->
 
-    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+    <Definition xsi:type="MyObjectBuilder_UpgradeModuleDefinition">
       <Id>
-        <TypeId>RadioAntenna</TypeId>
+        <TypeId>UpgradeModule</TypeId>
         <SubtypeId>GT_RadiationMonitor</SubtypeId>
       </Id>
       <DisplayName>Radiation Monitor</DisplayName>
@@ -95,14 +113,13 @@
            reach, nothing for another grid to hear. An instrument is not a
            comms device. Code also switches broadcasting off once, when the
            block is first created. -->
-      <MaxBroadcastRadius>1</MaxBroadcastRadius>
       <PCU>25</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
 
-    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+    <Definition xsi:type="MyObjectBuilder_UpgradeModuleDefinition">
       <Id>
-        <TypeId>RadioAntenna</TypeId>
+        <TypeId>UpgradeModule</TypeId>
         <SubtypeId>GT_RadiationMonitor_S</SubtypeId>
       </Id>
       <DisplayName>Radiation Monitor</DisplayName>
@@ -149,14 +166,13 @@
            reach, nothing for another grid to hear. An instrument is not a
            comms device. Code also switches broadcasting off once, when the
            block is first created. -->
-      <MaxBroadcastRadius>1</MaxBroadcastRadius>
       <PCU>15</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
 
-    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+    <Definition xsi:type="MyObjectBuilder_UpgradeModuleDefinition">
       <Id>
-        <TypeId>RadioAntenna</TypeId>
+        <TypeId>UpgradeModule</TypeId>
         <SubtypeId>GT_RadiationMonitorAlt</SubtypeId>
       </Id>
       <DisplayName>Radiation Monitor Mk2</DisplayName>
@@ -203,14 +219,13 @@
            reach, nothing for another grid to hear. An instrument is not a
            comms device. Code also switches broadcasting off once, when the
            block is first created. -->
-      <MaxBroadcastRadius>1</MaxBroadcastRadius>
       <PCU>25</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
 
-    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+    <Definition xsi:type="MyObjectBuilder_UpgradeModuleDefinition">
       <Id>
-        <TypeId>RadioAntenna</TypeId>
+        <TypeId>UpgradeModule</TypeId>
         <SubtypeId>GT_RadiationMonitorAlt_S</SubtypeId>
       </Id>
       <DisplayName>Radiation Monitor Mk2</DisplayName>
@@ -257,14 +272,13 @@
            reach, nothing for another grid to hear. An instrument is not a
            comms device. Code also switches broadcasting off once, when the
            block is first created. -->
-      <MaxBroadcastRadius>1</MaxBroadcastRadius>
       <PCU>15</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
 
-    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+    <Definition xsi:type="MyObjectBuilder_UpgradeModuleDefinition">
       <Id>
-        <TypeId>RadioAntenna</TypeId>
+        <TypeId>UpgradeModule</TypeId>
         <SubtypeId>GT_WeatherStation</SubtypeId>
       </Id>
       <DisplayName>Weather Station</DisplayName>
@@ -311,14 +325,13 @@
            reach, nothing for another grid to hear. An instrument is not a
            comms device. Code also switches broadcasting off once, when the
            block is first created. -->
-      <MaxBroadcastRadius>1</MaxBroadcastRadius>
       <PCU>25</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
 
-    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+    <Definition xsi:type="MyObjectBuilder_UpgradeModuleDefinition">
       <Id>
-        <TypeId>RadioAntenna</TypeId>
+        <TypeId>UpgradeModule</TypeId>
         <SubtypeId>GT_WeatherStation_S</SubtypeId>
       </Id>
       <DisplayName>Weather Station</DisplayName>
@@ -365,14 +378,13 @@
            reach, nothing for another grid to hear. An instrument is not a
            comms device. Code also switches broadcasting off once, when the
            block is first created. -->
-      <MaxBroadcastRadius>1</MaxBroadcastRadius>
       <PCU>15</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
 
-    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+    <Definition xsi:type="MyObjectBuilder_UpgradeModuleDefinition">
       <Id>
-        <TypeId>RadioAntenna</TypeId>
+        <TypeId>UpgradeModule</TypeId>
         <SubtypeId>GT_WeatherStationAlt</SubtypeId>
       </Id>
       <DisplayName>Weather Station Mk2</DisplayName>
@@ -419,14 +431,13 @@
            reach, nothing for another grid to hear. An instrument is not a
            comms device. Code also switches broadcasting off once, when the
            block is first created. -->
-      <MaxBroadcastRadius>1</MaxBroadcastRadius>
       <PCU>25</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
 
-    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+    <Definition xsi:type="MyObjectBuilder_UpgradeModuleDefinition">
       <Id>
-        <TypeId>RadioAntenna</TypeId>
+        <TypeId>UpgradeModule</TypeId>
         <SubtypeId>GT_WeatherStationAlt_S</SubtypeId>
       </Id>
       <DisplayName>Weather Station Mk2</DisplayName>
@@ -473,14 +484,13 @@
            reach, nothing for another grid to hear. An instrument is not a
            comms device. Code also switches broadcasting off once, when the
            block is first created. -->
-      <MaxBroadcastRadius>1</MaxBroadcastRadius>
       <PCU>15</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
 
-    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+    <Definition xsi:type="MyObjectBuilder_UpgradeModuleDefinition">
       <Id>
-        <TypeId>RadioAntenna</TypeId>
+        <TypeId>UpgradeModule</TypeId>
         <SubtypeId>GT_BioScanner</SubtypeId>
       </Id>
       <DisplayName>Bio Systems Scanner</DisplayName>
@@ -527,14 +537,13 @@
            reach, nothing for another grid to hear. An instrument is not a
            comms device. Code also switches broadcasting off once, when the
            block is first created. -->
-      <MaxBroadcastRadius>1</MaxBroadcastRadius>
       <PCU>25</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
 
-    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+    <Definition xsi:type="MyObjectBuilder_UpgradeModuleDefinition">
       <Id>
-        <TypeId>RadioAntenna</TypeId>
+        <TypeId>UpgradeModule</TypeId>
         <SubtypeId>GT_BioScanner_S</SubtypeId>
       </Id>
       <DisplayName>Bio Systems Scanner</DisplayName>
@@ -581,14 +590,13 @@
            reach, nothing for another grid to hear. An instrument is not a
            comms device. Code also switches broadcasting off once, when the
            block is first created. -->
-      <MaxBroadcastRadius>1</MaxBroadcastRadius>
       <PCU>15</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
 
-    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+    <Definition xsi:type="MyObjectBuilder_UpgradeModuleDefinition">
       <Id>
-        <TypeId>RadioAntenna</TypeId>
+        <TypeId>UpgradeModule</TypeId>
         <SubtypeId>GT_HabitatMonitor</SubtypeId>
       </Id>
       <DisplayName>Habitat Monitor</DisplayName>
@@ -639,14 +647,13 @@
            reach, nothing for another grid to hear. An instrument is not a
            comms device. Code also switches broadcasting off once, when the
            block is first created. -->
-      <MaxBroadcastRadius>1</MaxBroadcastRadius>
       <PCU>10</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>
 
-    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+    <Definition xsi:type="MyObjectBuilder_UpgradeModuleDefinition">
       <Id>
-        <TypeId>RadioAntenna</TypeId>
+        <TypeId>UpgradeModule</TypeId>
         <SubtypeId>GT_HabitatMonitor_S</SubtypeId>
       </Id>
       <DisplayName>Habitat Monitor</DisplayName>
@@ -694,7 +701,6 @@
            reach, nothing for another grid to hear. An instrument is not a
            comms device. Code also switches broadcasting off once, when the
            block is first created. -->
-      <MaxBroadcastRadius>1</MaxBroadcastRadius>
       <PCU>8</PCU>
       <IsAirTight>false</IsAirTight>
     </Definition>

@@ -100,24 +100,38 @@ namespace GroundTruth
         }
     }
 
-    // One descriptor for everything that spins. Instruments and the general purpose
-    // antenna are both RadioAntenna object builders now, so they no longer need
-    // separate classes - the subpart name is looked up per subtype.
-    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_RadioAntenna), false,
+    // Two descriptors, because the blocks no longer share an object builder.
+    //
+    // Instruments are UpgradeModule; the general purpose antenna is a real
+    // RadioAntenna. A descriptor binds a TYPE plus subtypes, so one class cannot cover
+    // both - but the spinning logic is identical, so both derive from SpinningSubpart
+    // and only the subpart lookup differs.
+    //
+    // See the header of CubeBlocks_GroundTruth.sbc for why instruments stopped being
+    // antennas.
+    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_UpgradeModule), false,
         "GT_WeatherStation", "GT_WeatherStation_S",
-        "GT_WeatherStationAlt", "GT_WeatherStationAlt_S",
-        "GT_RotatingRadarDish", "GT_RotatingRadarDish_S")]
+        "GT_WeatherStationAlt", "GT_WeatherStationAlt_S")]
     public class SpinningInstrument : SpinningSubpart
     {
         protected override string SubpartFor(string subtype)
         {
-            // The dish is not an instrument and is deliberately absent from the table,
-            // so its subpart is named here.
-            if (subtype == "GT_RotatingRadarDish") return "RotateRadar";
-            if (subtype == "GT_RotatingRadarDish_S") return "SG_RotateRadar";
-
             Instruments.Info info;
             return Instruments.TryGet(subtype, out info) ? info.Subpart : null;
+        }
+    }
+
+    // The dish is not an instrument and is deliberately absent from the Instruments
+    // table, so its subpart is named here.
+    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_RadioAntenna), false,
+        "GT_RotatingRadarDish", "GT_RotatingRadarDish_S")]
+    public class SpinningAntenna : SpinningSubpart
+    {
+        protected override string SubpartFor(string subtype)
+        {
+            if (subtype == "GT_RotatingRadarDish") return "RotateRadar";
+            if (subtype == "GT_RotatingRadarDish_S") return "SG_RotateRadar";
+            return null;
         }
     }
 }
