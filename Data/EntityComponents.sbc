@@ -102,5 +102,13 @@
       <UniqueSelectionId>1011</UniqueSelectionId>
     </EntityComponent>
 
+    <EntityComponent xsi:type="MyObjectBuilder_GTEventBioContactPresentDefinition">
+      <Id>
+        <TypeId>GTEventBioContactPresent</TypeId>
+        <SubtypeId>EventControllerBlockComponent</SubtypeId>
+      </Id>
+      <UniqueSelectionId>1012</UniqueSelectionId>
+    </EntityComponent>
+
   </EntityComponents>
 </Definitions>

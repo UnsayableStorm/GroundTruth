@@ -339,7 +339,7 @@ namespace GroundTruth
 
         public override string ComponentTypeDebugString { get { return "GT_BioContacts"; } }
         public override MyStringId EventDisplayName
-        { get { return MyStringId.GetOrCompute("Non-biological contacts, 100 = 20 [Ground Truth]"); } }
+        { get { return MyStringId.GetOrCompute("Non-biological contact COUNT, slider 100 = 20 contacts [Ground Truth]"); } }
         public override long UniqueSelectionId { get { return SelectionId; } }
         public override string YesNoToolbarYesDescription { get { return "Contacts threshold reached"; } }
         public override string YesNoToolbarNoDescription { get { return "Contacts cleared"; } }

@@ -253,4 +253,25 @@ namespace GroundTruth
             if (ob != null) UniqueSelectionId = ob.UniqueSelectionId;
         }
     }
+
+    [ProtoContract]
+    [MyObjectBuilderDefinition]
+    public class MyObjectBuilder_GTEventBioContactPresentDefinition : MyObjectBuilder_ComponentDefinitionBase
+    {
+        [ProtoMember(1)]
+        public long UniqueSelectionId;
+    }
+
+    [MyDefinitionType(typeof(MyObjectBuilder_GTEventBioContactPresentDefinition))]
+    public class GTEventBioContactPresentDefinition : MyComponentDefinitionBase
+    {
+        public long UniqueSelectionId;
+
+        protected override void Init(MyObjectBuilder_DefinitionBase builder)
+        {
+            base.Init(builder);
+            var ob = builder as MyObjectBuilder_GTEventBioContactPresentDefinition;
+            if (ob != null) UniqueSelectionId = ob.UniqueSelectionId;
+        }
+    }
 }

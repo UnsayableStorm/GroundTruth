@@ -284,4 +284,45 @@ namespace GroundTruth
             return ReadFlag(b, "GT_WxHazardActive");
         }
     }
+
+    // ------------------------------------------------------------------
+    // 1012 - anything non-biological is here at all
+    //
+    // The threshold version of this (1011) asks "how many", which is the right
+    // question for a siege and the wrong one for a tripwire. Its slider reports 0-1
+    // against a full scale of 20 contacts, so 5 on a 0-100 dial means ONE contact -
+    // correct, unusable, and not something a player should have to know.
+    //
+    // This one has no slider. One contact is the whole condition.
+
+    [ProtoBuf.ProtoContract]
+    [MyObjectBuilderDefinition]
+    public class MyObjectBuilder_GTEventBioContactPresent : MyObjectBuilder_ComponentBase { }
+
+    [MyComponentType(typeof(GTEventBioContactPresent))]
+    [MyEntityDependencyType(typeof(IMyEventControllerBlock))]
+    [MyComponentBuilder(typeof(MyObjectBuilder_GTEventBioContactPresent), true)]
+    public class GTEventBioContactPresent : GTBooleanEvent
+    {
+        public const long SelectionId = 1012L;
+
+        public override string ComponentTypeDebugString { get { return "GT_BioContactPresent"; } }
+        public override MyStringId EventDisplayName
+        { get { return MyStringId.GetOrCompute("Non-biological contact detected [Ground Truth]"); } }
+        public override long UniqueSelectionId { get { return SelectionId; } }
+        public override string YesNoToolbarYesDescription { get { return "Something not alive arrived"; } }
+        public override string YesNoToolbarNoDescription { get { return "Contacts gone"; } }
+
+        protected override float WantedRole { get { return Instruments.RoleBio; } }
+
+        // -1 means the block cannot answer, which is not the same as zero contacts.
+        // Returning null leaves the alarm latched rather than clearing it on a dark
+        // instrument.
+        protected override bool? Evaluate(IMyTerminalBlock b)
+        {
+            float n = Read(b, "GT_BioContacts");
+            if (n < 0) return null;
+            return n >= 1f;
+        }
+    }
 }
