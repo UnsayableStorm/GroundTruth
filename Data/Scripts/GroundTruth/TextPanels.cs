@@ -73,6 +73,12 @@ namespace GroundTruth
         protected virtual bool RequiresInstrument { get { return true; } }
         protected virtual void DrawStandalone(MySpriteDrawFrame frame, Color fg) { }
 
+        /// <summary>
+        /// Title and rule across the top. True everywhere except the corner LCD strip,
+        /// where the header would consume the only dimension that is scarce.
+        /// </summary>
+        protected virtual bool DrawsChrome { get { return true; } }
+
         // Aspect ratio of the surface in canvas units. 1.0 is square; a corner LCD is
         // roughly 8, a cockpit screen closer to 1.3.
         protected float Aspect { get { return Size.X / Size.Y; } }
@@ -92,8 +98,11 @@ namespace GroundTruth
             {
                 using (var multi = Surface.DrawFrame())
                 {
-                    Text(multi, Title, Pad, 16, 0.85f, fg, TextAlignment.LEFT);
-                    Rule(multi, 58, fg * 0.9f, 2f);
+                    if (DrawsChrome)
+                    {
+                        Text(multi, Title, Pad, 16, 0.85f, fg, TextAlignment.LEFT);
+                        Rule(multi, 58, fg * 0.9f, 2f);
+                    }
                     DrawStandalone(multi, fg);
                 }
                 return;
