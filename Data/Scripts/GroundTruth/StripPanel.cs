@@ -132,12 +132,28 @@ namespace GroundTruth
                 return true;
             }
 
+            // WHOSE dose is this?
+            //
+            // An instrument measures at ITS position. A monitor bolted to the hull of a
+            // sealed ship in space reads full solar exposure and is telling the truth -
+            // about the hull. Presenting that as RADIATION 02:29 on a screen inside the
+            // ship reads as a countdown for the person looking at it, which is a lie by
+            // framing even though every number is correct.
+            //
+            // So the strip says which side of the wall the reading came from. A monitor
+            // sitting in a sealed volume speaks for the room and shouts; one out in the
+            // open speaks for the outside, is worth knowing before an EVA, and does not
+            // get to turn the panel red at someone who is safely indoors.
             var rad = StateForRole(Instruments.RoleRadiation);
             if (rad != null && rad.Rad.Enabled && rad.Rad.Accumulates)
             {
                 double left = rad.Rad.SecondsToCritical;
-                token = new Token(left >= 0 ? "RADIATION  " + Clock(left) : "RADIATION",
-                                  left >= 0 && left < 300 ? Danger : Caution);
+                bool indoors = rad.Airtight;
+                string label = indoors ? "RADIATION" : "EXT RAD";
+
+                token = new Token(left >= 0 ? label + "  " + Clock(left) : label,
+                                  indoors ? (left >= 0 && left < 300 ? Danger : Caution)
+                                          : Caution);
                 return true;
             }
 
@@ -193,7 +209,10 @@ namespace GroundTruth
             if (!s.Rad.Enabled || s.Rad.IntensitySetting <= 0) return new Token("RAD", fg * 0.4f);
             if (!s.Rad.Accumulates) return new Token("RAD", Ok);
 
+            // Same distinction as the alarm: an exposed sensor names itself EXT so the
+            // token is not read as a fact about the room the screen is in.
             double left = s.Rad.SecondsToCritical;
+            if (!s.Airtight) return new Token("EXT RAD", Caution);
             return new Token("RAD", left >= 0 && left < 300 ? Danger : Caution);
         }
 
