@@ -50,7 +50,7 @@ why"*. An instrument that finds nothing has not proved the place is empty.
 | `Data/` | the mod — block definitions, scripts, LCD textures |
 | `Models/`, `Textures/` | art |
 | `docs/INTEGRATION.md` | **API reference and integration guide** for scripters and modders |
-| `docs/ENGINE_TRAPS.md` | **engine findings** — fourteen things that cost real time, published so nobody else pays for them twice |
+| `docs/ENGINE_TRAPS.md` | **engine findings** — seventeen things that cost real time, published so nobody else pays for them twice |
 | `probes/` | whitelist probe mods, ready to copy |
 | `tools/` | the icon build pipeline |
 
@@ -96,6 +96,12 @@ you meet them:
   day and picked the wrong block type
 - Giving a block a power draw in code, and why the obvious version reports `powered: True`
   while asking for 0.0000 MW
+- Why a dedicated-server **client** has no pressurisation data at all, and why the server
+  will not compute it for you either
+- A deploy script that silently publishes a **new Workshop item** every time, because it
+  overwrote the file holding the id
+- Component descriptors drifting from your own registry, because an attribute cannot read
+  a dictionary
 
 `probes/` holds the probe mods these came from. Most are tiny and execute nothing behind a
 `const false` guard, answering "can mod code reach this" in one game load. Two of them do

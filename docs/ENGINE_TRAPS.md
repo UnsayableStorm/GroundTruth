@@ -529,3 +529,106 @@ produce the first case where the correct answer was yes.
 That is the general shape worth remembering: **a predicate that is stuck on one value
 looks correct for as long as you only test cases with that answer.** If a boolean has
 never been observed to be true, it has not been tested — it has been watched.
+
+---
+
+## 15. A dedicated-server CLIENT has no pressurisation data at all
+
+**Symptom.** A block reports no sealed volume on a ship whose air vents are green.
+Everything works in single player. Nothing you change to the seal logic helps.
+
+On a dedicated-server client, measured 2026-08-13:
+
+```
+grid.GasSystem                        -> null
+grid.IsRoomAtPositionAirtight(cell)   -> false, always
+GetOxygenRoomForCubeGridPosition      -> unreachable, GasSystem is null
+```
+
+Not an empty room graph. **No gas system object.** Pressurisation is simulated on the
+server and the room graph is never replicated; a client receives the *consequences* —
+oxygen levels on vents, the character's environment oxygen — not the structure.
+
+**The second half of the trap is worse.** The obvious fix is "compute it on the server",
+and a mod that computes readings on demand never runs there at all. Ours creates state
+when something asks for it, and everything that asks — a terminal property, a text
+surface script, an LCD app — is a client. The server had the code, had the data, and was
+never asked a single question. Two days went into the client half before that was noticed.
+
+**What works.** The server evaluates the blocks itself on a timer and pushes state to
+clients. Send **on change**, not on a cadence: a seal is a boolean that never flips on a
+base nobody is attacking, so idle traffic is zero packets rather than a steady trickle,
+and a breach still arrives in about a tick. Add a slow heartbeat, say 30 s, and joining
+players, dropped packets and late-streamed grids all fix themselves without being
+detected.
+
+**The general rule.** Ask of every reading: *does this data exist where I am computing
+it?* Anything derived from pressurisation, and anything else the server owns
+authoritatively, answers no on a client — and single player will never tell you, because
+there the client is the server.
+
+---
+
+## 16. A mod folder that overwrites `modinfo.sbmi` publishes a NEW item every time
+
+**Symptom.** You publish an update. The Workshop page shows a new timestamp. Servers and
+subscribers keep running the old build. Repeat until you doubt your own code.
+
+`modinfo.sbmi` in the mod folder is written **by the game** and carries the Workshop id:
+
+```xml
+<WorkshopIds><WorkshopId><Id>3781444888</Id><ServiceName>Steam</ServiceName></WorkshopId></WorkshopIds>
+```
+
+Any deploy script that mirrors a working copy over the published folder will replace it
+with whatever stub lives in source control. With no id, publish has nothing to update, so
+it **creates a brand new item** — silently, and with every appearance of success.
+
+Ours also had the wrong root element, which the log said plainly and nobody read:
+
+```
+ERROR: Exception during objectbuilder read! (xml): MyObjectBuilder_ModInfo
+<ModInfo xmlns=''> was not expected.
+```
+
+**Fix:** exclude `modinfo.sbmi` and `metadata.mod` from the copy, and have the deploy
+print the id it is about to publish to:
+
+```
+Publish target: Workshop item 3781444888
+```
+
+A duplicate item created this way is also the most likely explanation for any
+mysteriously duplicated mod in your own Workshop history.
+
+---
+
+## 17. `MyEntityComponentDescriptor` cannot read your registry, so it drifts
+
+**Symptom.** Some variants of a block work and others do nothing. No error anywhere.
+
+A component attaches by attribute:
+
+```csharp
+[MyEntityComponentDescriptor(typeof(MyObjectBuilder_UpgradeModule), false,
+    "GT_HabitatMonitor", "GT_HabitatMonitor_S")]
+```
+
+Attributes take **compile-time constants**. They cannot read a dictionary, so a mod that
+has correctly centralised its block registry still has one hand-maintained list of
+subtypes, and nothing tells you when the two diverge.
+
+Four new variants were added to the registry, the block definitions, the category and the
+variant group — and not to the descriptor. Those blocks then had no power draw, and, once
+the component also handled network registration, never received synced state either. The
+panel simply waited forever while an identical block beside it worked.
+
+**Fix.** Mirror the attribute's list as a readable array next to it, and compare the two
+at load:
+
+```csharp
+var orphans = Instruments.SubtypesWithoutComponent(InstrumentPower.AttachedTo);
+```
+
+Log loudly for each. The lists still have to be edited together, but the next drift
+announces itself at load instead of waiting to be found in front of a dead panel.

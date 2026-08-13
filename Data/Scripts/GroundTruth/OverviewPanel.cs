@@ -215,6 +215,16 @@ namespace GroundTruth
                 c.Note = Clock(s.SealedSeconds);
                 c.Accent = Ok;
             }
+            else if (s.SealStatus == Readings.SealNoGasSystem
+                     || s.SealStatus == Readings.SealAwaitingServer)
+            {
+                // Pressurisation is server-authoritative and this client has not been
+                // told yet. Dim and honest - a red OPEN here is an alarm raised by
+                // missing data, which is the one thing this mod must never do.
+                c.Value = "UNKNOWN";
+                c.Note = "awaiting server";
+                c.Accent = fg * 0.45f;
+            }
             else
             {
                 c.Value = s.Breached ? "BREACH" : "OPEN";

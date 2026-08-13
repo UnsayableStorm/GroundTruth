@@ -172,6 +172,21 @@ midnight it reads 100% while panels produce nothing. Combine with `GT_SunElevati
 **Shelter differs by source.** Solar dies to any occluder; planetary only to an airtight
 seal. That is why they are published separately.
 
+### Seal state on a dedicated server
+
+`GT_HabAirtight` and `GT_RadAirtight` are the only readings that do **not** originate on
+the machine reading them. A dedicated-server client has no pressurisation data at all —
+`grid.GasSystem` is null there — so the server evaluates seal state and pushes it to
+clients on change, with a 30 second heartbeat.
+
+For a consumer this means one thing: **immediately after joining, seal state may not have
+arrived yet**, and a `false` from `GT_HabAirtight` in that window means "not yet told",
+not "not sealed". It settles within a second of any change and within 30 seconds
+regardless. If you are driving a door or an alarm from it, require it to be false for two
+consecutive reads rather than acting on the first.
+
+Every other reading in this mod is computed locally and has no such window.
+
 ### `GT_Wx` — Weather Station
 
 Live state:
@@ -466,7 +481,7 @@ established empirically:
   logging the results, and only then reading the definitions to find what the survey had
   missed.
 
-Fourteen distinct engine behaviours were pinned down this way, several of which are documented
+Seventeen distinct engine behaviours were pinned down this way, several of which are documented
 nowhere else. Custom Event Controller events, in particular, appear to be attempted by
 almost nobody, and the reason turns out to be that the helper class every built-in event
 relies on is prohibited to mods — so all of its work has to be reimplemented.
@@ -607,7 +622,7 @@ else's source read at 2am, a wiki page that says a thing requires an SBC and doe
 which. Every mod author rediscovers the same walls. That is wasted effort at community
 scale.
 
-So `ENGINE_TRAPS.md` ships with this repository: fourteen findings, each written symptom-first,
+So `ENGINE_TRAPS.md` ships with this repository: seventeen findings, each written symptom-first,
 because that is how you meet them. Two `IsBot` properties that disagree about the same
 creature. Sprites that need `LCDTextureDefinition` and silently draw nothing as a
 `TransparentMaterialDefinition`. DDS textures the game ignores without a mip chain.
