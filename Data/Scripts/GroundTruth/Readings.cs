@@ -561,19 +561,59 @@ namespace GroundTruth
         // A neighbour-scan would have been wrong here: a radiation monitor bolted to
         // the outside of a sealed ship touches a pressurised cell on its inner face and
         // would have claimed shelter it does not have.
-        public static bool IsAirtight(IMyCubeBlock block)
+        /// <summary>
+        /// What the pressurisation system says about the volume this block sits in.
+        /// Oxygen is -1 and blocks 0 when there is no room at all.
+        /// </summary>
+        public static void ReadSeal(IMyCubeBlock block, out bool airtight,
+                                    out float oxygen, out int roomBlocks)
         {
+            airtight = false;
+            oxygen = -1f;
+            roomBlocks = 0;
+
             try
             {
                 var grid = block.CubeGrid;
-                var faced = block.Position + Base6Directions.GetIntVector(block.Orientation.Forward);
-                if (grid.IsRoomAtPositionAirtight(faced)) return true;
+                var gas = grid.GasSystem;
+                if (gas == null) return;
 
-                // Fallback for anything mounted so that its face is buried - rare, and
-                // cheap enough to be worth covering.
-                return grid.IsRoomAtPositionAirtight(block.Position);
+                // Ask for the ROOM, not for a yes/no.
+                //
+                // IsRoomAtPositionAirtight is a wrapper that collapses three different
+                // situations - no room here, a room that is not sealed, and a sealed
+                // room - into one "false", which is why two rounds of testing could not
+                // tell them apart. The room object distinguishes them, and OxygenLevel
+                // is what the air vents themselves report, so the panel and the vent
+                // can no longer disagree without saying why.
+                //
+                // Cell order matters: the block's own cell first, then the cell it
+                // faces. A wall panel occupies a cell that IS part of the room in SE's
+                // model - blocks that do not seal a face do not evict the air - and the
+                // faced cell covers anything mounted so its own cell is solid.
+                var own = block.Position;
+                var room = gas.GetOxygenRoomForCubeGridPosition(ref own);
+
+                if (room == null)
+                {
+                    var faced = block.Position + Base6Directions.GetIntVector(block.Orientation.Forward);
+                    room = gas.GetOxygenRoomForCubeGridPosition(ref faced);
+                }
+
+                if (room == null) return;
+
+                roomBlocks = room.BlockCount;
+                oxygen = (float)room.OxygenLevel;
+                airtight = room.IsAirtight;
             }
-            catch { return false; }
+            catch { }
+        }
+
+        public static bool IsAirtight(IMyCubeBlock block)
+        {
+            bool airtight; float oxygen; int blocks;
+            ReadSeal(block, out airtight, out oxygen, out blocks);
+            return airtight;
         }
     }
 }

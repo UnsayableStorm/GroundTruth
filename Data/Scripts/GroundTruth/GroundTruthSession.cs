@@ -51,6 +51,11 @@ namespace GroundTruth
             public Readings.Environment Env;
             public Readings.Radiation Rad;
             public bool Airtight;
+            // What the pressurisation system said, kept so a panel can explain WHY it
+            // is not sealed: no room at all reads -1 / 0, a real but open room reads a
+            // level and a block count.
+            public float RoomOxygen;
+            public int RoomBlocks;
             public bool WasAirtight;
             public bool Breached;
             public double SealedSeconds;
@@ -337,7 +342,7 @@ namespace GroundTruth
             s.LastComputeSeconds = _seconds;
 
             s.Env = Readings.ReadEnvironment(block);
-            s.Airtight = Readings.IsAirtight(block);
+            Readings.ReadSeal(block, out s.Airtight, out s.RoomOxygen, out s.RoomBlocks);
             s.Rad = Readings.ReadRadiation(block, s.Env, s.Airtight);
 
             // Breach latches once lost, and clears when the seal is restored.

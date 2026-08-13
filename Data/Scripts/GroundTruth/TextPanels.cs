@@ -594,8 +594,23 @@ namespace GroundTruth
 
             float px = 268f;
             Text(frame, "PRESSURE", px, 122, 0.6f, fg * 0.5f, TextAlignment.LEFT);
-            Text(frame, s.Airtight ? "INTEGRITY HELD" : (s.Breached ? "SEAL LOST" : "NO VOLUME"),
-                 px, 150, 0.8f, accent, TextAlignment.LEFT);
+            // Say WHICH kind of not-sealed this is. "NO VOLUME" was reported on a
+            // sealed ship and on a station, and told nobody anything: it could not
+            // distinguish "the pressurisation system has no room here" from "there is
+            // a room and it is open". The room's own numbers separate them.
+            string pressure;
+            if (s.Airtight) pressure = "INTEGRITY HELD";
+            else if (s.Breached) pressure = "SEAL LOST";
+            else if (s.RoomBlocks <= 0) pressure = "NO ROOM HERE";
+            else pressure = string.Format("OPEN ROOM  {0:P0}", s.RoomOxygen);
+
+            Text(frame, pressure, px, 150, 0.8f, accent, TextAlignment.LEFT);
+
+            // The room as the game sees it, which is the number to quote if this ever
+            // disagrees with an air vent again.
+            if (s.RoomBlocks > 0)
+                Text(frame, string.Format("room {0} cells, O2 {1:P0}", s.RoomBlocks, s.RoomOxygen),
+                     px, 178, 0.45f, fg * 0.4f, TextAlignment.LEFT);
 
             Text(frame, "DURATION", px, 214, 0.6f, fg * 0.5f, TextAlignment.LEFT);
             Text(frame, s.Airtight ? Clock(s.SealedSeconds) : "--:--", px, 242, 0.9f, fg, TextAlignment.LEFT);
