@@ -601,7 +601,11 @@ namespace GroundTruth
             string pressure;
             if (s.Airtight) pressure = "INTEGRITY HELD";
             else if (s.Breached) pressure = "SEAL LOST";
-            else if (s.SealStatus == Readings.SealNoGasSystem) pressure = "NO GAS SYSTEM";
+            // UNKNOWN, not OPEN. On a dedicated-server client the pressurisation data
+            // does not exist, and reporting that as "no sealed volume" is a false
+            // negative dressed as a measurement - the exact failure this mod exists to
+            // avoid. Say the instrument cannot answer.
+            else if (s.SealStatus == Readings.SealNoGasSystem) pressure = "UNKNOWN - SERVER DATA";
             else if (s.SealStatus == Readings.SealProcessing) pressure = "PRESSURISING";
             else if (s.RoomBlocks <= 0) pressure = "NO ROOM HERE";
             else pressure = string.Format("OPEN ROOM  {0:P0}", s.RoomOxygen);

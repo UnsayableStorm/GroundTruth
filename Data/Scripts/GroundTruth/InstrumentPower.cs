@@ -50,42 +50,50 @@ namespace GroundTruth
             _megawatts = Instruments.PowerKWOf(_block.BlockDefinition.SubtypeName) / 1000f;
             if (_megawatts <= 0f) return;
 
-            try
-            {
-                // Attach during Init - the grid builds its power graph from what a
-                // block brings with it.
-                _sink = Entity.Components.Get<MyResourceSinkComponent>();
-                if (_sink == null)
-                {
-                    var info = new MyResourceSinkInfo
-                    {
-                        ResourceTypeId = MyResourceDistributorComponent.ElectricityId,
-                        MaxRequiredInput = _megawatts,
-                        RequiredInputFunc = Required
-                    };
-
-                    _sink = new MyResourceSinkComponent();
-                    _sink.Init(MyStringHash.GetOrCompute("Utility"), info);
-                    Entity.Components.Add<MyResourceSinkComponent>(_sink);
-                }
-
-                NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
-            }
-            catch (Exception e)
-            {
-                // A missing power draw is a nuisance; a throw here would take the
-                // block with it. Log and carry on unpowered.
-                _sink = null;
-                MyLog.Default.WriteLineAndConsole("GroundTruth InstrumentPower init: " + e);
-            }
+            // DO NOT ADD COMPONENTS DURING Init.
+            //
+            // The sink used to be attached here, which mutates the block while the grid
+            // is still building. Other mods watch the grid for exactly that and rebuild
+            // their own systems in response - and at least one of them, WarpDrive, has a
+            // constructor that dereferences its block BEFORE its own null check:
+            //
+            //     if (block.Block.BlockDefinition.SubtypeId == "PrototechFSDriveLarge")
+            //     if (block == null || block.Block == null)   // one statement too late
+            //
+            // Their bug, our trigger. Warp drives are UpgradeModule blocks too, so the
+            // instruments only started sharing a grid update path with them when they
+            // moved to that base type on 2026-08-11 - and Long Haul started crashing
+            // clients on join at the same time, having run that mod for months.
+            //
+            // Waiting one frame costs nothing: the sink is registered with the
+            // distributor by Set + Update below either way.
+            NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
         }
 
         public override void UpdateOnceBeforeFrame()
         {
-            if (_sink == null) return;
+            if (_megawatts <= 0f) return;
 
             try
             {
+                if (_sink == null)
+                {
+                    _sink = Entity.Components.Get<MyResourceSinkComponent>();
+                    if (_sink == null)
+                    {
+                        var info = new MyResourceSinkInfo
+                        {
+                            ResourceTypeId = MyResourceDistributorComponent.ElectricityId,
+                            MaxRequiredInput = _megawatts,
+                            RequiredInputFunc = Required
+                        };
+
+                        _sink = new MyResourceSinkComponent();
+                        _sink.Init(MyStringHash.GetOrCompute("Utility"), info);
+                        Entity.Components.Add<MyResourceSinkComponent>(_sink);
+                    }
+                }
+
                 var id = MyResourceDistributorComponent.ElectricityId;
                 _sink.SetMaxRequiredInputByType(id, _megawatts);
                 _sink.SetRequiredInputByType(id, _megawatts);

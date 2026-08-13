@@ -584,7 +584,33 @@ namespace GroundTruth
             {
                 var grid = block.CubeGrid;
                 var gas = grid.GasSystem;
-                if (gas == null) { status = SealNoGasSystem; return; }
+
+                // NO GAS SYSTEM ON A DEDICATED-SERVER CLIENT.
+                //
+                // Measured on Long Haul 2026-08-13: grid.GasSystem is null client-side,
+                // so the room graph cannot be read where the panels actually draw.
+                // Pressurisation is server-authoritative, and the server never computes
+                // our readings because every consumer - panel, terminal property - is a
+                // client. The reading nobody can take is the one everybody wanted.
+                //
+                // Before giving up, try Keen's own wrapper: it may reach the data by a
+                // different path than the GasSystem property does.
+                if (gas == null)
+                {
+                    status = SealNoGasSystem;
+                    try
+                    {
+                        var f = block.Position + Base6Directions.GetIntVector(block.Orientation.Forward);
+                        if (grid.IsRoomAtPositionAirtight(f) || grid.IsRoomAtPositionAirtight(block.Position))
+                        {
+                            airtight = true;
+                            status = SealOk;
+                        }
+                    }
+                    catch { }
+                    return;
+                }
+
                 if (gas.IsProcessingData) { status = SealProcessing; return; }
 
                 // Ask for the ROOM, not for a yes/no.
