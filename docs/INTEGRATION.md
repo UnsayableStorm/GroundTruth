@@ -182,8 +182,11 @@ clients on change, with a 30 second heartbeat.
 For a consumer this means one thing: **immediately after joining, seal state may not have
 arrived yet**, and a `false` from `GT_HabAirtight` in that window means "not yet told",
 not "not sealed". It settles within a second of any change and within 30 seconds
-regardless. If you are driving a door or an alarm from it, require it to be false for two
-consecutive reads rather than acting on the first.
+regardless.
+
+**Test `GT_HabSealKnown` before believing `GT_HabAirtight`.** That is what it is for, and
+it is the only place in this API where a bool needs a companion to be trustworthy — every
+other reading uses the −1 sentinel because it is a float.
 
 Every other reading in this mod is computed locally and has no such window.
 
@@ -254,11 +257,23 @@ both cases the property returns −1. Use the declared range when you need a num
 
 | Property | Type | Notes |
 |---|---|---|
-| `GT_HabAirtight` | bool | |
+| `GT_HabSealKnown` | bool | **check this first on a server.** False means the seal reading has not arrived yet. *(1.1)* |
+| `GT_HabAirtight` | bool | meaningless unless `GT_HabSealKnown` |
 | `GT_HabBreached` | bool | **latched** — was sealed, is not now. Clears on restore. |
 | `GT_HabSealDuration` | float | s |
 
 Breach is latched deliberately: a block that was never in a sealed room is not a breach.
+
+```csharp
+// Seal state is the one reading that travels over the network.
+if (!block.GetValueBool("GT_HabSealKnown"))
+    return;                     // not "open" - not told yet
+
+bool sealed_ = block.GetValueBool("GT_HabAirtight");
+```
+
+Without that guard, "not sealed" and "not yet told" are the same `false`, and a script
+driving a door will slam it shut on every join.
 
 ### `GT_Bio` — Bio Systems Scanner
 
@@ -446,6 +461,13 @@ for mod code at runtime.
 **Feature-detect rather than gating on the version.** A property that does not exist reads
 as absent; one that exists without a reading returns −1. Use the version only to decide
 whether the old contract still holds.
+
+### Changes
+
+| Version | Change |
+|---|---|
+| 1.1 | Added `GT_HabSealKnown`. Seal state is synced from the server, and this distinguishes "not sealed" from "not yet told". Additive; 1.0 consumers are unaffected, though on a dedicated server they may briefly read a seal as open just after joining. |
+| 1.0 | Initial published contract. |
 
 ### Reserved for third parties
 

@@ -41,7 +41,10 @@ namespace GroundTruth
         // A consumer that needs a newer field should test for the field (-1 sentinel
         // means absent) rather than gate on the version number. The version is for
         // deciding "can I rely on the old contract", not for feature detection.
-        public const float ApiVersion = 1.0f;
+        //
+        // 1.1 added GT_HabSealKnown. Additive by the rule above, so anything written
+        // against 1.0 is unaffected.
+        public const float ApiVersion = 1.1f;
 
         // Roles are permanent and never recycled. 1-99 core, 100-999 future expansion,
         // 1000+ reserved for third parties adopting this contract.
@@ -121,6 +124,16 @@ namespace GroundTruth
             Num("GT_RadAtmosShielding", (b, s) => (float)s.Rad.AtmosphericShielding);
 
             // ---- GT_Hab ----
+            //
+            // GT_HabSealKnown exists because seal state is the ONLY reading in this mod
+            // that does not originate on the machine reading it. A dedicated-server
+            // client has no pressurisation data at all, so the server evaluates it and
+            // pushes it; for a moment after joining, a client has simply not been told.
+            //
+            // Without this, "not sealed" and "not yet told" are the same false, and a
+            // script driving a door cannot distinguish them. Added in API 1.1.
+            Flag("GT_HabSealKnown", (b, s) => s.SealStatus != Readings.SealNoGasSystem
+                                           && s.SealStatus != Readings.SealAwaitingServer);
             Flag("GT_HabAirtight", (b, s) => s.Airtight);
             Flag("GT_HabBreached", (b, s) => s.Breached);
             Num("GT_HabSealDuration", (b, s) => (float)s.SealedSeconds);

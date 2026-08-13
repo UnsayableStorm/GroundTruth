@@ -60,7 +60,7 @@ why"*. An instrument that finds nothing has not proved the place is empty.
 
 ## For scripters and modders
 
-Start with [`docs/INTEGRATION.md`](docs/INTEGRATION.md). Around 75 terminal properties,
+Start with [`docs/INTEGRATION.md`](docs/INTEGRATION.md). Around 76 terminal properties,
 ten Event Controller events, documented conventions, and a stated version contract.
 
 Short version:
