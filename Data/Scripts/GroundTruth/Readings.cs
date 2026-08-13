@@ -538,9 +538,41 @@ namespace GroundTruth
             catch { frame = FrameNone; return -1f; }
         }
 
+        // Is this instrument looking into a sealed volume?
+        //
+        // ASK ABOUT THE CELL THE BLOCK FACES, NOT THE ONE IT OCCUPIES.
+        //
+        // The first version passed block.Position, which is the cell the block itself
+        // fills. There is no room there to be airtight - a block is not air - so the
+        // answer was NO in a perfectly sealed base, while the air vents beside it
+        // reported pressurised. Reported from the Long Haul server 2026-08-11; it had
+        // never worked anywhere, and every earlier test happened to be in a genuinely
+        // unsealed space, which is what made it look correct.
+        //
+        // Vanilla air vents do the same thing this now does: they test the cell in
+        // front of themselves.
+        //
+        // Facing is what makes this usable for BOTH consumers, which want opposite
+        // answers from the same call:
+        //
+        //   Habitat Monitor on a room wall  - faces inward  -> sealed, correct
+        //   Radiation Monitor on the hull   - faces outward -> vacuum, correct
+        //
+        // A neighbour-scan would have been wrong here: a radiation monitor bolted to
+        // the outside of a sealed ship touches a pressurised cell on its inner face and
+        // would have claimed shelter it does not have.
         public static bool IsAirtight(IMyCubeBlock block)
         {
-            try { return block.CubeGrid.IsRoomAtPositionAirtight(block.Position); }
+            try
+            {
+                var grid = block.CubeGrid;
+                var faced = block.Position + Base6Directions.GetIntVector(block.Orientation.Forward);
+                if (grid.IsRoomAtPositionAirtight(faced)) return true;
+
+                // Fallback for anything mounted so that its face is buried - rare, and
+                // cheap enough to be worth covering.
+                return grid.IsRoomAtPositionAirtight(block.Position);
+            }
             catch { return false; }
         }
     }
