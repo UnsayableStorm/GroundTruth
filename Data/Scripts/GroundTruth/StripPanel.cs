@@ -242,6 +242,11 @@ namespace GroundTruth
         private Entry HabEntry(GroundTruthSession.BlockState s, Color fg)
         {
             if (s.Airtight) return new Entry("HABITAT PRESSURE", "SEALED", Ok);
+
+            // Dim, not red: a client waiting on server pressurisation data has not
+            // detected anything, and an alarm colour would say it had.
+            if (s.SealStatus == Readings.SealNoGasSystem || s.SealStatus == Readings.SealAwaitingServer)
+                return new Entry("HABITAT PRESSURE", "UNKNOWN", fg * 0.4f);
             return new Entry("HABITAT PRESSURE", s.Breached ? "BREACH" : "OPEN",
                              s.Breached ? Danger : Caution);
         }

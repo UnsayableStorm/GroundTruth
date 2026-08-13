@@ -571,9 +571,32 @@ namespace GroundTruth
         public const int SealNoGasSystem = 1; // the grid exposes no gas system at all
         public const int SealNoRoom = 2;      // gas system present, no room at this cell
         public const int SealProcessing = 3;  // pressurisation is still recomputing
+        public const int SealAwaitingServer = 4; // client, server has not sent it yet
 
+        // A client on a dedicated server cannot answer this at all, so it asks the
+        // server - see SealSync. Everywhere else this is computed directly.
         public static void ReadSeal(IMyCubeBlock block, out bool airtight,
                                     out float oxygen, out int roomBlocks, out int status)
+        {
+            if (SealSync.IsServer)
+            {
+                ReadSealLocal(block, out airtight, out oxygen, out roomBlocks, out status);
+                return;
+            }
+
+            if (SealSync.TryGet(block.EntityId, out airtight, out oxygen, out roomBlocks, out status))
+                return;
+
+            // The server has not told us yet. Not sealed, not open - unknown, which the
+            // panel says out loud rather than guessing.
+            airtight = false;
+            oxygen = -1f;
+            roomBlocks = 0;
+            status = SealAwaitingServer;
+        }
+
+        public static void ReadSealLocal(IMyCubeBlock block, out bool airtight,
+                                         out float oxygen, out int roomBlocks, out int status)
         {
             airtight = false;
             oxygen = -1f;

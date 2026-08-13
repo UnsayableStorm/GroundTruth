@@ -72,6 +72,11 @@ namespace GroundTruth
 
         public override void UpdateOnceBeforeFrame()
         {
+            // The server keeps a list of instruments so it can answer the one question
+            // clients cannot - see SealSync. Registering here rather than in Init for
+            // the same reason the sink attaches here.
+            SealSync.Register(Entity as IMyCubeBlock);
+
             if (_megawatts <= 0f) return;
 
             try
@@ -103,6 +108,11 @@ namespace GroundTruth
             {
                 MyLog.Default.WriteLineAndConsole("GroundTruth InstrumentPower update: " + e);
             }
+        }
+
+        public override void Close()
+        {
+            SealSync.Unregister(Entity as IMyCubeBlock);
         }
 
         // Off means off. A disabled instrument costs nothing, which is the whole point

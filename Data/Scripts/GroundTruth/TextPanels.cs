@@ -584,6 +584,16 @@ namespace GroundTruth
                     Text(frame, Remark(IdleRemarks), Pad, cy + SubLabelDrop + 26f, 0.45f,
                          fg * 0.35f, TextAlignment.LEFT);
             }
+            else if (s.SealStatus == Readings.SealNoGasSystem
+                     || s.SealStatus == Readings.SealAwaitingServer)
+            {
+                // NOT an alarm. Pressurisation is server-authoritative and a client can
+                // be waiting on it - drawing a red OPEN there is a false negative with a
+                // siren attached. Dim, dashed, and honest about why.
+                Arc(frame, cx, cy, r, 20f, 30f, 300f, 1f, fg * 0.12f, fg * 0.4f, 48);
+                GaugeLabel(frame, cx, cy, "UNKNOWN", "awaiting server", 1.1f,
+                           fg * 0.5f, fg * 0.35f);
+            }
             else
             {
                 // 300 degrees, not 360: the gap IS the breach.
@@ -605,7 +615,8 @@ namespace GroundTruth
             // does not exist, and reporting that as "no sealed volume" is a false
             // negative dressed as a measurement - the exact failure this mod exists to
             // avoid. Say the instrument cannot answer.
-            else if (s.SealStatus == Readings.SealNoGasSystem) pressure = "UNKNOWN - SERVER DATA";
+            else if (s.SealStatus == Readings.SealNoGasSystem) pressure = "AWAITING SERVER";
+            else if (s.SealStatus == Readings.SealAwaitingServer) pressure = "AWAITING SERVER";
             else if (s.SealStatus == Readings.SealProcessing) pressure = "PRESSURISING";
             else if (s.RoomBlocks <= 0) pressure = "NO ROOM HERE";
             else pressure = string.Format("OPEN ROOM  {0:P0}", s.RoomOxygen);
@@ -624,7 +635,12 @@ namespace GroundTruth
             // Radiation shelter is the reason this block exists, so it is shown here
             // rather than left for the reader to infer from the seal state.
             Text(frame, "PLANETARY RADIATION", px, 310, 0.6f, fg * 0.5f, TextAlignment.LEFT);
-            Text(frame, s.Airtight ? "BLOCKED" : "NOT BLOCKED", px, 338, 0.85f, accent, TextAlignment.LEFT);
+            // "NOT BLOCKED" is a claim about shielding, and it was being made from a
+            // seal reading the client did not have. Unknown seal, unknown shielding.
+            bool sealKnown = s.SealStatus != Readings.SealNoGasSystem
+                          && s.SealStatus != Readings.SealAwaitingServer;
+            Text(frame, sealKnown ? (s.Airtight ? "BLOCKED" : "NOT BLOCKED") : "UNKNOWN",
+                 px, 338, 0.85f, sealKnown ? accent : fg * 0.45f, TextAlignment.LEFT);
 
             if (!s.Airtight && s.Rad.Enabled && s.Rad.Accumulates)
             {

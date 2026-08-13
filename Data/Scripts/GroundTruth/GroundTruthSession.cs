@@ -181,6 +181,7 @@ namespace GroundTruth
             // that corrupted control lists at LoadData, not this event hook. Create()
             // stays in BeforeStart.
             MyAPIGateway.TerminalControls.CustomControlGetter += OnCustomControlGetter;
+            SealSync.Init();
         }
 
         // Entry point for TerminalApi. Returns null for any block that is not one of
@@ -208,6 +209,7 @@ namespace GroundTruth
         {
             if (!_registered) return;
             MyAPIGateway.TerminalControls.CustomControlGetter -= OnCustomControlGetter;
+            SealSync.Close();
             _state.Clear();
             _instance = null;
             _registered = false;
@@ -295,6 +297,11 @@ namespace GroundTruth
             // the readings they watch. An event component gets no update callback of its
             // own - the stock ones hook block events, and a weather reading has none.
             TickEvents();
+
+            // Seal state is the one reading only the server can take, and it must run
+            // whether or not anybody has opened a panel - a breach alarm cannot wait for
+            // someone to look at a screen. Sends only what changed.
+            SealSync.ServerTick();
 
             // Nothing to do until a player has actually opened one of our blocks.
             if (_state.Count == 0) return;
