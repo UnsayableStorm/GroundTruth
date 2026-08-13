@@ -487,3 +487,45 @@ read all three, because required-without-current is a sink nobody is feeding.
 false, verified in game. That matters beyond flavour: if readings are served behind
 `IsWorking`, an unpowered instrument stops answering instead of quietly serving stale
 numbers.
+
+---
+
+## 14. `IsRoomAtPositionAirtight` wants the room's cell, not the block's
+
+**Symptom.** A block reports that it is not in a sealed volume while the air vents beside
+it report the room pressurised. It never reports sealed, anywhere, in any base.
+
+```csharp
+grid.IsRoomAtPositionAirtight(block.Position)     // wrong, and always plausible
+```
+
+`block.Position` is the grid cell the block **fills**. A block is not air, so there is no
+room at that cell to be airtight, and the answer is no in a perfectly sealed compartment.
+
+**What vanilla does.** Air vents test the cell in **front** of themselves:
+
+```csharp
+var faced = block.Position + Base6Directions.GetIntVector(block.Orientation.Forward);
+grid.IsRoomAtPositionAirtight(faced);
+```
+
+**Facing beats a neighbour scan**, and it is worth understanding why, because the
+neighbour version looks more robust and is worse. Consider two blocks on the same ship:
+
+| Block | Faces | Correct answer |
+|---|---|---|
+| Habitat monitor on a room wall | inward | sealed |
+| Radiation monitor on the outer hull | outward | vacuum |
+
+Facing gets both right from one call. A scan of all six neighbours gets the second one
+**wrong**: a hull-mounted block touches a pressurised cell on its inner face, so it would
+claim a shelter it does not have — and shelter is exactly what a radiation reading is for.
+
+**Why this survived testing.** Every test before deployment happened in a space that was
+genuinely unsealed — a landing platform, an open frame — so "not sealed" was the right
+answer for the wrong reason. It took a player standing in a finished, pressurised base to
+produce the first case where the correct answer was yes.
+
+That is the general shape worth remembering: **a predicate that is stuck on one value
+looks correct for as long as you only test cases with that answer.** If a boolean has
+never been observed to be true, it has not been tested — it has been watched.

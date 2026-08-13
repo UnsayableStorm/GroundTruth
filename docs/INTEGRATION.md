@@ -466,7 +466,7 @@ established empirically:
   logging the results, and only then reading the definitions to find what the survey had
   missed.
 
-Thirteen distinct engine behaviours were pinned down this way, several of which are documented
+Fourteen distinct engine behaviours were pinned down this way, several of which are documented
 nowhere else. Custom Event Controller events, in particular, appear to be attempted by
 almost nobody, and the reason turns out to be that the helper class every built-in event
 relies on is prohibited to mods — so all of its work has to be reimplemented.
@@ -607,7 +607,7 @@ else's source read at 2am, a wiki page that says a thing requires an SBC and doe
 which. Every mod author rediscovers the same walls. That is wasted effort at community
 scale.
 
-So `ENGINE_TRAPS.md` ships with this repository: thirteen findings, each written symptom-first,
+So `ENGINE_TRAPS.md` ships with this repository: fourteen findings, each written symptom-first,
 because that is how you meet them. Two `IsBot` properties that disagree about the same
 creature. Sprites that need `LCDTextureDefinition` and silently draw nothing as a
 `TransparentMaterialDefinition`. DDS textures the game ignores without a mip chain.

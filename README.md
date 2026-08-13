@@ -50,7 +50,7 @@ why"*. An instrument that finds nothing has not proved the place is empty.
 | `Data/` | the mod — block definitions, scripts, LCD textures |
 | `Models/`, `Textures/` | art |
 | `docs/INTEGRATION.md` | **API reference and integration guide** for scripters and modders |
-| `docs/ENGINE_TRAPS.md` | **engine findings** — thirteen things that cost real time, published so nobody else pays for them twice |
+| `docs/ENGINE_TRAPS.md` | **engine findings** — fourteen things that cost real time, published so nobody else pays for them twice |
 | `probes/` | whitelist probe mods, ready to copy |
 | `tools/` | the icon build pipeline |
 
