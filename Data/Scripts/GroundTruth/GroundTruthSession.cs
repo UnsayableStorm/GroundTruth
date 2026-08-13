@@ -182,6 +182,13 @@ namespace GroundTruth
             // stays in BeforeStart.
             MyAPIGateway.TerminalControls.CustomControlGetter += OnCustomControlGetter;
             SealSync.Init();
+
+            // Announce the drift rather than waiting for someone to notice a dead panel.
+            var orphans = Instruments.SubtypesWithoutComponent(InstrumentPower.AttachedTo);
+            for (int i = 0; i < orphans.Count; i++)
+                MyLog.Default.WriteLineAndConsole(
+                    "GroundTruth BUG: " + orphans[i] + " is in the Instruments table but no "
+                    + "component attaches to it - no power draw, no seal sync.");
         }
 
         // Entry point for TerminalApi. Returns null for any block that is not one of

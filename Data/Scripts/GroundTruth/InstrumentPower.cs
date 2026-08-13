@@ -29,15 +29,45 @@ namespace GroundTruth
     //     IsWorking to false, verified in game. That matters beyond flavour: every
     //     reading is served behind IsWorking, and GT_SysOperational reports it, so an
     //     unpowered instrument stops answering instead of lying quietly.
+    // THIS LIST MUST MATCH THE Instruments TABLE. An attribute takes compile-time
+    // constants only, so it cannot read the table, and the two drift silently.
+    //
+    // They drifted on 2026-08-11: the four Mk2 subtypes were added to the table, the
+    // definitions, the category and the variant group - and not here. Those blocks
+    // therefore had no power draw and, once seal state moved to a server sync that
+    // registers from this component, never received a seal reading at all. The panel sat
+    // on AWAITING SERVER while the plain Habitat Monitor beside it read a 1656-cell
+    // sealed room.
+    //
+    // Instruments.SubtypesWithoutComponent() checks this at load and logs loudly, so the
+    // next drift announces itself instead of waiting to be noticed in game.
     [MyEntityComponentDescriptor(typeof(MyObjectBuilder_UpgradeModule), false,
         "GT_RadiationMonitor", "GT_RadiationMonitor_S",
         "GT_RadiationMonitorAlt", "GT_RadiationMonitorAlt_S",
         "GT_WeatherStation", "GT_WeatherStation_S",
         "GT_WeatherStationAlt", "GT_WeatherStationAlt_S",
         "GT_BioScanner", "GT_BioScanner_S",
-        "GT_HabitatMonitor", "GT_HabitatMonitor_S")]
+        "GT_BioScannerAlt", "GT_BioScannerAlt_S",
+        "GT_HabitatMonitor", "GT_HabitatMonitor_S",
+        "GT_HabitatMonitorAlt", "GT_HabitatMonitorAlt_S")]
     public class InstrumentPower : MyGameLogicComponent
     {
+        /// <summary>
+        /// Mirror of the descriptor above. Kept adjacent so the two are edited together,
+        /// and compared against the Instruments table at load.
+        /// </summary>
+        public static readonly string[] AttachedTo =
+        {
+            "GT_RadiationMonitor", "GT_RadiationMonitor_S",
+            "GT_RadiationMonitorAlt", "GT_RadiationMonitorAlt_S",
+            "GT_WeatherStation", "GT_WeatherStation_S",
+            "GT_WeatherStationAlt", "GT_WeatherStationAlt_S",
+            "GT_BioScanner", "GT_BioScanner_S",
+            "GT_BioScannerAlt", "GT_BioScannerAlt_S",
+            "GT_HabitatMonitor", "GT_HabitatMonitor_S",
+            "GT_HabitatMonitorAlt", "GT_HabitatMonitorAlt_S"
+        };
+
         private MyResourceSinkComponent _sink;
         private float _megawatts;
         private IMyFunctionalBlock _block;

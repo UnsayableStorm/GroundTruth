@@ -110,6 +110,24 @@ namespace GroundTruth
             return TryGet(subtype, out i) ? i.PowerKW : 0f;
         }
 
+        /// <summary>
+        /// Table entries that no game logic component attaches to. Any result is a bug:
+        /// such a block has no power draw and never registers for seal sync, which is
+        /// invisible until someone stands in front of the panel.
+        /// </summary>
+        public static List<string> SubtypesWithoutComponent(string[] attachedTo)
+        {
+            var missing = new List<string>();
+            foreach (var key in _table.Keys)
+            {
+                bool found = false;
+                for (int i = 0; i < attachedTo.Length; i++)
+                    if (attachedTo[i] == key) { found = true; break; }
+                if (!found) missing.Add(key);
+            }
+            return missing;
+        }
+
         public static int CapabilitiesOf(string subtype)
         {
             Info i;
