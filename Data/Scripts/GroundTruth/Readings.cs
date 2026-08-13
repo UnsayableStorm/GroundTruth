@@ -565,18 +565,27 @@ namespace GroundTruth
         /// What the pressurisation system says about the volume this block sits in.
         /// Oxygen is -1 and blocks 0 when there is no room at all.
         /// </summary>
+        // Why the seal answer is what it is. Reported on the panel, because "not
+        // sealed" was indistinguishable from "the game never told us" for two days.
+        public const int SealOk = 0;          // a room exists and we read it
+        public const int SealNoGasSystem = 1; // the grid exposes no gas system at all
+        public const int SealNoRoom = 2;      // gas system present, no room at this cell
+        public const int SealProcessing = 3;  // pressurisation is still recomputing
+
         public static void ReadSeal(IMyCubeBlock block, out bool airtight,
-                                    out float oxygen, out int roomBlocks)
+                                    out float oxygen, out int roomBlocks, out int status)
         {
             airtight = false;
             oxygen = -1f;
             roomBlocks = 0;
+            status = SealNoRoom;
 
             try
             {
                 var grid = block.CubeGrid;
                 var gas = grid.GasSystem;
-                if (gas == null) return;
+                if (gas == null) { status = SealNoGasSystem; return; }
+                if (gas.IsProcessingData) { status = SealProcessing; return; }
 
                 // Ask for the ROOM, not for a yes/no.
                 //
@@ -602,6 +611,7 @@ namespace GroundTruth
 
                 if (room == null) return;
 
+                status = SealOk;
                 roomBlocks = room.BlockCount;
                 airtight = room.IsAirtight;
 
@@ -616,8 +626,8 @@ namespace GroundTruth
 
         public static bool IsAirtight(IMyCubeBlock block)
         {
-            bool airtight; float oxygen; int blocks;
-            ReadSeal(block, out airtight, out oxygen, out blocks);
+            bool airtight; float oxygen; int blocks; int status;
+            ReadSeal(block, out airtight, out oxygen, out blocks, out status);
             return airtight;
         }
     }

@@ -601,6 +601,8 @@ namespace GroundTruth
             string pressure;
             if (s.Airtight) pressure = "INTEGRITY HELD";
             else if (s.Breached) pressure = "SEAL LOST";
+            else if (s.SealStatus == Readings.SealNoGasSystem) pressure = "NO GAS SYSTEM";
+            else if (s.SealStatus == Readings.SealProcessing) pressure = "PRESSURISING";
             else if (s.RoomBlocks <= 0) pressure = "NO ROOM HERE";
             else pressure = string.Format("OPEN ROOM  {0:P0}", s.RoomOxygen);
 

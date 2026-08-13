@@ -56,6 +56,8 @@ namespace GroundTruth
             // level and a block count.
             public float RoomOxygen;
             public int RoomBlocks;
+            public int SealStatus;
+            public bool SealLogged;
             public bool WasAirtight;
             public bool Breached;
             public double SealedSeconds;
@@ -342,7 +344,27 @@ namespace GroundTruth
             s.LastComputeSeconds = _seconds;
 
             s.Env = Readings.ReadEnvironment(block);
-            Readings.ReadSeal(block, out s.Airtight, out s.RoomOxygen, out s.RoomBlocks);
+            Readings.ReadSeal(block, out s.Airtight, out s.RoomOxygen, out s.RoomBlocks, out s.SealStatus);
+
+            // WHOSE VIEW OF THE ROOMS IS THIS?
+            //
+            // A panel renders on the client, and pressurisation is simulated on the
+            // server. If the room graph is server-side only, a dedicated-server client
+            // sees no rooms and reports NO ROOM HERE on a pressurised ship - which is
+            // exactly what Long Haul reported, while single player was always fine
+            // because there the client IS the server.
+            //
+            // So log the answer once per block per side. Comparing the server log with
+            // the panel settles it without another walk to a sealed room.
+            if (!s.SealLogged && Instruments.RoleOf(block.BlockDefinition.SubtypeName) == Instruments.RoleHabitat)
+            {
+                s.SealLogged = true;
+                bool isServer = MyAPIGateway.Multiplayer == null || MyAPIGateway.Multiplayer.IsServer;
+                MyLog.Default.WriteLineAndConsole(string.Format(
+                    "GT SEAL [{0}] {1}: status={2} airtight={3} room={4} cells o2={5:F2}",
+                    isServer ? "SERVER" : "CLIENT", block.CustomName,
+                    s.SealStatus, s.Airtight, s.RoomBlocks, s.RoomOxygen));
+            }
             s.Rad = Readings.ReadRadiation(block, s.Env, s.Airtight);
 
             // Breach latches once lost, and clears when the seal is restored.
