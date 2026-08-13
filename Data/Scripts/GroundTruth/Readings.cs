@@ -603,8 +603,13 @@ namespace GroundTruth
                 if (room == null) return;
 
                 roomBlocks = room.BlockCount;
-                oxygen = (float)room.OxygenLevel;
                 airtight = room.IsAirtight;
+
+                // OxygenLevel is a METHOD taking the grid's cube size, not a property -
+                // the room stores an absolute amount and needs the cell size to turn it
+                // into a fraction. Reading it as a property is a compile error, which
+                // cost a server round trip on 2026-08-12.
+                oxygen = room.OxygenLevel(block.CubeGrid.GridSize);
             }
             catch { }
         }
