@@ -181,6 +181,11 @@ namespace GroundTruth
             // that corrupted control lists at LoadData, not this event hook. Create()
             // stays in BeforeStart.
             MyAPIGateway.TerminalControls.CustomControlGetter += OnCustomControlGetter;
+
+            // As early as we get to run. Whatever the base control list holds NOW is
+            // what we can hand back if another mod empties it later - see ControlRepair.
+            ControlRepair.Capture();
+
             SealSync.Init();
 
             // Announce the drift rather than waiting for someone to notice a dead panel.
@@ -323,6 +328,12 @@ namespace GroundTruth
             // Registration may have been deferred at BeforeStart because the game had
             // not built the upgrade module control list yet - normal on a client that
             // joins before any grid streams in. Retry until it has.
+            //
+            // Repair runs first and once: if the list is missing its vanilla controls
+            // because another mod emptied the shared one, put them back before we add
+            // ours on top. Doing it in this order means a repaired list then satisfies
+            // the registration gate normally.
+            ControlRepair.Repair();
             TerminalApi.TryCreateDeferred();
 
             TickEvents();
