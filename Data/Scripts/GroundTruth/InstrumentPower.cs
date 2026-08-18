@@ -107,6 +107,16 @@ namespace GroundTruth
             // the same reason the sink attaches here.
             SealSync.Register(Entity as IMyCubeBlock);
 
+            // This block existing is exactly the event that makes terminal registration
+            // safe: an instrument IS an UpgradeModule, so the game has now built that
+            // type's control list, vanilla chain and all. Nudging here rather than
+            // waiting for the one-second retry means a sensor placed by hand publishes
+            // its properties immediately.
+            //
+            // The call is cheap and self-guarding: it returns at once once registration
+            // has happened.
+            TerminalApi.TryCreateDeferred();
+
             if (_megawatts <= 0f) return;
 
             try
