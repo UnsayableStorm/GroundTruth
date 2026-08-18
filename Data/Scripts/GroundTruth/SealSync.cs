@@ -134,6 +134,43 @@ namespace GroundTruth
             return true;
         }
 
+        // ---- the PB API handshake, once a second from the session ----
+
+        private static bool _pollLogged;
+
+        /// <summary>
+        /// Looks for GT_API_ENABLE in the Custom Data of the instruments this class
+        /// already tracks. Runs ONLY while the API is unregistered, and stops forever
+        /// once it is - see the long note on TerminalApi.ConsiderRequest for why this
+        /// exists alongside the CustomDataChanged subscription rather than instead of it.
+        ///
+        /// This registry is the right one to borrow: it is populated from
+        /// InstrumentPower on every instrument the server loads, with no dependence on
+        /// anyone having opened a terminal, which is exactly the condition a dedicated
+        /// server is in.
+        /// </summary>
+        public static void PollForApiRequest()
+        {
+            if (TerminalApi.Registered || _instruments.Count == 0) return;
+
+            if (!_pollLogged)
+            {
+                _pollLogged = true;
+                MyLog.Default.WriteLineAndConsole(
+                    "GT TERMINAL: PB handshake armed, watching " + _instruments.Count
+                    + " instrument(s) for GT_API_ENABLE in Custom Data.");
+            }
+
+            foreach (var kv in _instruments)
+            {
+                var terminal = kv.Value as IMyTerminalBlock;
+                if (terminal == null || terminal.Closed) continue;
+
+                TerminalApi.ConsiderRequest(terminal, "poll");
+                if (TerminalApi.Registered) return;   // done, and never runs again
+            }
+        }
+
         // ---- server tick, once a second from the session ----
 
         public static void ServerTick()

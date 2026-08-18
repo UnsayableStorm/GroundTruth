@@ -8,9 +8,15 @@ using VRage.Utils;
 
 namespace GroundTruth
 {
-    // Putting back what somebody else took.
+    // DEAD CODE, KEPT AS A RECORD. Nothing calls this. It was written to repair damage
+    // we believed another mod was doing, and the belief was wrong: the empty control
+    // list was OUR doing, caused by Ground Truth calling into MyAPIGateway.
+    // TerminalControls on its own schedule. Registering only when the game asks fixed
+    // it outright, and this file has had no call site since 2026-08-18. Read the
+    // accusation below with that correction in mind - the pattern described is real
+    // code, but nothing here establishes that it was responsible for what we saw.
     //
-    // THE DAMAGE
+    // THE DAMAGE, AS IT WAS UNDERSTOOD AT THE TIME
     //
     // Animation Engine (Workshop 2880317963), TerminalControlHelper.SetPosition, does
     // this to the IMyTerminalBlock control list - the shared list holding Name, OnOff,
@@ -71,11 +77,13 @@ namespace GroundTruth
         //     at Draygo.BlockExtensionsAPI.DefinitionExtensionsAPICore
         //         .TerminalControls_CustomControlGetter
         //
-        // Their cast is unsafe and it is their bug. It never fired before because the
-        // control it needed never existed on this block type. We do not get to graft
-        // a control onto a type that never had one, discover that a same-named control
-        // means something different in another mod's world, and call the result a
-        // repair. Same-id-different-type is not a hazard specific to OnOff - it is
+        // OUR bug, not theirs. Their cast assumes a control named "OnOff" on a block
+        // type is the switch that has always been there - which was true of every world
+        // that existed until we grafted a foreign control onto that type under the same
+        // id. It never fired before because the situation could not arise. We do not get
+        // to invent a control on a type that never had one, discover that a same-named
+        // control means something different in another mod's world, and call the result
+        // a repair. Same-id-different-type is not a hazard specific to OnOff - it is
         // inherent to searching by id across interfaces we do not own - so Find() below
         // now verifies TYPE, not just id, before returning anything harvested.
         // CustomData is deliberately not attempted, harvest or synthesis. Vanilla
@@ -301,7 +309,7 @@ namespace GroundTruth
         }
 
         // Same id does not mean same control across interfaces we do not own - that is
-        // what broke Draygo's mod. Every id we might harvest has one specific vanilla
+        // how we crashed clients through Draygo's Block Extensions API. Every id we might harvest has one specific vanilla
         // shape, checked here before anything is accepted.
         private static bool MatchesExpectedShape(string id, IMyTerminalControl c)
         {

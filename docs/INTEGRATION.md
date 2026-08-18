@@ -22,6 +22,7 @@ when it is missing.
 ## Contents
 
 - [Quick start](#quick-start)
+- [Waking the API on a server](#waking-the-api-on-a-server)
 - [Finding instruments](#finding-instruments)
 - [Conventions that matter](#conventions-that-matter)
 - [Property reference](#property-reference)
@@ -37,8 +38,12 @@ when it is missing.
 
 ```csharp
 // Every instrument is an UpgradeModule block. Filter by role to exclude other modules.
+//
+// GetProperty, not GetValueFloat: GetValueFloat THROWS when a property does not exist,
+// and on a dedicated server it does not exist until something asks for it. See the next
+// section - a one-line handshake at the top of your script covers it.
 var sensors = new List<IMyUpgradeModule>();
-GridTerminalSystem.GetBlocksOfType(sensors, b => b.GetValueFloat("GT_SysBlockRole") > 0);
+GridTerminalSystem.GetBlocksOfType(sensors, b => b.GetProperty("GT_SysBlockRole") != null);
 
 foreach (var s in sensors)
 {
@@ -55,6 +60,75 @@ means, not a purpose.
 
 The two Rotating Antennas are the exception: those are real `RadioAntenna` blocks,
 they carry no `GT_` properties, and broadcasting is their entire point.
+
+---
+
+## Waking the API on a server
+
+**If your script runs on a dedicated server, do this once at the top. It is two lines.**
+
+```csharp
+// Ask Ground Truth to register its properties in this process. Harmless to repeat,
+// harmless in single player, and a no-op once done.
+foreach (var b in sensors) b.CustomData = "GT_API_ENABLE";
+```
+
+The properties are then available from the **next** run onward. The mod notices the
+token within a second — it polls the instruments it already tracks while the API is
+unregistered, and stops the moment it registers. A script that wants to be
+self-sufficient asks and returns:
+
+```csharp
+var sensors = new List<IMyUpgradeModule>();
+GridTerminalSystem.GetBlocksOfType(sensors,
+    b => b.BlockDefinition.SubtypeName.StartsWith("GT_"));
+
+if (sensors.Count > 0 && sensors[0].GetProperty("GT_SysBlockRole") == null)
+{
+    sensors[0].CustomData = "GT_API_ENABLE";
+    Echo("Ground Truth API requested - properties available next run.");
+    return;
+}
+```
+
+Note the subtype filter in that second snippet. It finds instruments **without** using a
+`GT_` property, which is the whole point: you cannot detect the API with the API when the
+question is whether the API exists yet.
+
+Ground Truth replaces the token with `GT_API_READY` when it registers, so the Custom Data
+afterwards reads as a record of what happened rather than as a magic word left lying
+around. It writes nothing else and leaves any other Custom Data content alone.
+
+### Why this is necessary
+
+Terminal properties on a client register the moment anyone opens any terminal — the game
+hands the mod its control list and the mod fills it in. That hook is UI, and a dedicated
+server has no UI, so it never fires there.
+
+Programmable Blocks execute **server-side** in multiplayer. So on a DS the one process
+that most needs the properties is the one process that never got them. Measured on a live
+server with `tools/pb_property_probe.cs`:
+
+```
+GT instruments on grid (by subtype): 5
+Blocks exposing GT_ properties:      0
+```
+
+The obvious alternative was for the mod to register itself on a timer at world load. That
+was deliberately not done. Registering terminal controls on a mod's own schedule, rather
+than when the game asks, is what corrupted **every upgrade module in the game** during
+development — vanilla modules, other mods' shield generators and warp drives, all of them
+losing Name, Show In Terminal and Show In Toolbar Config, because the control list is
+shared across the whole block type and a mod that touches it early decides when it comes
+into existence. That took four builds to isolate and is written up in `ENGINE_TRAPS.md`.
+
+Being fairly confident it would be harmless on a machine that renders no terminal is not
+the same as knowing. So Ground Truth touches that list in exactly two situations, and both
+are somebody else's decision: the game built a list and handed it over, or a script author
+explicitly asked. Servers where nobody asked are never touched at all.
+
+The cost is this paragraph and one line in your script. It is a fair trade for not
+breaking other people's blocks.
 
 ---
 

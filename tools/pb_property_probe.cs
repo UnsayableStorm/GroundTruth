@@ -3,17 +3,20 @@
 // Answers one question: can a Programmable Block see the GT_ terminal properties?
 //
 // It matters because Programmable Blocks execute SERVER-SIDE in multiplayer, while
-// terminal property registration was moved (2026-08-18) into CustomControlGetter - a
-// UI hook that a dedicated server never fires. If that leaves the server without our
-// properties, PB scripts and other mods lose the entire API on every DS, while single
-// player keeps working perfectly and hides it.
+// terminal property registration happens in CustomControlGetter - a UI hook that a
+// dedicated server never fires. On a DS the properties therefore do not exist until
+// something asks for them, which a script does by writing GT_API_ENABLE into the Custom
+// Data of any Ground Truth instrument. This probe performs that handshake, so it doubles
+// as the worked example for script authors.
 //
 // Paste into any Programmable Block on a grid that has at least one Ground Truth
 // instrument, then Run. Read the output in the PB's detail panel.
 //
-// GetProperty is used rather than GetValueFloat because GetValueFloat THROWS when the
-// property is absent - which is the exact case being tested. GetProperty returns null
-// instead, so absence can be reported rather than crashing the script.
+//   Run 1 on a fresh server: reports the API is absent and requests it.
+//   Run 2:                   PASS, with live values.
+//
+// GetProperty is used throughout rather than GetValueFloat, because GetValueFloat THROWS
+// when the property is absent - which is the exact case being tested.
 
 public Program()
 {
@@ -31,6 +34,7 @@ public void Main(string argument, UpdateType updateSource)
     int upgradeModulesWithName = 0;
 
     var firstInstrument = (IMyTerminalBlock)null;
+    var anyBySubtype = (IMyTerminalBlock)null;
 
     for (int i = 0; i < blocks.Count; i++)
     {
@@ -55,9 +59,15 @@ public void Main(string argument, UpdateType updateSource)
 
         // Subtype check is independent of registration: it identifies our blocks even
         // when the properties are missing, which is what distinguishes "no instruments
-        // on this grid" from "instruments present but API not registered".
+        // on this grid" from "instruments present but API not registered". It is also
+        // how the handshake finds a block to write to - you cannot detect the API with
+        // the API when the question is whether the API exists.
         var sub = b.BlockDefinition.SubtypeName;
-        if (sub.StartsWith("GT_") && !sub.StartsWith("GT_RotatingRadarDish")) instruments++;
+        if (sub.StartsWith("GT_") && !sub.StartsWith("GT_RotatingRadarDish"))
+        {
+            instruments++;
+            if (anyBySubtype == null) anyBySubtype = b;
+        }
     }
 
     Echo("=== Ground Truth PB probe ===");
@@ -76,9 +86,15 @@ public void Main(string argument, UpdateType updateSource)
 
     if (withGtProps == 0)
     {
-        Echo("VERDICT: FAIL. Instruments are present but expose NO GT_ properties.");
-        Echo("The API is not registered in the process running this script.");
-        Echo("On a server that means registration never happened server-side.");
+        // This is the expected first-run result on a dedicated server, not a failure.
+        // Ask for the API and stop; the next run reads it.
+        anyBySubtype.CustomData = "GT_API_ENABLE";
+
+        Echo("API not registered in this process - REQUESTED IT.");
+        Echo("Wrote GT_API_ENABLE to " + anyBySubtype.CustomName + ".");
+        Echo("");
+        Echo("Run this script again. If the second run still shows 0, the request");
+        Echo("did not reach the mod - check the server log for a 'GT TERMINAL' line.");
         return;
     }
 
@@ -91,6 +107,11 @@ public void Main(string argument, UpdateType updateSource)
     EchoProp(firstInstrument, "GT_EnvOxygen");
     EchoBool(firstInstrument, "GT_HabSealKnown");
     EchoBool(firstInstrument, "GT_HabAirtight");
+
+    // Confirms the mod acknowledged the handshake rather than the properties having been
+    // registered by someone opening a terminal in the same process (single player).
+    if (anyBySubtype != null && anyBySubtype.CustomData.Contains("GT_API_READY"))
+        Echo("Handshake acknowledged (GT_API_READY).");
 }
 
 void EchoProp(IMyTerminalBlock b, string id)

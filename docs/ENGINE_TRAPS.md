@@ -632,3 +632,81 @@ var orphans = Instruments.SubtypesWithoutComponent(InstrumentPower.AttachedTo);
 
 Log loudly for each. The lists still have to be edited together, but the next drift
 announces itself at load instead of waiting to be found in front of a dead panel.
+
+---
+
+## 18. A UI hook never fires on a dedicated server, and PB scripts run there
+
+**Symptom.** A mod's terminal properties work perfectly in single player and are
+completely absent on a server. No error, no log line, nothing to search for.
+
+`CustomControlGetter` is the correct place to register terminal controls — it is the
+game telling you it has built the control list, which is the only timing that does not
+corrupt the shared list for every block of that type (trap 11). But it is a **UI** hook.
+A dedicated server renders no terminal, so it never fires there at all.
+
+That would be a cosmetic problem if terminal properties were only read by players. They
+are not. **Programmable Blocks execute server-side in multiplayer**, so the one process
+that most needs the properties is the one process that never registers them. Measured on
+a live server, with five instruments on the grid:
+
+```
+GT instruments on grid (by subtype): 5
+Blocks exposing GT_ properties:      0     <- API absent server-side
+Upgrade modules on grid:            39
+  ...still have 'Name':             39     <- vanilla list intact, so this is not trap 11
+```
+
+Both numbers matter. The second one is what proves the diagnosis: the list is healthy
+and our properties are simply not in it.
+
+**The fix that is wrong.** Register on a timer at world load, gated on the list looking
+built. That is exactly the proactive shape that caused trap 11, now aimed at other
+people's servers, and "probably harmless where nothing is rendered" is not knowledge.
+
+**The fix.** Make it an explicit request, and give scripts a way to make one. A PB writes
+a token into the Custom Data of one of the mod's own blocks; the mod registers when it
+sees it. Nothing happens on a server where nobody asked.
+
+```csharp
+// In the PB script, once:
+block.CustomData = "GT_API_ENABLE";   // properties exist from the next run onward
+```
+
+**`CustomDataChanged` does not fire for this.** The obvious implementation subscribes to
+`IMyTerminalBlock.CustomDataChanged` per block — a push event, no polling. That was
+built, published and tested on a live server, and it did not work: the probe requested
+the API on run 1 and run 2 still reported zero blocks exposing properties. The write
+itself lands; the event does not reach a mod handler on a dedicated server for a
+PB-driven write.
+
+So the mod polls instead — the Custom Data of the blocks it already tracks, once a
+second, **only while unregistered**, stopping permanently the first time anyone asks:
+
+```csharp
+public static void PollForApiRequest()
+{
+    if (TerminalApi.Registered || _instruments.Count == 0) return;
+    foreach (var kv in _instruments) { /* look for the token */ }
+}
+```
+
+Keep the event subscription anyway — it costs nothing and may fire in cases the poll
+would only catch a second later — but do not depend on it. Log which mechanism actually
+triggered registration, so the next reader inherits an answer rather than this paragraph.
+
+**The general lesson.** "Push event exists, therefore push event fires" is an assumption,
+and on a dedicated server the whole class of UI-adjacent engine events is where that
+assumption goes to die. If a bounded poll over a list you already maintain would cost
+almost nothing, that is not a workaround to be ashamed of — it is the version that works.
+
+**Consequence.** Any mod exposing an API through terminal properties has to decide who
+triggers registration, and every available answer is a trade. Registering when the game
+asks is safe and misses dedicated servers. Registering on your own schedule reaches
+everything and can corrupt the shared control list. Registering on request reaches
+everything safely and requires the consumer to know the convention — which means it must
+be the first thing in the integration guide, not a footnote.
+
+**Corollary worth remembering separately.** `GetValueFloat` **throws** when a property is
+absent. Any script that tests for an optional property must use `GetProperty(id) != null`,
+or a missing API becomes a script crash instead of a graceful degradation.

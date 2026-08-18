@@ -107,6 +107,19 @@ namespace GroundTruth
             // the same reason the sink attaches here.
             SealSync.Register(Entity as IMyCubeBlock);
 
+            // The PB handshake that gives dedicated servers the property API - see the
+            // long note in TerminalApi. Subscribing costs nothing until a script writes
+            // the token, and it is the only route to these blocks on a machine where no
+            // terminal is ever opened. Subscribed on clients too: harmless there, and a
+            // script written against a server should behave identically in single
+            // player.
+            var terminal = Entity as IMyTerminalBlock;
+            if (terminal != null)
+            {
+                terminal.CustomDataChanged -= TerminalApi.OnInstrumentCustomDataChanged;
+                terminal.CustomDataChanged += TerminalApi.OnInstrumentCustomDataChanged;
+            }
+
             // There used to be a TerminalApi nudge here, on the theory that a block
             // existing proves its type's control list is already built. Disproven
             // 2026-08-18: registering GT_ properties reactively, purely from
@@ -152,6 +165,10 @@ namespace GroundTruth
         public override void Close()
         {
             SealSync.Unregister(Entity as IMyCubeBlock);
+
+            var terminal = Entity as IMyTerminalBlock;
+            if (terminal != null)
+                terminal.CustomDataChanged -= TerminalApi.OnInstrumentCustomDataChanged;
         }
 
         // Off means off. A disabled instrument costs nothing, which is the whole point

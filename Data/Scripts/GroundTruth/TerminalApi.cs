@@ -111,6 +111,136 @@ namespace GroundTruth
             RegisterAll();
         }
 
+        // ---- the server half: an explicit request, not a timer ----
+        //
+        // CustomControlGetter is a UI hook. A dedicated server has no UI, so it never
+        // fires there and the reactive path above never runs - which left the API dead
+        // on every DS. Measured 2026-08-18 with tools/pb_property_probe.cs:
+        //
+        //   GT instruments on grid (by subtype): 5
+        //   Blocks exposing GT_ properties:      0     <- API absent server-side
+        //   Upgrade modules on grid:            39
+        //     ...still have 'Name':             39     <- vanilla list intact
+        //
+        // Programmable Blocks execute server-side in multiplayer, so that output is the
+        // SERVER's view: its control list is healthy and our properties are not in it.
+        //
+        // The obvious fix was a server-side timer - wait until the list looks built,
+        // then register. That is rejected on purpose. A timer is precisely the shape
+        // that broke every upgrade module in the game four builds running: we decide
+        // when to touch a shared list, on our schedule rather than the game's, on
+        // machines whose owner never asked us to. Being fairly confident it is harmless
+        // where no terminal is rendered is not the same as knowing, and the blast radius
+        // is other people's servers and other mods' blocks.
+        //
+        // So the server half is opt-in. Nothing here runs until a Programmable Block
+        // asks for it, by writing GT_API_ENABLE into the Custom Data of any Ground Truth
+        // instrument. IMyTerminalBlock.CustomDataChanged makes that free - a push, no
+        // polling, no scanning - and InstrumentPower subscribes every instrument to it,
+        // which SealSync already proves reaches blocks on a server where no pane has
+        // ever been opened.
+        //
+        // The result is that Ground Truth calls into MyAPIGateway.TerminalControls in
+        // exactly two situations, and both are somebody else's decision: the game built
+        // a control list and handed it to us, or a script author explicitly asked for
+        // the API. There is no third path, and no unattended server is ever touched.
+        //
+        // The cost is that PB authors have to know to ask. That is documented in
+        // docs/API_SURFACE.md and in tools/pb_property_probe.cs, and it is a fair trade
+        // for never again corrupting a terminal nobody consented to have us touch.
+        public const string EnableToken = "GT_API_ENABLE";
+        public const string ReadyToken = "GT_API_READY";
+
+        /// <summary>True once the properties exist in this process.</summary>
+        public static bool Registered { get { return _created; } }
+
+        /// <summary>
+        /// Subscribed to CustomDataChanged on every instrument by InstrumentPower.
+        /// </summary>
+        public static void OnInstrumentCustomDataChanged(IMyTerminalBlock block)
+        {
+            ConsiderRequest(block, "CustomDataChanged");
+        }
+
+        /// <summary>
+        /// The handshake decision, reachable from either mechanism.
+        ///
+        /// TWO MECHANISMS, ON PURPOSE. CustomDataChanged was the whole design - a push
+        /// event, no polling - and on a live server it did not fire for a PB-driven
+        /// write. Tested 2026-08-18: the probe requested the API on run 1 and run 2 still
+        /// reported zero blocks exposing properties.
+        ///
+        /// Rather than establish exactly which writes raise that event on a dedicated
+        /// server, SealSync also polls the Custom Data of the instruments it already
+        /// tracks, once a second, and ONLY while unregistered. That list exists anyway,
+        /// it is a handful of blocks, and the loop stops permanently the moment anyone
+        /// asks. Paying a trivial known cost beats depending on an engine behaviour that
+        /// has already been observed not to happen.
+        ///
+        /// The `via` argument survives into the log so the next reader can see which one
+        /// actually did the work, instead of inheriting the same uncertainty.
+        /// </summary>
+        public static void ConsiderRequest(IMyTerminalBlock block, string via)
+        {
+            if (block == null) return;
+
+            string data = block.CustomData;
+            if (string.IsNullOrEmpty(data)) return;
+            if (data.IndexOf(EnableToken, StringComparison.OrdinalIgnoreCase) < 0) return;
+
+            if (!_created)
+            {
+                _created = true;
+                // Logged either way rather than gated on: the request is explicit, and
+                // refusing it would leave the author with a silent failure and nothing
+                // to diagnose. If the list is not built by the time a PB is running,
+                // something emptied it, and that is worth logging - but it is not a
+                // reason to withhold the API, and it is not by itself evidence about
+                // WHICH mod did it. An earlier build of this mod logged that same
+                // condition and blamed Animation Engine for it; the culprit turned out
+                // to be this mod. Log the observation, name no names.
+                MyLog.Default.WriteLineAndConsole(VanillaListIsBuilt()
+                    ? "GT TERMINAL: API registered on request from " + block.CustomName
+                      + " via " + via + " (control list already built by the game)."
+                    : "GT TERMINAL: API registered on request from " + block.CustomName
+                      + " via " + via + " - WARNING: the upgrade module control list has "
+                      + "no 'Name' control, so something emptied it before we were "
+                      + "asked. Ground Truth no longer touches that list unasked, so it "
+                      + "is not us; which mod it is, this log line does not establish.");
+                RegisterAll();
+            }
+
+            // Acknowledge in place, so the script can confirm the handshake and so the
+            // Custom Data reads afterwards as a record of what happened rather than as a
+            // magic word. Replaces only the token, leaving any panel selection
+            // PanelControls wrote alongside it untouched. This re-enters through
+            // CustomDataChanged once more, finds no ENABLE token, and stops.
+            block.CustomData = ReplaceToken(data, EnableToken, ReadyToken);
+        }
+
+        private static string ReplaceToken(string data, string from, string to)
+        {
+            int i = data.IndexOf(from, StringComparison.OrdinalIgnoreCase);
+            return i < 0 ? data : data.Substring(0, i) + to + data.Substring(i + from.Length);
+        }
+
+        // Name specifically, not merely a non-empty list: another mod's additions are no
+        // proof that the vanilla inheritance chain has run. Diagnostic only - nothing
+        // branches on the result except the wording of a log line.
+        private static bool VanillaListIsBuilt()
+        {
+            try
+            {
+                List<IMyTerminalControl> list;
+                MyAPIGateway.TerminalControls.GetControls<IMyUpgradeModule>(out list);
+                if (list == null) return false;
+                for (int i = 0; i < list.Count; i++)
+                    if (list[i] != null && list[i].Id == "Name") return true;
+                return false;
+            }
+            catch { return false; }
+        }
+
         private static void RegisterAll()
         {
             LogControls("BEFORE our 76");

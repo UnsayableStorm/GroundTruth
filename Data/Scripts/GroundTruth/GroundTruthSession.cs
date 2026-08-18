@@ -355,6 +355,11 @@ namespace GroundTruth
             // someone to look at a screen. Sends only what changed.
             SealSync.ServerTick();
 
+            // Dedicated servers never fire CustomControlGetter, so a PB - which executes
+            // server-side - has to ask for the property API itself. Stops permanently
+            // the moment it is registered, and never registers anything unasked.
+            SealSync.PollForApiRequest();
+
             // Nothing to do until a player has actually opened one of our blocks.
             if (_state.Count == 0) return;
 
