@@ -194,9 +194,13 @@ namespace GroundTruth
             // stays in BeforeStart.
             MyAPIGateway.TerminalControls.CustomControlGetter += OnCustomControlGetter;
 
-            // As early as we get to run. Whatever the base control list holds NOW is
-            // what we can hand back if another mod empties it later - see ControlRepair.
-            ControlRepair.Capture();
+            // DISABLED for the same reason TerminalApi's registration is disabled -
+            // see below. Capture() calls GetControls<IMyTerminalBlock>, and that is a
+            // terminal-control-system call too, made at LoadData: the EARLIEST point
+            // GT runs. The previous "GT touches nothing" test still called this,
+            // unconditionally, so it was never actually a clean test - this was missed
+            // and the wrong conclusion nearly followed from it.
+            // ControlRepair.Capture();
 
             SealSync.Init();
 
