@@ -341,17 +341,29 @@ namespace GroundTruth
             // not built the upgrade module control list yet - normal on a client that
             // joins before any grid streams in. Retry until it has.
             //
-            // Repair runs first and once: if the list is missing its vanilla controls
-            // because another mod emptied the shared one, put them back before we add
-            // ours on top. Doing it in this order means a repaired list then satisfies
-            // the registration gate normally.
-            // Registration FIRST, repair second. Repair judges the upgrade module list
-            // by whether it is populated but missing Name, and on a damaged server the
-            // list is empty until our own registration puts something in it. Reversing
-            // these two leaves repair looking at an empty list forever, unable to tell
-            // "destroyed" from "not built yet".
+            // REPAIR IS DISABLED. 2026-08-18: a clean A/B on Long Haul - same world,
+            // only change is removing Ground Truth entirely - showed the shield
+            // generator's terminal controls (Name, Show in Terminal) return to normal
+            // the moment Ground Truth is absent, with Animation Engine and every other
+            // mod unchanged. That implicates something WE do, not merely Animation
+            // Engine's presence, and ControlRepair - which mutates a list SHARED with
+            // every other upgrade module in the game, including other mods' blocks -
+            // is the newest and most invasive code in this file. It did not exist when
+            // the base 76-property registration below was independently verified safe
+            // in single player, days before ControlRepair was written.
+            //
+            // Turned off rather than patched again: this session already shipped one
+            // fix that crashed a client (the OnOff graft, see git history), and the
+            // honest response to a second unexplained regression is to remove the
+            // newest suspect and re-test, not add a third layer on top of two we do
+            // not yet fully understand.
+            //
+            // If reselecting affected blocks with repair off restores their controls,
+            // the fault is in registration itself and repair was never the cause -
+            // which the combined test could not distinguish. If they come back, the
+            // fault is confirmed to be in ControlRepair.
             TerminalApi.TryCreateDeferred();
-            ControlRepair.Repair();
+            // ControlRepair.Repair();
 
             TickEvents();
 
