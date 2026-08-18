@@ -69,8 +69,33 @@ namespace GroundTruth
 
         private static bool _created;
 
+        // DIAGNOSTIC KILL SWITCH - 2026-08-18.
+        //
+        // Disabling ControlRepair.Repair() did not restore the shield generator's
+        // controls in the same modded single-player world: the symptom was identical
+        // with repair on and off. That clears repair and leaves exactly one thing GT
+        // still does to the shared IMyUpgradeModule control list - registering these
+        // 76 properties via GetControls/AddControl.
+        //
+        // Setting this true makes Create() and TryCreateDeferred() no-ops: GT touches
+        // that list NOT AT ALL. Every other GT feature (readings, panels, events,
+        // seal sync) keeps running - only the terminal property API and the vanilla
+        // repair are affected, and PB scripts will see none of the GT_ properties for
+        // as long as this is true.
+        //
+        // If shield/modules recover their vanilla controls with this on, the fault is
+        // in the act of registering against IMyUpgradeModule at all - which is the
+        // 2026-08-09 mechanism (narrow interface still means EVERY block of that type
+        // shares the list) applying here regardless of timing or gating.
+        //
+        // If they do NOT recover even with GT touching nothing, GT is not the cause of
+        // this specific world's symptom - something else in this mod combination is,
+        // and it should be chased separately rather than assumed to be us.
+        public const bool RegistrationDisabledForTesting = true;
+
         public static void Create()
         {
+            if (RegistrationDisabledForTesting) return;
             if (_created) return;
 
             // NEVER BE THE MOD THAT CREATES THIS LIST.
@@ -126,6 +151,7 @@ namespace GroundTruth
 
         public static bool TryCreateDeferred()
         {
+            if (RegistrationDisabledForTesting) return false;
             if (_created) return true;
 
             if (VanillaControlsExist())
