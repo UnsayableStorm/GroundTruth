@@ -21,12 +21,32 @@ namespace GroundTruth
     // real surface. Absolute pixel positions looked correct on a small LCD and left
     // everything huddled in the top third of a cockpit screen.
     //
-    // Colours come from the surface's own script colour settings, so a player who has
+    // Text colour comes from the surface's own script colour setting, so a player who has
     // themed their cockpit keeps their theme.
+    //
+    // THE BACKGROUND IS FORCED BLACK, and is the one colour that is not the player's.
+    // SE's default script background is a mid blue, and every panel here is built as an
+    // instrument face - bright values, dim chrome, colour carrying severity. On blue,
+    // amber caution and red danger both wash out to roughly the same muddy pink and the
+    // palette stops meaning anything, which is the whole load-bearing part of it.
     public abstract class TssBase : MyTSSCommon
     {
         protected const float Canvas = 512f;
         protected const float Pad = 22f;
+
+        // The header row. The title and the source-block name share it at the SAME
+        // brightness - dimming the name is what made it unreadable across a room.
+        //
+        // The name is a shade smaller, and only because block names are long: at title
+        // scale "HABITAT" leaves about 19 characters on a square LCD, and the difference
+        // between 19 and 23 is the difference between reading a room name and reading
+        // most of one. Brightness carries the legibility; scale only buys width.
+        protected const float TitleScale = 0.85f;
+        protected const float SourceScale = 0.7f;
+
+        // ~20 canvas units per character at scale 1.0, measured against the Debug font.
+        // Same constant OverviewPanel sizes its cells with.
+        protected const float CharWidthAt1 = 20f;
 
         // Semantic palette. Chrome - titles, rules, labels - still follows the surface's
         // script colour so a themed cockpit stays themed. STATE does not: a reading that
@@ -44,10 +64,16 @@ namespace GroundTruth
         protected readonly IMyCubeBlock Block;
 
         private IMyTerminalBlock _instrument;
-        private int _searchCooldown;
 
         /// <summary>The instrument this app is currently reading, or null.</summary>
         protected IMyTerminalBlock Instrument { get { return _instrument; } }
+
+        // How a role resolved. The difference matters on screen: nothing of this role
+        // on the grid is a normal, buildable state, while a selector that matched
+        // nothing is a typo the player needs told about.
+        protected const int MatchOk = 0;
+        protected const int MatchNone = 1;
+        protected const int MatchNoName = 2;
 
         // Unit conversion for the virtual canvas.
         protected float U;
@@ -62,6 +88,18 @@ namespace GroundTruth
         {
             Surface = surface;
             Block = block;
+
+            // Set here rather than in Run: the constructor fires when the app is chosen,
+            // so the surface goes black at the moment the player picks it and STAYS
+            // settable afterwards. Reasserting it every draw would take the control away
+            // permanently, and a panel that silently undoes a terminal setting is worse
+            // than one that starts on a colour you did not pick.
+            //
+            // The value is saved with the surface, so this costs one assignment on
+            // selection and one per world load, both of which are already no-ops the
+            // second time.
+            try { surface.ScriptBackgroundColor = Color.Black; }
+            catch { }
         }
 
         protected abstract float WantedRole { get; }
@@ -94,13 +132,17 @@ namespace GroundTruth
 
             var fg = Surface.ScriptForegroundColor;
 
+            // Before anything is resolved: a Custom Data edit invalidates every cached
+            // instrument, and the player expects the panel to follow within a second.
+            RefreshSelection();
+
             if (!RequiresInstrument)
             {
                 using (var multi = Surface.DrawFrame())
                 {
                     if (DrawsChrome)
                     {
-                        Text(multi, Title, Pad, 16, 0.85f, fg, TextAlignment.LEFT);
+                        Text(multi, Title, Pad, 16, TitleScale, fg, TextAlignment.LEFT);
                         Rule(multi, 58, fg * 0.9f, 2f);
                     }
                     DrawStandalone(multi, fg);
@@ -108,25 +150,46 @@ namespace GroundTruth
                 return;
             }
 
-            var instrument = FindInstrument();
+            int status;
+            var instrument = Resolve(WantedRole, out status);
+            _instrument = instrument;
             var state = instrument == null ? null : GroundTruthSession.StateFor(instrument);
 
             using (var frame = Surface.DrawFrame())
             {
-                Text(frame, Title, Pad, 16, 0.85f, fg, TextAlignment.LEFT);
+                Text(frame, Title, Pad, 16, TitleScale, fg, TextAlignment.LEFT);
                 Rule(frame, 58, fg * 0.9f, 2f);
 
                 if (state == null)
                 {
-                    Text(frame, "NO INSTRUMENT", Pad, 96, 1.5f, fg * 0.55f, TextAlignment.LEFT);
-                    Text(frame, "On this grid:", Pad, 180, 0.7f, fg * 0.45f, TextAlignment.LEFT);
+                    // Two different failures, and they need different fixes. A named
+                    // selector that matched nothing is a typo; showing the nearest
+                    // instrument instead would be the panel quietly answering a
+                    // question nobody asked.
+                    var want = Selection.For(WantedRole);
+                    bool named = status == MatchNoName && want != null;
+
+                    Text(frame, named ? "NO MATCH" : "NO INSTRUMENT", Pad, 96, 1.5f,
+                         fg * 0.55f, TextAlignment.LEFT);
+
+                    // Named the block, then renamed or removed it. Say the name back
+                    // rather than dropping to nearest: the setting is not being applied
+                    // and the screen is the only thing that can say so.
+                    if (named)
+                        Text(frame, "Selected: \"" + want + "\"  (not on this grid)", Pad, 146,
+                             0.6f, Caution * 0.8f, TextAlignment.LEFT);
+
+                    Text(frame, named ? "Names available:" : "On this grid:", Pad, 180, 0.7f,
+                         fg * 0.45f, TextAlignment.LEFT);
 
                     // Say what IS on the grid rather than only what is missing. A bare
                     // "not found" cannot distinguish an absent block from one the app
-                    // failed to recognise, and those need different fixes.
+                    // failed to recognise, and those need different fixes. When a
+                    // selector is in play the list is narrowed to the wanted role, so
+                    // it reads as the set of names that would have worked.
                     float y = 214;
                     int found = 0;
-                    foreach (var line in DescribeInstruments())
+                    foreach (var line in DescribeInstruments(named ? WantedRole : 0f))
                     {
                         if (y > 460) break;
                         Text(frame, line, Pad, y, 0.65f, fg * 0.5f, TextAlignment.LEFT);
@@ -137,87 +200,230 @@ namespace GroundTruth
                     return;
                 }
 
+                DrawSource(frame, instrument, fg);
                 Draw(frame, state, fg);
             }
         }
 
-        // Grid walks are expensive, so the instrument is cached and only re-found when
-        // the cached one has gone away - and then no more than once every few updates.
-        private IMyTerminalBlock FindInstrument()
+        // The name of the block this panel is reading, in the header beside the title.
+        //
+        // On a base with a Habitat Monitor per room the reading is only interpretable if
+        // you know which room it came from - SEALED means nothing without it. The
+        // dropdown answers that in the terminal; this answers it from across the room,
+        // which is where panels are actually read from.
+        //
+        // Drawn as the title's PEER - same font, same brightness, same row.
+        //
+        // The first version was small and at 45% foreground, on the reasoning that
+        // provenance should not compete with the reading. It could not be read from
+        // across the room, which is the only place this label is any use. The reading
+        // does not need protecting: SEALED is bright green against a dim header and
+        // dominates regardless of what shares the row with the title.
+        private void DrawSource(MySpriteDrawFrame frame, IMyTerminalBlock instrument, Color fg)
         {
-            if (_instrument != null && !_instrument.Closed && _instrument.CubeGrid == Block.CubeGrid)
-                return _instrument;
+            if (instrument == null) return;
 
-            if (_searchCooldown > 0) { _searchCooldown--; return null; }
-            _searchCooldown = 3;
+            var name = instrument.DisplayNameText;
+            if (string.IsNullOrEmpty(name)) return;
 
-            var grid = Block.CubeGrid as IMyCubeGrid;
-            if (grid == null) return null;
+            // The title owns the left of the row; what is left over is the room, less a
+            // gap so the two never touch.
+            float room = ContentWidth - (Title.Length * CharWidthAt1 * TitleScale) - 24f;
+            int max = (int)(room / (CharWidthAt1 * SourceScale));
 
-            var slims = new List<IMySlimBlock>();
-            grid.GetBlocks(slims, sb => sb.FatBlock is IMyTerminalBlock);
+            // A long name on a narrow panel still truncates. Truncating is better than
+            // vanishing - a partial room name identifies the room, and a missing one
+            // leaves the reading unattributed.
+            if (max < 4) return;
 
-            foreach (var sb in slims)
-            {
-                var tb = sb.FatBlock as IMyTerminalBlock;
-                if (tb == null) continue;
-                if (RoleOf(tb) != WantedRole) continue;
-                if (GroundTruthSession.StateFor(tb) == null) continue;
+            if (name.Length > max)
+                name = name.Substring(0, Math.Max(1, max - 2)) + "..";
 
-                _instrument = tb;
-                return tb;
-            }
-            return null;
+            // Nudged down from the title's 16 so the two sit on a shared optical centre
+            // rather than a shared top edge - the smaller text is about five canvas units
+            // shorter, and hanging both from 16 reads as a misalignment.
+            TextRight(frame, name, 19, SourceScale, fg);
         }
 
-        private static float RoleOf(IMyTerminalBlock b)
-        {
-            return Instruments.RoleOf(b.BlockDefinition.SubtypeName);
-        }
+        // ---- which instrument this panel reads ----
+        //
+        // See PanelSelection.cs for the rule and the Custom Data format. In short:
+        // nearest of the wanted role on this grid, overridden by a name in Custom Data.
+        //
+        // Every app resolves through here, so the four per-role apps and the two
+        // multi-role ones cannot develop different ideas about which block is "the"
+        // Habitat Monitor.
 
+        private readonly PanelSelection _selection = new PanelSelection();
+        protected PanelSelection Selection { get { return _selection; } }
 
-        // One instrument per role, cached with the same cooldown as the single lookup.
-        // A grid usually has at most one of each, and a missing role is a normal state
-        // rather than an error - the overview dims that quadrant instead of failing.
+        // Resolved block and outcome per role, rebuilt together by one grid walk.
         private readonly Dictionary<float, IMyTerminalBlock> _byRole =
             new Dictionary<float, IMyTerminalBlock>();
-        private int _roleCooldown;
+        private readonly Dictionary<float, int> _statusByRole = new Dictionary<float, int>();
+        private int _searchCooldown;
 
-        protected GroundTruthSession.BlockState StateForRole(float role)
+        // -2 is "not looked up yet". A surface's index never changes, so this is
+        // resolved once and kept.
+        private int _surfaceIndex = -2;
+
+        private void RefreshSelection()
+        {
+            var tb = Block as IMyTerminalBlock;
+            if (tb == null) return;
+
+            if (_surfaceIndex == -2) _surfaceIndex = FindSurfaceIndex();
+
+            if (_selection.Refresh(tb.CustomData, _surfaceIndex))
+            {
+                _byRole.Clear();
+                _statusByRole.Clear();
+                _searchCooldown = 0;
+            }
+        }
+
+        // Which of this block's surfaces we are drawing on, so a cockpit can address
+        // its screens separately. -1 for a block that provides no surface list.
+        private int FindSurfaceIndex()
+        {
+            try
+            {
+                var provider = Block as IMyTextSurfaceProvider;
+                if (provider == null) return -1;
+                for (int i = 0; i < provider.SurfaceCount; i++)
+                    if (ReferenceEquals(provider.GetSurface(i), Surface)) return i;
+            }
+            catch { }
+            return -1;
+        }
+
+        /// <summary>
+        /// The instrument this panel should read for a role, or null. Grid walks are
+        /// expensive, so the result is cached and only re-found when the cached block
+        /// has gone away - and then no more than once every few updates.
+        /// </summary>
+        private IMyTerminalBlock Resolve(float role, out int status)
         {
             IMyTerminalBlock cached;
             if (_byRole.TryGetValue(role, out cached) && cached != null && !cached.Closed
                 && cached.CubeGrid == Block.CubeGrid)
-                return GroundTruthSession.StateFor(cached);
+            {
+                status = MatchOk;
+                return cached;
+            }
 
-            if (_roleCooldown > 0) { _roleCooldown--; return null; }
-            _roleCooldown = 3;
+            if (_searchCooldown > 0)
+            {
+                _searchCooldown--;
+                return Unresolved(role, out status);
+            }
+            _searchCooldown = 3;
+
+            Search();
+
+            if (_byRole.TryGetValue(role, out cached) && cached != null)
+            {
+                status = MatchOk;
+                return cached;
+            }
+            return Unresolved(role, out status);
+        }
+
+        private IMyTerminalBlock Unresolved(float role, out int status)
+        {
+            if (!_statusByRole.TryGetValue(role, out status)) status = MatchNone;
+            return null;
+        }
+
+        // One grid walk fills every role, because the two multi-role apps want all four
+        // and a per-role app pays the same cost either way.
+        private void Search()
+        {
+            _byRole.Clear();
+            _statusByRole.Clear();
 
             var grid = Block.CubeGrid as IMyCubeGrid;
-            if (grid == null) return null;
+            if (grid == null) return;
 
             var slims = new List<IMySlimBlock>();
             grid.GetBlocks(slims, sb => sb.FatBlock is IMyTerminalBlock);
 
-            _byRole.Clear();
+            var origin = Block.GetPosition();
+
+            // Gathered per role, then decided once the whole grid is walked - because
+            // "the id is gone, fall back to the name" cannot be answered while still
+            // walking. A block that is not the id match might be the last one checked.
+            var idHit = new Dictionary<float, IMyTerminalBlock>();
+            var nameHit = new Dictionary<float, IMyTerminalBlock>();
+            var nameScore = new Dictionary<float, double>();
+            var present = new List<float>();
+
             foreach (var sb in slims)
             {
                 var tb = sb.FatBlock as IMyTerminalBlock;
                 if (tb == null) continue;
 
                 float r = Instruments.RoleOf(tb.BlockDefinition.SubtypeName);
-                if (r <= 0 || _byRole.ContainsKey(r)) continue;
+                if (r <= 0) continue;
                 if (GroundTruthSession.StateFor(tb) == null) continue;
 
-                _byRole[r] = tb;
+                if (!present.Contains(r)) present.Add(r);
+
+                // The id is what the block IS. It survives a rename and it is saved
+                // with the world, which is what makes a selection durable.
+                long wantId = _selection.IdFor(r);
+                if (wantId != 0 && tb.EntityId == wantId) idHit[r] = tb;
+
+                var want = _selection.For(r);
+                int rank = PanelSelection.Rank(tb.DisplayNameText, want);
+                if (rank == 0) continue;
+
+                double d = Vector3D.DistanceSquared(origin, tb.GetPosition());
+
+                // Lower is better. Without a selector that is plain distance; with one,
+                // an exact name beats a partial one by a margin no distance can close.
+                double score = want == null ? d : (2 - rank) * 1e12 + d;
+
+                double prev;
+                if (nameScore.TryGetValue(r, out prev) && prev <= score) continue;
+
+                nameScore[r] = score;
+                nameHit[r] = tb;
             }
 
-            return _byRole.TryGetValue(role, out cached)
-                ? GroundTruthSession.StateFor(cached) : null;
+            for (int i = 0; i < present.Count; i++)
+            {
+                float r = present[i];
+                IMyTerminalBlock pick;
+
+                if (idHit.TryGetValue(r, out pick))
+                {
+                    // Bound by id: the block was renamed and this still finds it.
+                }
+                else if (!nameHit.TryGetValue(r, out pick))
+                {
+                    // Neither resolved. NEVER fall back to nearest - silently showing a
+                    // different room than the one asked for is the same class of error
+                    // as showing an arbitrary one, and harder to notice.
+                    _statusByRole[r] = MatchNoName;
+                    continue;
+                }
+
+                _byRole[r] = pick;
+                _statusByRole[r] = MatchOk;
+            }
         }
 
-        // Every Ground Truth block on this grid with the role the table gives it.
-        private List<string> DescribeInstruments()
+        protected GroundTruthSession.BlockState StateForRole(float role)
+        {
+            int status;
+            var block = Resolve(role, out status);
+            return block == null ? null : GroundTruthSession.StateFor(block);
+        }
+
+        // Every Ground Truth block on this grid, by name. Pass a role to narrow it to
+        // the ones a selector for that role could have matched.
+        private List<string> DescribeInstruments(float role)
         {
             var lines = new List<string>();
             try
@@ -234,6 +440,7 @@ namespace GroundTruth
                     if (tb == null) continue;
                     var sub = tb.BlockDefinition.SubtypeName;
                     if (sub == null || !sub.StartsWith("GT_")) continue;
+                    if (role > 0 && Instruments.RoleOf(sub) != role) continue;
                     lines.Add(tb.DisplayNameText);
                 }
             }

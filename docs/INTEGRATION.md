@@ -392,14 +392,84 @@ grid would be illegible. Note `RADIATION OUTSIDE` rather than a bare countdown, 
 `HABITAT PRESSURE / OPEN` in amber rather than red — the platform has no sealed volume,
 which is a fact worth stating and not an emergency.
 
-Every app finds its own instruments: it searches **its own grid** for the first block of
-each role. Subgrids are excluded deliberately, so a docked ship's sensors do not feed the
-station's panel, and if two instruments share a role one is chosen and the other ignored.
+Every app finds its own instruments: it searches **its own grid** for the **nearest**
+block of each role. Subgrids are excluded deliberately, so a docked ship's sensors do not
+feed the station's panel.
 
 An absent instrument produces **no column and no error**. That is a real state, and it
 differs from a present instrument with nothing to report: on the Strip a missing Weather
 Station shows nothing at all, while one in space shows a dimmed `WEATHER / NONE` —
 because "this body has no weather system" is not the same claim as "the weather is calm".
+
+### Choosing the instrument
+
+A base with a Habitat Monitor in each room has several instruments of one role, and the
+panel has to be told which one it is reporting.
+
+**Pick it from the dropdown.** Select a Ground Truth app on an LCD and a combo box appears
+in the terminal underneath the script list, listing every instrument of that role on the
+grid, nearest first, with `Automatic (nearest)` at the top. Overview and Strip read all
+four roles and get four dropdowns; the per-role apps get one.
+
+The dropdown is injected through `CustomControlGetter` rather than registered against a
+block type, so it exists only on a block whose surface is actually running one of these
+apps — and it appears the moment the app is chosen, with no reselect.
+
+**Automatic** is the default and needs no setup: nearest of that role on the grid, which on
+a base with one monitor per room is the monitor in the room the screen is in. Subgrids are
+excluded, so a docked ship's sensors never feed the station's panel.
+
+**Per surface.** A cockpit or console shows one screen at a time in the terminal, and the
+dropdown follows that selector — each screen stores its own instrument. Blocks with a
+single surface are index 0 and need no thought.
+
+**Renaming the chosen monitor keeps the screens pointed at it**, across a reload — see
+below for why. Grind it out, though, and the selection no longer resolves, and it **does
+not fall back to nearest**: the panel says `NO MATCH`, prints the name it was asked for,
+and lists the names of that role on the grid. Quietly showing a different room than the one
+requested is the same class of error as showing an arbitrary one, and much harder to
+notice.
+
+#### What it stores, and where
+
+The selection is written to the **panel's Custom Data**, under a section per surface:
+
+```
+[GroundTruth.0]
+Habitat = Galley
+Habitat.Id = 74985234523452345
+```
+
+Custom Data is the store because it already saves with the world and already syncs to the
+server, so a per-surface setting needs neither a new component nor a new network message.
+Anything outside a `[GroundTruth…]` section is preserved untouched, so this coexists with
+whatever else writes there.
+
+It is therefore also hand-editable, and a blueprint carries it. Keys are role names —
+`Radiation`, `Habitat`, `Weather`, `Life` (`Bio` is an alias) — plus `Instrument`, a
+catch-all for whichever single role the app wants. A role key beats `Instrument`; a
+block-wide `[GroundTruth]` section applies to every surface and a `[GroundTruth.N]` one
+overrides it for that surface. An empty value means automatic. Matching is
+case-insensitive **substring**, so `Galley` selects `Habitat Monitor - Galley`; exact beats
+partial, and nearest breaks ties. Edits take effect within a second.
+
+**Both the id and the name are stored**, because each survives something the other does
+not and a selection has to survive both:
+
+- an **id** survives a **rename** — it is what the block is, not what it is called, and it
+  is saved with the world, so the binding holds across a reload
+- a **name** survives a **blueprint paste** — the pasted sensors are new entities with new
+  ids, and an id-only binding would come back `Automatic` on every screen of a pasted base
+
+The id wins when it resolves and the name is the fallback, so renaming a monitor keeps the
+screens pointed at it, and pasting a base keeps them pointed at the equivalent block in the
+copy. Hand-editing just the name still works: an absent or unparseable `.Id` falls through
+to name matching.
+
+Room identity is deliberately **not** used for matching, even though it would be the ideal
+key for the Habitat app. Rooms come from the pressurisation system and a dedicated-server
+*client* has none — trap 10 in [`ENGINE_TRAPS.md`](ENGINE_TRAPS.md). Selection would then
+work in single player and silently pick a different instrument on a server.
 
 ### Whose reading is it
 

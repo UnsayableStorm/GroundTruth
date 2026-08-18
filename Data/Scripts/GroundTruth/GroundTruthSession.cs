@@ -240,12 +240,18 @@ namespace GroundTruth
         {
             base.BeforeStart();
             TerminalApi.Create();
+            PanelControls.Create();
         }
 
         // Attaching the info writer lazily, the first time a player opens one of our
         // blocks in the terminal, avoids hooking every block in the world at load.
         private void OnCustomControlGetter(IMyTerminalBlock block, List<Sandbox.ModAPI.Interfaces.Terminal.IMyTerminalControl> controls)
         {
+            // LCDs and cockpits first - they are not instruments, so this has to happen
+            // before the IsOurs guard. PanelControls adds nothing to a block whose
+            // surface is not running one of our apps.
+            PanelControls.Inject(block, controls);
+
             if (!IsOurs(block)) return;
 
             block.AppendingCustomInfo -= WriteInfo;

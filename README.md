@@ -19,7 +19,10 @@ like something rather than to look uniform.
 ## Screens
 
 Each panel is an LCD app. No name tags and no setup — every app finds its own instruments
-on its own grid.
+on its own grid, picking the nearest of each role, so a base with a Habitat Monitor per
+room gets the right one on each screen. Where a base has several, a dropdown in the
+terminal lists them and pins the screen to one; see
+[`docs/INTEGRATION.md`](docs/INTEGRATION.md#choosing-the-instrument).
 
 | | |
 |---|---|
