@@ -90,17 +90,49 @@ namespace GroundTruth
             }
         }
 
+        // Long enough that a type's controls will have been built in the normal course
+        // of things. Repairing earlier risks mistaking "not built yet" for "destroyed".
+        private const int GraceSeconds = 10;
+        private static int _seconds;
+
         /// <summary>
-        /// Put back any wanted control missing from the upgrade module list. True if
-        /// anything was restored.
+        /// Put back any wanted control missing from the upgrade module list, but only
+        /// once damage is proven. True if anything was restored.
         /// </summary>
         public static bool Repair()
         {
             if (_repairAttempted) return false;
+            if (++_seconds < GraceSeconds) return false;
+
+            // AN EMPTY LIST IS NOT PROOF OF DAMAGE.
+            //
+            // On a healthy server the upgrade module list is also empty until the game
+            // builds it, and a client joining reads exactly the same zero. Repairing
+            // then would make US the creator of a list holding six controls and none of
+            // the rest - the precise bug this file exists to undo, inflicted on servers
+            // that never had the problem.
+            //
+            // The base list is the discriminator. If IMyTerminalBlock still holds Name
+            // and ShowInTerminal, nothing has been wiped and an empty type list simply
+            // means the game has not got to it yet - so wait, and let it.
+            if (BaseListIsHealthy())
+            {
+                _repairAttempted = true;
+                MyLog.Default.WriteLineAndConsole(
+                    "GT REPAIR: base control list is intact - nothing to repair.");
+                return false;
+            }
+
             _repairAttempted = true;
 
             try
             {
+                // Restore the SHARED list first. Every block type whose controls are
+                // built after this point inherits from it, so putting the base back
+                // helps blocks this mod has nothing to do with - which is the decent
+                // thing to do when standing in the wreckage anyway.
+                RepairBaseList();
+
                 List<IMyTerminalControl> current;
                 MyAPIGateway.TerminalControls.GetControls<IMyUpgradeModule>(out current);
 
@@ -155,6 +187,57 @@ namespace GroundTruth
             {
                 MyLog.Default.WriteLineAndConsole("GT REPAIR threw: " + e.Message);
                 return false;
+            }
+        }
+
+
+        private static bool BaseListIsHealthy()
+        {
+            try
+            {
+                List<IMyTerminalControl> list;
+                MyAPIGateway.TerminalControls.GetControls<IMyTerminalBlock>(out list);
+                if (list == null) return false;
+
+                bool name = false, show = false;
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (list[i] == null) continue;
+                    if (list[i].Id == "Name") name = true;
+                    else if (list[i].Id == "ShowInTerminal") show = true;
+                }
+                return name && show;
+            }
+            catch { return false; }
+        }
+
+        private static void RepairBaseList()
+        {
+            try
+            {
+                List<IMyTerminalControl> list;
+                MyAPIGateway.TerminalControls.GetControls<IMyTerminalBlock>(out list);
+
+                var present = new HashSet<string>();
+                if (list != null)
+                    for (int i = 0; i < list.Count; i++)
+                        if (list[i] != null) present.Add(list[i].Id);
+
+                int restored = 0;
+                foreach (var kv in _captured)
+                {
+                    if (present.Contains(kv.Key) || kv.Value == null) continue;
+                    MyAPIGateway.TerminalControls.AddControl<IMyTerminalBlock>(kv.Value);
+                    restored++;
+                }
+
+                MyLog.Default.WriteLineAndConsole(
+                    "GT REPAIR: shared IMyTerminalBlock list was damaged - restored "
+                    + restored + " control(s) to it.");
+            }
+            catch (Exception e)
+            {
+                MyLog.Default.WriteLineAndConsole("GT REPAIR base restore threw: " + e.Message);
             }
         }
 
