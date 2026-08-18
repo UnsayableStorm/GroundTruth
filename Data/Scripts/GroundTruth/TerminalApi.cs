@@ -72,51 +72,90 @@ namespace GroundTruth
         public static void Create()
         {
             if (_created) return;
-            _created = true;
 
-            // WARM UP THE VANILLA CONTROL LIST BEFORE ADDING ANYTHING TO IT.
+            // NEVER BE THE MOD THAT CREATES THIS LIST.
             //
-            // Reported 2026-08-17: on Long Haul, EVERY vanilla upgrade module lost its
-            // Name field, Show in Terminal and Show in Toolbar Config. Single player
-            // without this mod has all three. The damage lands precisely on
-            // IMyUpgradeModule - the interface these 76 properties register against.
+            // MEASURED 2026-08-18, same build, two sessions:
             //
-            // The suspected mechanism was that a type's control list is built lazily and
-            // the vanilla inheritance chain only runs when the GAME builds it, so a mod
-            // registering first would create the list and leave it holding mod controls
-            // and nothing inherited.
+            //                        single player      client on a server
+            //   before we register      28 controls          0
+            //   after GetControls       28                   0     <- reads, never builds
+            //   after our 76           104                  76     <- ours, alone
+            //   at first terminal open   -                  76     <- vanilla NEVER arrives
             //
-            // MEASURED 2026-08-18, vanilla world plus this mod only:
+            // A block type's terminal controls are built when the game first needs them,
+            // and an instance existing is what triggers it. In single player the world's
+            // entities load before BeforeStart, so a MyUpgradeModule already existed and
+            // the list was built properly. A client joining a server has streamed in
+            // nothing yet, so the list is empty - and when we add to it, WE create it.
+            // SE then treats it as built and the vanilla controls are never added, which
+            // is why every upgrade module on Long Haul lost Name, Show in Terminal, Show
+            // in Toolbar Config, On/Off and Custom Data.
             //
-            //   BEFORE warm-up ...............  28 controls
-            //   AFTER warm-up ................  28   (identical - the call does nothing)
-            //   AFTER our 76 .................  104  (28 + 76, nothing displaced)
+            // GetControls does not help: it reads. Nothing in the mod API constructs the
+            // list on demand. So the only safe move is to WAIT until the count is
+            // non-zero - proof that the game built it - and only then add ours.
             //
-            // and those 28 already contained OnOff, Name, ShowInTerminal,
-            // ShowInToolbarConfig, ShowOnHUD and CustomData. THE HYPOTHESIS IS WRONG.
-            // The list is fully built before we touch it, and our registrations are
-            // purely additive.
-            //
-            // The warm-up stays because it is two lines, conventional, and cannot hurt -
-            // but it is a measured no-op, NOT the fix, and nobody should later read this
-            // block and conclude the bug was solved here.
-            //
-            // Where that leaves the real bug: it does not reproduce with this mod alone,
-            // so it is an interaction on a loaded server - another mod registering
-            // against the same interface, or removing controls after we are done.
-            // Snapshots 1-3 all happen inside Create() and are blind to anything that
-            // occurs later, which is what LogFirstTerminalOpen exists to catch.
-            LogControls("BEFORE warm-up");
+            // The cost is that GT_ properties do not exist for the first moments of a
+            // client session, which is a real trade and the lesser one: a script that
+            // polls a second early gets nothing for a second, where the old behaviour
+            // permanently broke every upgrade module in the world, ours and other
+            // people's alike. Warp drives are upgrade modules too.
+            if (!VanillaControlsExist())
+            {
+                MyLog.Default.WriteLineAndConsole(
+                    "GT TERMINAL: upgrade module control list is empty - deferring "
+                    + "registration until the game builds it.");
+                return;
+            }
+
+            _created = true;
+            RegisterAll();
+        }
+
+        /// <summary>
+        /// Called once a second by the session until it returns true. Registration is
+        /// deferred rather than skipped, so a client that joins before any upgrade
+        /// module has streamed in still gets the full API a moment later.
+        /// </summary>
+        public static bool TryCreateDeferred()
+        {
+            if (_created) return true;
+            if (!VanillaControlsExist()) return false;
+
+            _created = true;
+            MyLog.Default.WriteLineAndConsole(
+                "GT TERMINAL: control list is now populated by the game - registering.");
+            RegisterAll();
+            return true;
+        }
+
+        private static bool VanillaControlsExist()
+        {
             try
             {
-                List<IMyTerminalControl> existing;
-                MyAPIGateway.TerminalControls.GetControls<IMyUpgradeModule>(out existing);
+                List<IMyTerminalControl> list;
+                MyAPIGateway.TerminalControls.GetControls<IMyUpgradeModule>(out list);
+                if (list == null) return false;
+
+                // Not merely non-empty - the specific inherited controls whose absence
+                // is the reported bug. A list holding only somebody else's additions is
+                // not proof that the vanilla chain has run.
+                bool name = false, showTerminal = false;
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (list[i] == null) continue;
+                    if (list[i].Id == "Name") name = true;
+                    else if (list[i].Id == "ShowInTerminal") showTerminal = true;
+                }
+                return name && showTerminal;
             }
-            catch (Exception e)
-            {
-                MyLog.Default.WriteLineAndConsole("GT TERMINAL warm-up threw: " + e.Message);
-            }
-            LogControls("AFTER warm-up, before our 76");
+            catch { return false; }
+        }
+
+        private static void RegisterAll()
+        {
+            LogControls("BEFORE our 76");
 
             // ---- GT_Sys : metadata, present on every instrument ----
             Num("GT_SysApiVersion", (b, s) => ApiVersion);

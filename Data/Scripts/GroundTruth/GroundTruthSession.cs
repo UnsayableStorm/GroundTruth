@@ -236,6 +236,11 @@ namespace GroundTruth
         //
         // Deliberately NOT lazy-on-first-terminal-open: a Programmable Block must be
         // able to read GT_ properties on a grid whose terminal nobody has opened.
+        //
+        // It IS conditional on the game having built the upgrade module control list
+        // first - see TerminalApi. On a client joining a server that list is empty at
+        // BeforeStart, and registering into it makes us its creator, which permanently
+        // costs every upgrade module in the world its vanilla controls.
         public override void BeforeStart()
         {
             base.BeforeStart();
@@ -315,6 +320,11 @@ namespace GroundTruth
             // Custom Event Controller events, driven on the same one-second cadence as
             // the readings they watch. An event component gets no update callback of its
             // own - the stock ones hook block events, and a weather reading has none.
+            // Registration may have been deferred at BeforeStart because the game had
+            // not built the upgrade module control list yet - normal on a client that
+            // joins before any grid streams in. Retry until it has.
+            TerminalApi.TryCreateDeferred();
+
             TickEvents();
 
             // Seal state is the one reading only the server can take, and it must run
