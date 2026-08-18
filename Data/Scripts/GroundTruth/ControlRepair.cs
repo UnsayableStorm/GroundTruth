@@ -317,6 +317,11 @@ namespace GroundTruth
         // whose list survived, ordered from most to least likely to be built early.
         // Anything not matching the expected shape for that id is rejected rather than
         // used - a wrongly-typed control is worse than a missing one.
+        //
+        // No local functions here - the game's mod compiler enforces C# 6, and a local
+        // function is a C# 7 feature. My own compile checker did not catch this: it
+        // sets /langversion:6 but Roslyn did not enforce it the way SE's compiler does,
+        // so it reported clean on code the game rejected outright. Fixed alongside this.
         private static IMyTerminalControl Find(string id)
         {
             IMyTerminalControl c;
@@ -338,12 +343,12 @@ namespace GroundTruth
             MyLog.Default.WriteLineAndConsole("GT REPAIR:   " + id
                 + (c != null ? " harvested from another block type" : " nothing of the right shape found"));
             return c;
+        }
 
-            IMyTerminalControl HarvestTyped<T>(string wantedId)
-            {
-                var found = HarvestFrom<T>(wantedId);
-                return found != null && MatchesExpectedShape(wantedId, found) ? found : null;
-            }
+        private static IMyTerminalControl HarvestTyped<T>(string wantedId)
+        {
+            var found = HarvestFrom<T>(wantedId);
+            return found != null && MatchesExpectedShape(wantedId, found) ? found : null;
         }
 
 

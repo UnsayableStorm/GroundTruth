@@ -13,6 +13,18 @@
 # IT IS NOT THE WHITELIST. The game additionally forbids types mods may not touch,
 # and that check only happens in game. Clean here means "it compiles", not "it
 # loads" - see docs/ENGINE_TRAPS.md for things that compile and still fail.
+#
+# THIS SCRIPT HAS ALREADY LIED ONCE. 2026-08-18: it reported "Compiles clean" on a
+# file using a C# 7 local function, which the game's compiler rejects outright and
+# which crashed nothing only because the mistake was caught by reading the actual
+# game log instead of trusting this tool. Root cause: referencing EVERY .dll in
+# Bin64 includes ~50 native, non-.NET libraries (Havok, opus, steam_api64, ...).
+# csc cannot load them as metadata and ABORTS THE WHOLE COMPILATION before
+# reaching the source files at all - producing only reference-load errors, in a
+# format ("error CSxxxx: ..." with no "file(line,col):" prefix) the error filter
+# below did not recognise. Zero matched errors read as a clean build. Fixed by
+# filtering to genuinely managed assemblies before compiling, and by treating the
+# exit code as authoritative rather than trusting a text-pattern match alone.
 
 $ErrorActionPreference = "Stop"
 
@@ -26,13 +38,22 @@ if (-not $csc) {
     exit 1
 }
 
-# Reference EVERY assembly the game ships.
+# Reference every MANAGED assembly the game ships - not every DLL.
 #
-# A curated list looked tidy and was wrong: IMyCubeBlock resolves through type
-# forwards that need assemblies the obvious list omits. The game compiles mods
-# against the whole set, so match it rather than guess. Unusable references are
-# ignored by csc, so breadth costs nothing but a second.
-$refs = @(Get-ChildItem $bin -Filter *.dll | ForEach-Object { '/r:' + $_.FullName })
+# A curated-by-name list was tried first and was wrong: IMyCubeBlock resolves
+# through type forwards that need assemblies an obvious list omits. Referencing
+# literally everything was tried next and was ALSO wrong, for the opposite reason -
+# see the header. The correct middle ground is to ask each DLL whether it is a
+# .NET assembly at all, which AssemblyName.GetAssemblyName answers without loading
+# or executing any code: it throws BadImageFormatException for native binaries and
+# succeeds for managed ones.
+$allDlls = Get-ChildItem $bin -Filter *.dll
+$managedDlls = @($allDlls | Where-Object {
+    try { [System.Reflection.AssemblyName]::GetAssemblyName($_.FullName) | Out-Null; $true }
+    catch { $false }
+})
+Write-Host ("Referencing " + $managedDlls.Count + " managed assemblies of " + $allDlls.Count + " total in Bin64.")
+$refs = @($managedDlls | ForEach-Object { '/r:' + $_.FullName })
 
 # The game injects namespaces that mod sources never import.
 #
@@ -63,15 +84,26 @@ $files = @(Get-ChildItem $src -Filter *.cs | ForEach-Object {
 $out = Join-Path $env:TEMP "gt_compile_check.dll"
 
 $cscArgs = @('/nologo', '/target:library', '/langversion:6', ('/out:' + $out)) + $refs + $files
-$result = & $csc.FullName $cscArgs 2>&1
+$result = @(& $csc.FullName $cscArgs 2>&1)
+$exitCode = $LASTEXITCODE
 
-$errors = @($result | Where-Object { $_ -match ': error ' })
-# CS0105 is our own injected usings colliding with real ones - not the mod's problem.
-$warnings = @($result | Where-Object { $_ -match ': warning ' -and $_ -notmatch 'CS0105' })
+# THE EXIT CODE IS AUTHORITATIVE. Text-matching csc's output is a convenience for
+# showing WHICH lines are errors, not the thing that decides pass or fail - that is
+# what went wrong before. Any nonzero exit means real diagnostics exist somewhere
+# in $result even if the pattern below fails to recognise their shape.
+$errors = @($result | Where-Object { $_ -match 'error CS' })
+$warnings = @($result | Where-Object { $_ -match 'warning CS' -and $_ -notmatch 'CS0105' })
 
-if ($errors.Count -gt 0) {
-    Write-Host ("COMPILE FAILED - " + $errors.Count + " error(s)") -ForegroundColor Red
-    $errors | Select-Object -First 20 | ForEach-Object { Write-Host ("  " + $_) -ForegroundColor Red }
+if ($exitCode -ne 0) {
+    Write-Host ("COMPILE FAILED - exit " + $exitCode + ", " + $errors.Count + " matched error line(s)") -ForegroundColor Red
+    if ($errors.Count -gt 0) {
+        $errors | Select-Object -First 20 | ForEach-Object { Write-Host ("  " + $_) -ForegroundColor Red }
+    } else {
+        # The exact failure mode this header describes: something failed and none of
+        # it matched the expected shape. Dump everything rather than hide it.
+        Write-Host "  (no line matched the expected error pattern - showing everything csc printed)" -ForegroundColor Yellow
+        $result | Select-Object -First 30 | ForEach-Object { Write-Host ("  " + $_) -ForegroundColor Yellow }
+    }
     exit 1
 }
 
