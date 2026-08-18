@@ -78,8 +78,8 @@ namespace GroundTruth
         // because the CHECK ITSELF was the disease:
         //
         //   build   GT loaded, registration AND the diagnostic GetControls both off -> BROKEN
-        //   build   GT loaded, registration off, ControlRepair.Capture's GetControls
-        //           still running at LoadData                                       -> BROKEN
+        //   build   GT loaded, registration off, but a diagnostic GetControls still
+        //           running at LoadData (in ControlRepair, since deleted)            -> BROKEN
         //   build   GT loaded, EVERY call into MyAPIGateway.TerminalControls removed  -> FIXED
         //   world   GT removed entirely                                              -> FIXED
         //

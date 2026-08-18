@@ -184,18 +184,11 @@ namespace GroundTruth
             _instance = this;
             _registered = true;
 
-            // Subscribing is safe this early - it was AddControl in TerminalApi.Create
-            // that corrupted control lists at LoadData, not this event hook. Create()
-            // stays in BeforeStart.
+            // Subscribing this early is safe, and is the only thing done this early.
+            // Attaching the handler does not read or write the control list; it asks to
+            // be told when the game builds one. Everything that touches the list itself
+            // happens later, from inside that callback.
             MyAPIGateway.TerminalControls.CustomControlGetter += OnCustomControlGetter;
-
-            // DISABLED for the same reason TerminalApi's registration is disabled -
-            // see below. Capture() calls GetControls<IMyTerminalBlock>, and that is a
-            // terminal-control-system call too, made at LoadData: the EARLIEST point
-            // GT runs. The previous "GT touches nothing" test still called this,
-            // unconditionally, so it was never actually a clean test - this was missed
-            // and the wrong conclusion nearly followed from it.
-            // ControlRepair.Capture();
 
             SealSync.Init();
 
