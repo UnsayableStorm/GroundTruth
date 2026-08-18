@@ -52,9 +52,35 @@ namespace GroundTruth
         // The controls whose absence players actually notice. Deliberately not the whole
         // base set: these are the ones named in the report, and restoring fewer things
         // is safer than restoring more.
+        // OnOff is deliberately NOT in this list.
+        //
+        // Vanilla upgrade modules have no On/Off control at all - documented in
+        // TerminalApi.cs weeks before this file existed, and confirmed again by
+        // capture/harvest logs. Restoring it was scope creep past the actual report
+        // (Name, ShowInTerminal, ShowInToolbarConfig), and it broke a THIRD mod.
+        //
+        // Measured 2026-08-18: harvesting "OnOff" by id across eight interfaces
+        // returned a MyTerminalControlCheckbox<MyUpgradeModule> - a checkbox, not a
+        // switch, presumably some other mod's control that happens to share the id.
+        // Draygo's Block Extensions API (used by Build Info and others) finds any
+        // control named "OnOff" and hard-casts it to IMyTerminalControlOnOffSwitch
+        // with no type check, and crashed every client that opened the block:
+        //
+        //   InvalidCastException: MyTerminalControlCheckbox`1[MyUpgradeModule] ->
+        //   IMyTerminalControlOnOffSwitch
+        //     at Draygo.BlockExtensionsAPI.DefinitionExtensionsAPICore
+        //         .TerminalControls_CustomControlGetter
+        //
+        // Their cast is unsafe and it is their bug. It never fired before because the
+        // control it needed never existed on this block type. We do not get to graft
+        // a control onto a type that never had one, discover that a same-named control
+        // means something different in another mod's world, and call the result a
+        // repair. Same-id-different-type is not a hazard specific to OnOff - it is
+        // inherent to searching by id across interfaces we do not own - so Find() below
+        // now verifies TYPE, not just id, before returning anything harvested.
         private static readonly string[] Wanted =
         {
-            "Name", "OnOff", "ShowInTerminal", "ShowInToolbarConfig", "ShowOnHUD", "CustomData"
+            "Name", "ShowInTerminal", "ShowInToolbarConfig", "ShowOnHUD", "CustomData"
         };
 
         private static readonly Dictionary<string, IMyTerminalControl> _captured =
@@ -268,29 +294,56 @@ namespace GroundTruth
             }
         }
 
+        // Same id does not mean same control across interfaces we do not own - that is
+        // what broke Draygo's mod. Every id we might harvest has one specific vanilla
+        // shape, checked here before anything is accepted.
+        private static bool MatchesExpectedShape(string id, IMyTerminalControl c)
+        {
+            switch (id)
+            {
+                case "Name":
+                case "CustomData":
+                    return c is IMyTerminalControlTextbox;
+                case "ShowInTerminal":
+                case "ShowInToolbarConfig":
+                case "ShowOnHUD":
+                    return c is IMyTerminalControlCheckbox;
+                default:
+                    return false;   // unknown id: refuse rather than guess
+            }
+        }
+
         // Captured first; otherwise harvest the same object from any block interface
         // whose list survived, ordered from most to least likely to be built early.
+        // Anything not matching the expected shape for that id is rejected rather than
+        // used - a wrongly-typed control is worse than a missing one.
         private static IMyTerminalControl Find(string id)
         {
             IMyTerminalControl c;
-            if (_captured.TryGetValue(id, out c) && c != null)
+            if (_captured.TryGetValue(id, out c) && c != null && MatchesExpectedShape(id, c))
             {
                 MyLog.Default.WriteLineAndConsole("GT REPAIR:   " + id + " from capture");
                 return c;
             }
 
-            c = HarvestFrom<IMyTerminalBlock>(id);
-            if (c == null) c = HarvestFrom<IMyFunctionalBlock>(id);
-            if (c == null) c = HarvestFrom<IMyLightingBlock>(id);
-            if (c == null) c = HarvestFrom<IMyBatteryBlock>(id);
-            if (c == null) c = HarvestFrom<IMyCargoContainer>(id);
-            if (c == null) c = HarvestFrom<IMyTextPanel>(id);
-            if (c == null) c = HarvestFrom<IMyDoor>(id);
-            if (c == null) c = HarvestFrom<IMyReactor>(id);
+            c = HarvestTyped<IMyTerminalBlock>(id);
+            if (c == null) c = HarvestTyped<IMyFunctionalBlock>(id);
+            if (c == null) c = HarvestTyped<IMyLightingBlock>(id);
+            if (c == null) c = HarvestTyped<IMyBatteryBlock>(id);
+            if (c == null) c = HarvestTyped<IMyCargoContainer>(id);
+            if (c == null) c = HarvestTyped<IMyTextPanel>(id);
+            if (c == null) c = HarvestTyped<IMyDoor>(id);
+            if (c == null) c = HarvestTyped<IMyReactor>(id);
 
             MyLog.Default.WriteLineAndConsole("GT REPAIR:   " + id
-                + (c != null ? " harvested from another block type" : " NOT FOUND anywhere"));
+                + (c != null ? " harvested from another block type" : " nothing of the right shape found"));
             return c;
+
+            IMyTerminalControl HarvestTyped<T>(string wantedId)
+            {
+                var found = HarvestFrom<T>(wantedId);
+                return found != null && MatchesExpectedShape(wantedId, found) ? found : null;
+            }
         }
 
 
