@@ -115,11 +115,33 @@ namespace GroundTruth
             // The base list is the discriminator. If IMyTerminalBlock still holds Name
             // and ShowInTerminal, nothing has been wiped and an empty type list simply
             // means the game has not got to it yet - so wait, and let it.
-            if (BaseListIsHealthy())
+            // WHAT COUNTS AS PROOF OF DAMAGE.
+            //
+            // Not "the base list looks empty" - this mod has never measured what that
+            // list holds in a HEALTHY session, and acting on an unverified belief about
+            // it is how you synthesise duplicate controls onto servers that were fine.
+            //
+            // The symptom itself is the test, and it needs both halves:
+            //
+            //   list is EMPTY            -> the game has not built it yet. Not damage.
+            //                               Say nothing, try again next second.
+            //   list is NON-EMPTY + Name -> healthy. Nothing to do, ever.
+            //   list is NON-EMPTY - Name -> something built this list without the
+            //                               inherited controls. That is the bug.
+            List<IMyTerminalControl> probe;
+            MyAPIGateway.TerminalControls.GetControls<IMyUpgradeModule>(out probe);
+
+            if (probe == null || probe.Count == 0) return false;   // not built yet - wait
+
+            bool hasName = false;
+            for (int i = 0; i < probe.Count; i++)
+                if (probe[i] != null && probe[i].Id == "Name") { hasName = true; break; }
+
+            if (hasName)
             {
                 _repairAttempted = true;
                 MyLog.Default.WriteLineAndConsole(
-                    "GT REPAIR: base control list is intact - nothing to repair.");
+                    "GT REPAIR: upgrade module controls are intact - nothing to repair.");
                 return false;
             }
 
@@ -127,11 +149,10 @@ namespace GroundTruth
 
             try
             {
-                // Restore the SHARED list first. Every block type whose controls are
-                // built after this point inherits from it, so putting the base back
-                // helps blocks this mod has nothing to do with - which is the decent
-                // thing to do when standing in the wreckage anyway.
-                RepairBaseList();
+                // Restore the SHARED list first, if we managed to capture anything to
+                // restore it with. Every block type built after this inherits from it,
+                // so it helps blocks this mod has nothing to do with.
+                if (_captured.Count > 0) RepairBaseList();
 
                 List<IMyTerminalControl> current;
                 MyAPIGateway.TerminalControls.GetControls<IMyUpgradeModule>(out current);
@@ -154,6 +175,12 @@ namespace GroundTruth
                 for (int i = 0; i < missing.Count; i++)
                 {
                     var control = Find(missing[i]);
+
+                    // Nothing to borrow: Animation Engine emptied the base list before
+                    // any type inherited from it, so these objects exist nowhere in the
+                    // session. Measured on Long Haul - eight interfaces searched, all
+                    // absent, three sessions running. Build a replacement instead.
+                    if (control == null) control = Synthesise(missing[i]);
                     if (control == null) continue;
 
                     MyAPIGateway.TerminalControls.AddControl<IMyUpgradeModule>(control);
@@ -263,6 +290,82 @@ namespace GroundTruth
 
             MyLog.Default.WriteLineAndConsole("GT REPAIR:   " + id
                 + (c != null ? " harvested from another block type" : " NOT FOUND anywhere"));
+            return c;
+        }
+
+
+        // ---- last resort: build replacements ----
+        //
+        // These are imitations. They carry the vanilla ids and titles and drive the same
+        // block properties, so they behave correctly and anything looking a control up
+        // by id still finds one - but they are ours, not Keen's, and they only ever get
+        // added to a list already PROVEN to be missing them.
+        //
+        // CustomData is the compromise: vanilla opens a full editor screen, which no mod
+        // API exposes. A textbox holds the same string and is a great deal better than
+        // no access at all.
+        private static IMyTerminalControl Synthesise(string id)
+        {
+            try
+            {
+                switch (id)
+                {
+                    case "Name":
+                        return Textbox("Name", "Name",
+                            b => b.CustomName,
+                            (b, v) => b.CustomName = v);
+
+                    case "CustomData":
+                        return Textbox("CustomData", "Custom Data",
+                            b => b.CustomData,
+                            (b, v) => b.CustomData = v);
+
+                    case "ShowInTerminal":
+                        return Checkbox("ShowInTerminal", "Show in terminal",
+                            b => b.ShowInTerminal,
+                            (b, v) => b.ShowInTerminal = v);
+
+                    case "ShowInToolbarConfig":
+                        return Checkbox("ShowInToolbarConfig", "Show in toolbar config",
+                            b => b.ShowInToolbarConfig,
+                            (b, v) => b.ShowInToolbarConfig = v);
+
+                    case "ShowOnHUD":
+                        return Checkbox("ShowOnHUD", "Show on HUD",
+                            b => b.ShowOnHUD,
+                            (b, v) => b.ShowOnHUD = v);
+                }
+            }
+            catch (Exception e)
+            {
+                MyLog.Default.WriteLineAndConsole("GT REPAIR synth " + id + " threw: " + e.Message);
+            }
+            return null;
+        }
+
+        private static IMyTerminalControl Textbox(string id, string title,
+            Func<IMyTerminalBlock, string> get, Action<IMyTerminalBlock, string> set)
+        {
+            var c = MyAPIGateway.TerminalControls
+                .CreateControl<IMyTerminalControlTextbox, IMyUpgradeModule>(id);
+            c.Title = MyStringId.GetOrCompute(title);
+            c.SupportsMultipleBlocks = false;
+            c.Getter = b => new StringBuilder(get(b));
+            c.Setter = (b, sb) => set(b, sb.ToString());
+            MyLog.Default.WriteLineAndConsole("GT REPAIR:   " + id + " SYNTHESISED (replacement, not Keen's)");
+            return c;
+        }
+
+        private static IMyTerminalControl Checkbox(string id, string title,
+            Func<IMyTerminalBlock, bool> get, Action<IMyTerminalBlock, bool> set)
+        {
+            var c = MyAPIGateway.TerminalControls
+                .CreateControl<IMyTerminalControlCheckbox, IMyUpgradeModule>(id);
+            c.Title = MyStringId.GetOrCompute(title);
+            c.SupportsMultipleBlocks = true;
+            c.Getter = b => get(b);
+            c.Setter = (b, v) => set(b, v);
+            MyLog.Default.WriteLineAndConsole("GT REPAIR:   " + id + " SYNTHESISED (replacement, not Keen's)");
             return c;
         }
 

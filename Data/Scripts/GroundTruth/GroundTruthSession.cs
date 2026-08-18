@@ -345,8 +345,13 @@ namespace GroundTruth
             // because another mod emptied the shared one, put them back before we add
             // ours on top. Doing it in this order means a repaired list then satisfies
             // the registration gate normally.
-            ControlRepair.Repair();
+            // Registration FIRST, repair second. Repair judges the upgrade module list
+            // by whether it is populated but missing Name, and on a damaged server the
+            // list is empty until our own registration puts something in it. Reversing
+            // these two leaves repair looking at an empty list forever, unable to tell
+            // "destroyed" from "not built yet".
             TerminalApi.TryCreateDeferred();
+            ControlRepair.Repair();
 
             TickEvents();
 
