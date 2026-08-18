@@ -17,7 +17,19 @@ namespace GroundTruth
     // Values are recomputed on a fixed interval and served from cache. Nothing
     // recomputes on read - a Programmable Block polling every tick must not be able to
     // trigger a raycast sixty times a second.
-    [MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation)]
+    // PRIORITY, NOT JUST UPDATE ORDER.
+    //
+    // The second argument is initialisation priority: lower runs earlier. It matters
+    // because ControlRepair.Capture() has to read the shared terminal control list
+    // BEFORE Animation Engine empties it, and whoever gets there first wins.
+    //
+    // Running early is worth nothing else to this mod and costs nothing - our LoadData
+    // only subscribes an event and reads a list - so the low number is bought cheaply.
+    //
+    // It is a bias, not a guarantee: mod assembly order still comes from the world's
+    // own config, and a mod that damages the list from its own LoadData at an even
+    // lower priority would still beat us. Hence the harvest fallback.
+    [MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation, 100)]
     public class GroundTruthSession : MySessionComponentBase
     {
         private const int TicksPerSecond = 60;
