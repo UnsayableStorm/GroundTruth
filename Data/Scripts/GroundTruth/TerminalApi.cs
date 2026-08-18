@@ -118,14 +118,49 @@ namespace GroundTruth
         /// deferred rather than skipped, so a client that joins before any upgrade
         /// module has streamed in still gets the full API a moment later.
         /// </summary>
+        // How long to wait for the game to build the list before registering anyway.
+        // Ten seconds is far longer than the normal case - on a joining client the first
+        // upgrade module streams in within a second or two.
+        private const int DeferSecondsBeforeGivingUp = 10;
+        private static int _deferredSeconds;
+
         public static bool TryCreateDeferred()
         {
             if (_created) return true;
-            if (!VanillaControlsExist()) return false;
 
+            if (VanillaControlsExist())
+            {
+                _created = true;
+                MyLog.Default.WriteLineAndConsole(
+                    "GT TERMINAL: control list is now populated by the game - registering.");
+                RegisterAll();
+                return true;
+            }
+
+            if (++_deferredSeconds < DeferSecondsBeforeGivingUp) return false;
+
+            // GIVE UP WAITING, AND SAY WHY.
+            //
+            // The list is still empty long after any block should have streamed in,
+            // which means something else already destroyed it - measured on Long Haul
+            // 2026-08-18, where the list was empty at terminal open with this mod
+            // registering nothing at all.
+            //
+            // Animation Engine (Workshop 2880317963) does this in TerminalControlHelper:
+            // it fetches the IMyTerminalBlock control list, removes every control in it,
+            // then re-adds them while iterating the same list it just emptied. Any block
+            // type whose controls are built after that inherits nothing.
+            //
+            // Withholding our registration at that point protects nothing - the damage
+            // is done and is not ours - and costs the player every GT_ property, panel
+            // and event. So register, and log loudly enough that the next person reading
+            // a bug report finds the actual culprit instead of us.
             _created = true;
             MyLog.Default.WriteLineAndConsole(
-                "GT TERMINAL: control list is now populated by the game - registering.");
+                "GT TERMINAL: vanilla controls STILL absent after " + DeferSecondsBeforeGivingUp
+                + "s - another mod has emptied the shared terminal control list. Registering "
+                + "anyway; Ground Truth is not the cause and refusing to register would only "
+                + "disable this mod. Suspect Animation Engine (2880317963) TerminalControlHelper.");
             RegisterAll();
             return true;
         }
