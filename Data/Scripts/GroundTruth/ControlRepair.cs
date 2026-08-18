@@ -78,9 +78,15 @@ namespace GroundTruth
         // repair. Same-id-different-type is not a hazard specific to OnOff - it is
         // inherent to searching by id across interfaces we do not own - so Find() below
         // now verifies TYPE, not just id, before returning anything harvested.
+        // CustomData is deliberately not attempted, harvest or synthesis. Vanilla
+        // Custom Data is a button that opens a full multi-line editor screen - not an
+        // inline field - and no mod API exposes that screen. A synthesised textbox
+        // would hold the same string but behave nothing like the control a player
+        // remembers, which teaches them to distrust it. Faked shape, not faked absence,
+        // is the harm; a missing field is honest, a wrong one is not.
         private static readonly string[] Wanted =
         {
-            "Name", "ShowInTerminal", "ShowInToolbarConfig", "ShowOnHUD", "CustomData"
+            "Name", "ShowInTerminal", "ShowInToolbarConfig", "ShowOnHUD"
         };
 
         private static readonly Dictionary<string, IMyTerminalControl> _captured =
@@ -372,11 +378,6 @@ namespace GroundTruth
                         return Textbox("Name", "Name",
                             b => b.CustomName,
                             (b, v) => b.CustomName = v);
-
-                    case "CustomData":
-                        return Textbox("CustomData", "Custom Data",
-                            b => b.CustomData,
-                            (b, v) => b.CustomData = v);
 
                     case "ShowInTerminal":
                         return Checkbox("ShowInTerminal", "Show in terminal",
