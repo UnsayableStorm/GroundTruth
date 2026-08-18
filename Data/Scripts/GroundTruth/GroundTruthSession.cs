@@ -17,18 +17,13 @@ namespace GroundTruth
     // Values are recomputed on a fixed interval and served from cache. Nothing
     // recomputes on read - a Programmable Block polling every tick must not be able to
     // trigger a raycast sixty times a second.
-    // PRIORITY, NOT JUST UPDATE ORDER.
-    //
-    // The second argument is initialisation priority: lower runs earlier. It matters
-    // because ControlRepair.Capture() has to read the shared terminal control list
-    // BEFORE Animation Engine empties it, and whoever gets there first wins.
-    //
-    // Running early is worth nothing else to this mod and costs nothing - our LoadData
-    // only subscribes an event and reads a list - so the low number is bought cheaply.
-    //
-    // It is a bias, not a guarantee: mod assembly order still comes from the world's
-    // own config, and a mod that damages the list from its own LoadData at an even
-    // lower priority would still beat us. Hence the harvest fallback.
+    // The 100 used to matter for winning a race against Animation Engine to read the
+    // shared control list first. That race is gone - LoadData no longer touches
+    // MyAPIGateway.TerminalControls at all, on the finding that even a bare read on
+    // our own schedule was enough to corrupt every upgrade module's terminal, so
+    // there is nothing left to be early FOR. Left at the default rather than tidied
+    // back to nothing, since it costs nothing and a future reader should not have to
+    // wonder whether some other system still depends on it.
     [MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation, 100)]
     public class GroundTruthSession : MySessionComponentBase
     {
@@ -265,7 +260,11 @@ namespace GroundTruth
         public override void BeforeStart()
         {
             base.BeforeStart();
-            TerminalApi.Create();
+            // Registration no longer happens here - see TerminalApi.RegisterReactively
+            // and OnCustomControlGetter below. Calling GetControls/AddControl on our
+            // own schedule, even just at BeforeStart, was measured 2026-08-18 to be
+            // sufficient on its own to corrupt every upgrade module's terminal
+            // controls in the game.
             PanelControls.Create();
         }
 
@@ -277,6 +276,14 @@ namespace GroundTruth
             // before the IsOurs guard. PanelControls adds nothing to a block whose
             // surface is not running one of our apps.
             PanelControls.Inject(block, controls);
+
+            // THE registration point. Keen only calls this hook once it has already
+            // decided to build the block's control list, so by the time we are here the
+            // timing question that corrupted things is already settled - we are not
+            // the one deciding when this type's list comes into existence. Deliberately
+            // BEFORE the IsOurs guard: the first upgrade module opened by ANYONE
+            // (vanilla or ours) is what triggers this, once, for the whole session.
+            TerminalApi.RegisterReactively();
 
             // Diagnostic, one shot per session: the first time a terminal builds an
             // upgrade module's control list. Deliberately BEFORE the IsOurs guard - the
@@ -341,34 +348,6 @@ namespace GroundTruth
             // Custom Event Controller events, driven on the same one-second cadence as
             // the readings they watch. An event component gets no update callback of its
             // own - the stock ones hook block events, and a weather reading has none.
-            // Registration may have been deferred at BeforeStart because the game had
-            // not built the upgrade module control list yet - normal on a client that
-            // joins before any grid streams in. Retry until it has.
-            //
-            // REPAIR IS DISABLED. 2026-08-18: a clean A/B on Long Haul - same world,
-            // only change is removing Ground Truth entirely - showed the shield
-            // generator's terminal controls (Name, Show in Terminal) return to normal
-            // the moment Ground Truth is absent, with Animation Engine and every other
-            // mod unchanged. That implicates something WE do, not merely Animation
-            // Engine's presence, and ControlRepair - which mutates a list SHARED with
-            // every other upgrade module in the game, including other mods' blocks -
-            // is the newest and most invasive code in this file. It did not exist when
-            // the base 76-property registration below was independently verified safe
-            // in single player, days before ControlRepair was written.
-            //
-            // Turned off rather than patched again: this session already shipped one
-            // fix that crashed a client (the OnOff graft, see git history), and the
-            // honest response to a second unexplained regression is to remove the
-            // newest suspect and re-test, not add a third layer on top of two we do
-            // not yet fully understand.
-            //
-            // If reselecting affected blocks with repair off restores their controls,
-            // the fault is in registration itself and repair was never the cause -
-            // which the combined test could not distinguish. If they come back, the
-            // fault is confirmed to be in ControlRepair.
-            TerminalApi.TryCreateDeferred();
-            // ControlRepair.Repair();
-
             TickEvents();
 
             // Seal state is the one reading only the server can take, and it must run

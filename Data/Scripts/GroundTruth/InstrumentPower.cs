@@ -107,15 +107,14 @@ namespace GroundTruth
             // the same reason the sink attaches here.
             SealSync.Register(Entity as IMyCubeBlock);
 
-            // This block existing is exactly the event that makes terminal registration
-            // safe: an instrument IS an UpgradeModule, so the game has now built that
-            // type's control list, vanilla chain and all. Nudging here rather than
-            // waiting for the one-second retry means a sensor placed by hand publishes
-            // its properties immediately.
-            //
-            // The call is cheap and self-guarding: it returns at once once registration
-            // has happened.
-            TerminalApi.TryCreateDeferred();
+            // There used to be a TerminalApi nudge here, on the theory that a block
+            // existing proves its type's control list is already built. Disproven
+            // 2026-08-18: registering GT_ properties reactively, purely from
+            // CustomControlGetter (see GroundTruthSession), is the only timing that did
+            // not corrupt every upgrade module's terminal controls in testing. Calling
+            // into TerminalApi from here would be exactly the proactive pattern that
+            // caused the damage - on our own schedule rather than the game's - so
+            // nothing calls it from this file at all.
 
             if (_megawatts <= 0f) return;
 

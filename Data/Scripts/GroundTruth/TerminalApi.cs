@@ -69,149 +69,46 @@ namespace GroundTruth
 
         private static bool _created;
 
-        // DIAGNOSTIC KILL SWITCH - 2026-08-18.
+        // THE ROOT CAUSE, CONFIRMED 2026-08-18.
         //
-        // Disabling ControlRepair.Repair() did not restore the shield generator's
-        // controls in the same modded single-player world: the symptom was identical
-        // with repair on and off. That clears repair and leaves exactly one thing GT
-        // still does to the shared IMyUpgradeModule control list - registering these
-        // 76 properties via GetControls/AddControl.
+        // Everything above this comment used to be a proactive scheme: call
+        // GetControls<IMyUpgradeModule> on our own schedule (BeforeStart, then once a
+        // second) to check whether the game had built the list yet, and register once
+        // it looked safe. That was wrong in a way three earlier "fixes" did not reach,
+        // because the CHECK ITSELF was the disease:
         //
-        // Setting this true makes Create() and TryCreateDeferred() no-ops: GT touches
-        // that list NOT AT ALL. Every other GT feature (readings, panels, events,
-        // seal sync) keeps running - only the terminal property API and the vanilla
-        // repair are affected, and PB scripts will see none of the GT_ properties for
-        // as long as this is true.
+        //   build   GT loaded, registration AND the diagnostic GetControls both off -> BROKEN
+        //   build   GT loaded, registration off, ControlRepair.Capture's GetControls
+        //           still running at LoadData                                       -> BROKEN
+        //   build   GT loaded, EVERY call into MyAPIGateway.TerminalControls removed  -> FIXED
+        //   world   GT removed entirely                                              -> FIXED
         //
-        // If shield/modules recover their vanilla controls with this on, the fault is
-        // in the act of registering against IMyUpgradeModule at all - which is the
-        // 2026-08-09 mechanism (narrow interface still means EVERY block of that type
-        // shares the list) applying here regardless of timing or gating.
+        // The first two builds still called GetControls<IMyUpgradeModule> or
+        // GetControls<IMyTerminalBlock> from OUR code, on OUR timer, before any player
+        // had opened a terminal. A bare READ, not even AddControl, was enough to
+        // reproduce the corruption. Only the build that made ZERO calls into that API
+        // came back clean.
         //
-        // If they do NOT recover even with GT touching nothing, GT is not the cause of
-        // this specific world's symptom - something else in this mod combination is,
-        // and it should be chased separately rather than assumed to be us.
-        public const bool RegistrationDisabledForTesting = true;
-
-        public static void Create()
+        // So the fix is not a better-timed poll. It is: never call
+        // MyAPIGateway.TerminalControls for anything at all until the GAME has already
+        // decided to build that block's control list on its own - which is exactly
+        // what CustomControlGetter tells us, since Keen only invokes it once the list
+        // it hands us already exists. RegisterReactively, below, is called from that
+        // hook instead of from a timer, and needs no probing of the list's contents
+        // because by the time it runs the timing question is already settled.
+        //
+        // The cost, accepted deliberately: a Programmable Block on a grid where NOBODY
+        // has ever opened ANY upgrade module's terminal - ours or vanilla, anywhere in
+        // the session - sees no GT_ properties until someone does. That is a real
+        // narrowing from the original design ("a PB must read a grid nobody has
+        // opened"), and it is a far smaller cost than corrupting every upgrade module
+        // in the game, including other mods' warp drives and shield generators, which
+        // is what the proactive version actually did.
+        public static void RegisterReactively()
         {
-            if (RegistrationDisabledForTesting) return;
             if (_created) return;
-
-            // NEVER BE THE MOD THAT CREATES THIS LIST.
-            //
-            // MEASURED 2026-08-18, same build, two sessions:
-            //
-            //                        single player      client on a server
-            //   before we register      28 controls          0
-            //   after GetControls       28                   0     <- reads, never builds
-            //   after our 76           104                  76     <- ours, alone
-            //   at first terminal open   -                  76     <- vanilla NEVER arrives
-            //
-            // A block type's terminal controls are built when the game first needs them,
-            // and an instance existing is what triggers it. In single player the world's
-            // entities load before BeforeStart, so a MyUpgradeModule already existed and
-            // the list was built properly. A client joining a server has streamed in
-            // nothing yet, so the list is empty - and when we add to it, WE create it.
-            // SE then treats it as built and the vanilla controls are never added, which
-            // is why every upgrade module on Long Haul lost Name, Show in Terminal, Show
-            // in Toolbar Config, On/Off and Custom Data.
-            //
-            // GetControls does not help: it reads. Nothing in the mod API constructs the
-            // list on demand. So the only safe move is to WAIT until the count is
-            // non-zero - proof that the game built it - and only then add ours.
-            //
-            // The cost is that GT_ properties do not exist for the first moments of a
-            // client session, which is a real trade and the lesser one: a script that
-            // polls a second early gets nothing for a second, where the old behaviour
-            // permanently broke every upgrade module in the world, ours and other
-            // people's alike. Warp drives are upgrade modules too.
-            if (!VanillaControlsExist())
-            {
-                MyLog.Default.WriteLineAndConsole(
-                    "GT TERMINAL: upgrade module control list is empty - deferring "
-                    + "registration until the game builds it.");
-                return;
-            }
-
             _created = true;
             RegisterAll();
-        }
-
-        /// <summary>
-        /// Called once a second by the session until it returns true. Registration is
-        /// deferred rather than skipped, so a client that joins before any upgrade
-        /// module has streamed in still gets the full API a moment later.
-        /// </summary>
-        // How long to wait for the game to build the list before registering anyway.
-        // Ten seconds is far longer than the normal case - on a joining client the first
-        // upgrade module streams in within a second or two.
-        private const int DeferSecondsBeforeGivingUp = 10;
-        private static int _deferredSeconds;
-
-        public static bool TryCreateDeferred()
-        {
-            if (RegistrationDisabledForTesting) return false;
-            if (_created) return true;
-
-            if (VanillaControlsExist())
-            {
-                _created = true;
-                MyLog.Default.WriteLineAndConsole(
-                    "GT TERMINAL: control list is now populated by the game - registering.");
-                RegisterAll();
-                return true;
-            }
-
-            if (++_deferredSeconds < DeferSecondsBeforeGivingUp) return false;
-
-            // GIVE UP WAITING, AND SAY WHY.
-            //
-            // The list is still empty long after any block should have streamed in,
-            // which means something else already destroyed it - measured on Long Haul
-            // 2026-08-18, where the list was empty at terminal open with this mod
-            // registering nothing at all.
-            //
-            // Animation Engine (Workshop 2880317963) does this in TerminalControlHelper:
-            // it fetches the IMyTerminalBlock control list, removes every control in it,
-            // then re-adds them while iterating the same list it just emptied. Any block
-            // type whose controls are built after that inherits nothing.
-            //
-            // Withholding our registration at that point protects nothing - the damage
-            // is done and is not ours - and costs the player every GT_ property, panel
-            // and event. So register, and log loudly enough that the next person reading
-            // a bug report finds the actual culprit instead of us.
-            _created = true;
-            MyLog.Default.WriteLineAndConsole(
-                "GT TERMINAL: vanilla controls STILL absent after " + DeferSecondsBeforeGivingUp
-                + "s - another mod has emptied the shared terminal control list. Registering "
-                + "anyway; Ground Truth is not the cause and refusing to register would only "
-                + "disable this mod. Suspect Animation Engine (2880317963) TerminalControlHelper.");
-            RegisterAll();
-            return true;
-        }
-
-        private static bool VanillaControlsExist()
-        {
-            try
-            {
-                List<IMyTerminalControl> list;
-                MyAPIGateway.TerminalControls.GetControls<IMyUpgradeModule>(out list);
-                if (list == null) return false;
-
-                // Not merely non-empty - the specific inherited controls whose absence
-                // is the reported bug. A list holding only somebody else's additions is
-                // not proof that the vanilla chain has run.
-                bool name = false, showTerminal = false;
-                for (int i = 0; i < list.Count; i++)
-                {
-                    if (list[i] == null) continue;
-                    if (list[i].Id == "Name") name = true;
-                    else if (list[i].Id == "ShowInTerminal") showTerminal = true;
-                }
-                return name && showTerminal;
-            }
-            catch { return false; }
         }
 
         private static void RegisterAll()
