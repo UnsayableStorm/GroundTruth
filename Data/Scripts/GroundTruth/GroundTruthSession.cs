@@ -252,6 +252,12 @@ namespace GroundTruth
             // surface is not running one of our apps.
             PanelControls.Inject(block, controls);
 
+            // Diagnostic, one shot per session: the first time a terminal builds an
+            // upgrade module's control list. Deliberately BEFORE the IsOurs guard - the
+            // block we most need to hear about is a VANILLA upgrade module, which is
+            // not ours by definition.
+            TerminalApi.LogFirstTerminalOpen(block);
+
             if (!IsOurs(block)) return;
 
             block.AppendingCustomInfo -= WriteInfo;

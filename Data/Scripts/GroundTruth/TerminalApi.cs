@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.Text;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces.Terminal;
 using VRage.Game.ModAPI;
+using VRage.Utils;
 
 namespace GroundTruth
 {
@@ -70,6 +73,50 @@ namespace GroundTruth
         {
             if (_created) return;
             _created = true;
+
+            // WARM UP THE VANILLA CONTROL LIST BEFORE ADDING ANYTHING TO IT.
+            //
+            // Reported 2026-08-17: on Long Haul, EVERY vanilla upgrade module lost its
+            // Name field, Show in Terminal and Show in Toolbar Config. Single player
+            // without this mod has all three. The damage lands precisely on
+            // IMyUpgradeModule - the interface these 76 properties register against.
+            //
+            // The suspected mechanism was that a type's control list is built lazily and
+            // the vanilla inheritance chain only runs when the GAME builds it, so a mod
+            // registering first would create the list and leave it holding mod controls
+            // and nothing inherited.
+            //
+            // MEASURED 2026-08-18, vanilla world plus this mod only:
+            //
+            //   BEFORE warm-up ...............  28 controls
+            //   AFTER warm-up ................  28   (identical - the call does nothing)
+            //   AFTER our 76 .................  104  (28 + 76, nothing displaced)
+            //
+            // and those 28 already contained OnOff, Name, ShowInTerminal,
+            // ShowInToolbarConfig, ShowOnHUD and CustomData. THE HYPOTHESIS IS WRONG.
+            // The list is fully built before we touch it, and our registrations are
+            // purely additive.
+            //
+            // The warm-up stays because it is two lines, conventional, and cannot hurt -
+            // but it is a measured no-op, NOT the fix, and nobody should later read this
+            // block and conclude the bug was solved here.
+            //
+            // Where that leaves the real bug: it does not reproduce with this mod alone,
+            // so it is an interaction on a loaded server - another mod registering
+            // against the same interface, or removing controls after we are done.
+            // Snapshots 1-3 all happen inside Create() and are blind to anything that
+            // occurs later, which is what LogFirstTerminalOpen exists to catch.
+            LogControls("BEFORE warm-up");
+            try
+            {
+                List<IMyTerminalControl> existing;
+                MyAPIGateway.TerminalControls.GetControls<IMyUpgradeModule>(out existing);
+            }
+            catch (Exception e)
+            {
+                MyLog.Default.WriteLineAndConsole("GT TERMINAL warm-up threw: " + e.Message);
+            }
+            LogControls("AFTER warm-up, before our 76");
 
             // ---- GT_Sys : metadata, present on every instrument ----
             Num("GT_SysApiVersion", (b, s) => ApiVersion);
@@ -239,6 +286,10 @@ namespace GroundTruth
             // Readable without a compass mod, which the stock game does not provide.
             Num("GT_BioNearestBearingRel", (b, s) => s.Bio.NearestBearingRel);
             Num("GT_BioSpeciesCount", (b, s) => s.Bio.Species == null ? -1f : s.Bio.Species.Count);
+
+            LogControls("AFTER our 76");
+            RememberBaseline();
+
         }
 
         // ------------------------------------------------------------------
@@ -246,6 +297,124 @@ namespace GroundTruth
         private static float Role(IMyTerminalBlock b)
         {
             return Instruments.RoleOf(b.BlockDefinition.SubtypeName);
+        }
+
+
+        // Snapshot of what IMyUpgradeModule's control list holds right now. Ids only -
+        // enough to see whether Name, ShowInTerminal and ShowInToolbarConfig are there,
+        // which is the entire question.
+        private static void LogControls(string when)
+        {
+            try
+            {
+                List<IMyTerminalControl> list;
+                MyAPIGateway.TerminalControls.GetControls<IMyUpgradeModule>(out list);
+
+                var sb = new StringBuilder();
+                sb.Append("GT TERMINAL [").Append(when).Append("] IMyUpgradeModule controls: ");
+                if (list == null) { sb.Append("NULL LIST"); }
+                else
+                {
+                    sb.Append(list.Count).Append(" -> ");
+                    for (int i = 0; i < list.Count; i++)
+                    {
+                        if (i > 0) sb.Append(", ");
+                        sb.Append(list[i] == null ? "?" : list[i].Id);
+                        if (i >= 39) { sb.Append(", ..."); break; }
+                    }
+                }
+                MyLog.Default.WriteLineAndConsole(sb.ToString());
+            }
+            catch (Exception e)
+            {
+                MyLog.Default.WriteLineAndConsole("GT TERMINAL [" + when + "] threw: " + e.Message);
+            }
+        }
+
+
+        // What the control list held once we finished registering. Snapshot 4 compares
+        // against this, so the log names WHAT WAS LOST rather than printing 104 ids and
+        // leaving the diff to a human at 2am.
+        private static readonly List<string> _baseline = new List<string>();
+        // First THREE opens, not the first one. Our own instruments are upgrade modules
+        // as well, so a one-shot would be spent on a GT block before a vanilla one was
+        // ever opened - and the vanilla block is the whole question.
+        private static int _openLogs;
+
+        private static void RememberBaseline()
+        {
+            try
+            {
+                List<IMyTerminalControl> list;
+                MyAPIGateway.TerminalControls.GetControls<IMyUpgradeModule>(out list);
+                _baseline.Clear();
+                if (list == null) return;
+                for (int i = 0; i < list.Count; i++)
+                    if (list[i] != null) _baseline.Add(list[i].Id);
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Snapshot 4: taken the first time a terminal actually builds an upgrade
+        /// module's controls, which is the moment the reported symptom is visible and
+        /// long after Create() has finished.
+        ///
+        /// Snapshots 1-3 all happen inside Create() and therefore cannot see a mod that
+        /// registers - or removes - controls later. This one can. If the count here is
+        /// lower than the baseline, something took controls away after we were done, and
+        /// the missing ids name what.
+        /// </summary>
+        public static void LogFirstTerminalOpen(IMyTerminalBlock block)
+        {
+            if (_openLogs >= 3 || block == null) return;
+            if (!(block is IMyUpgradeModule)) return;
+            _openLogs++;
+
+            try
+            {
+                List<IMyTerminalControl> list;
+                MyAPIGateway.TerminalControls.GetControls<IMyUpgradeModule>(out list);
+
+                var now = new List<string>();
+                if (list != null)
+                    for (int i = 0; i < list.Count; i++)
+                        if (list[i] != null) now.Add(list[i].Id);
+
+                var sb = new StringBuilder();
+                sb.Append("GT TERMINAL [FIRST OPEN: ").Append(block.BlockDefinition.SubtypeName)
+                  .Append("] ").Append(now.Count).Append(" controls, baseline was ")
+                  .Append(_baseline.Count);
+
+                var missing = new List<string>();
+                for (int i = 0; i < _baseline.Count; i++)
+                    if (!now.Contains(_baseline[i])) missing.Add(_baseline[i]);
+
+                var added = new List<string>();
+                for (int i = 0; i < now.Count; i++)
+                    if (!_baseline.Contains(now[i])) added.Add(now[i]);
+
+                sb.Append(" | MISSING SINCE REGISTRATION: ");
+                sb.Append(missing.Count == 0 ? "none" : string.Join(", ", missing.ToArray()));
+                sb.Append(" | ADDED SINCE: ");
+                sb.Append(added.Count == 0 ? "none" : string.Join(", ", added.ToArray()));
+
+                MyLog.Default.WriteLineAndConsole(sb.ToString());
+
+                // The vanilla controls the report named, checked by name, so the log
+                // answers the actual question without anyone reading a list.
+                string[] watch = { "Name", "ShowInTerminal", "ShowInToolbarConfig", "OnOff", "CustomData" };
+                var absent = new List<string>();
+                for (int i = 0; i < watch.Length; i++)
+                    if (!now.Contains(watch[i])) absent.Add(watch[i]);
+
+                MyLog.Default.WriteLineAndConsole("GT TERMINAL [FIRST OPEN] vanilla controls absent: "
+                    + (absent.Count == 0 ? "NONE - list is intact" : string.Join(", ", absent.ToArray())));
+            }
+            catch (Exception e)
+            {
+                MyLog.Default.WriteLineAndConsole("GT TERMINAL [FIRST OPEN] threw: " + e.Message);
+            }
         }
 
         private static float Capabilities(IMyTerminalBlock b)
