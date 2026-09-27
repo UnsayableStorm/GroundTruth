@@ -52,9 +52,10 @@ expensive piece of engineering in this mod (see the control-list history in
 cache directly and do not need it. Programmable Block access to radar data is Phase 6, as a
 separate piece of work.
 
-**D0.4 — Detection does not depend on dish orientation.** The dish may later turn to face a
-selected contact (Phase 4), but that is presentation. What the sensor sees never depends on
-where the model is pointing.
+**D0.4 — The dish's rotation is decoration and stays exactly as it is.** `SpinningAntenna`
+is not touched by this work. The dish never aims at anything, detection never depends on
+where the model is pointing, and nothing on any screen claims a relationship to the spin.
+The brief's antenna-tracking item (§4.9) is dropped, not deferred.
 
 **D0.5 — The unit of "ship" is the mechanical grid group.** A ship with rotors, hinges and
 pistons is several `IMyCubeGrid`s. Both the observer ("own ship") and every contact are
@@ -172,7 +173,6 @@ presentation — the same rule the existing apps follow.
 | `TacticalPanels.cs` | Radar, Contact List, Target Track |
 | `NavigationPanels.cs` | Navigation, Sensor Status |
 | `SweepPanel.cs` | Sensor Sweep (Phase 4) |
-| `DishTracking.cs` | Dish slewing (Phase 4), replacing `SpinningAntenna` when enabled |
 
 Registry changes are confined to `Instruments.cs` (one role, one capability, two table rows)
 and the app id list in `PanelControls.cs`.
@@ -266,7 +266,6 @@ holds; none of it is a status message written for effect.
 | Own-ship telemetry | 1 s, existing recompute | per panel-resolved controller |
 | LCD redraw | each app's own `UpdateInterval`, 1 s default | skipped when the frame is unchanged |
 | Sweep animation | its own throttle, client only | never on a dedicated server |
-| Dish slewing | per frame, client only, within 1 km of camera | already how `SpinningSubpart` behaves |
 
 A ship moving at 100 m/s moves 200 m between 2 s scans. That is visible on a close-range
 plot and irrelevant at 5 km. The interval is a dish setting because only the player knows
@@ -288,8 +287,6 @@ client, so a client computes its own scan. Consequences, stated rather than pape
   truthfully what their machine has.
 - **Selection is shared** through Custom Data (D3), which syncs, so every player on the ship
   sees the same tracked contact.
-- **Dish slewing is client-side presentation**, derived from the synced selection, and is
-  skipped on a dedicated server as the spin already is.
 - The server runs no radar scan until Phase 6 gives a server-side consumer a reason to.
 
 ---
@@ -315,8 +312,7 @@ under `probes/RadarProbe/`, logging results on both a single-player session and 
 | 0.5 | `IsStatic`, `GridSizeEnum`, group `WorldAABB` | Class, Dimensions |
 | 0.6 | `CustomActionGetter` injects toolbar actions onto one block without registering them against the type | D4.3 |
 | 0.7 | `IMyShipController.TryGetPlanetElevation`, gravity and dampener members | Phase 3 |
-| 0.8 | The dish subpart `RotateRadar` can be set to an arbitrary yaw (not only incremented), and the model's pivot is where the dish visually turns | Phase 4 |
-| 0.9 | Writing `CustomData` from mod code on a DS client syncs to the server and to other clients | D3 |
+| 0.8 | Writing `CustomData` from mod code on a DS client syncs to the server and to other clients | D3 |
 
 **Exit:** a written result for every row, added to this document. Any row that fails
 changes the design of the step it blocks *before* that step is built.
@@ -383,19 +379,16 @@ every dish flips Sensor Status to offline within one scan interval.
 
 ### Phase 4 — Presentation
 
-4.1 **Dish tracking** (`DishTracking.cs`): passive mode keeps today's spin; track mode yaws
-the dish toward the tracked contact's bearing, rate-limited. Client-only; off on a dedicated
-server. Yaw only unless 0.8 shows the model has a tilt subpart.
-4.2 **Trails** on the Radar app from the bounded ring in §5.1.
-4.3 **Sensor Sweep app** (`GT_Sweep`). The sweep angle is driven by the actual scan clock
-— one revolution per scan interval — so the animation is a truthful display of when the
-sensor last looked. Contacts brighten as the sweep passes and fade toward the next scan.
-Throttled independently; never runs on a dedicated server.
-4.4 Layout and density pass across all tactical apps, including corner and wide LCDs.
+4.1 **Trails** on the Radar app from the bounded ring in §5.1.
+4.2 **Sensor Sweep app** (`GT_Sweep`). An LCD app only; it has nothing to do with the dish
+model. The sweep turns once per scan interval, so on screen it reads as the scan cadence
+rather than as a detection mechanism. Contacts brighten as it passes and fade toward the
+next scan. Throttled independently; never runs on a dedicated server.
+4.3 Layout and density pass across all tactical apps, including corner and wide LCDs.
 
 **Exit:** four panels of mixed apps on each of two ships near each other on a DS, no
-measurable frame cost on the client beyond the existing apps', and the dish visibly
-following a target around the ship.
+measurable frame cost on the client beyond the existing apps', and trails bounded at their
+stated length.
 
 ### Phase 5 — Validation and documentation
 
