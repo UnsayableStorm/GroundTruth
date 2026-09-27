@@ -169,6 +169,7 @@ presentation — the same rule the existing apps follow.
 | File | Contents |
 |---|---|
 | `Tactical.cs` | Contact and own-ship models, the per-group contact table, lifecycle, the scan itself |
+| `TacticalMath.cs` | Pure geometry — bearing, elevation, closing rate, horizon test, plot projection. No entity or session access, so it can be tested outside the game (§9.4) |
 | `TacticalSelection.cs` | Selected-contact storage and resolution (D3), dropdown injection (D4) |
 | `TacticalPanels.cs` | Radar, Contact List, Target Track |
 | `NavigationPanels.cs` | Navigation, Sensor Status |
@@ -418,7 +419,99 @@ Not scheduled. Listed so the design leaves room for it.
 
 ---
 
-## 9. Known limits, stated up front
+## 9. Who does what
+
+Three tiers, chosen by what goes wrong if the work is done badly, not by how much typing
+it involves.
+
+- **Opus** — decisions, anything where a plausible wrong answer passes review, and the
+  phase gates. Kept small on purpose.
+- **Sonnet** — the bulk of implementation, working from this document and the files it
+  names. Most steps are here.
+- **DeepInfra models** — mechanical, fully specified work whose output is a small diff or a
+  document that can be checked by reading it. No design judgement, no engine knowledge
+  required beyond the rules below.
+- **No model** — work a script or `grep` does better. Paying any model to do it is waste.
+
+### 9.1 Rules every delegated task carries
+
+A cheaper model does not know what this repository learned the hard way. Every handoff, at
+any tier below Opus, includes these, verbatim:
+
+1. **C# 6 only.** No local functions, tuples, `out var`, pattern matching, `is` with a
+   declaration. `tools/check-compile.ps1` has already passed a C# 7 feature once that the
+   game then rejected.
+2. **The mod whitelist applies.** Only APIs the mod already uses, or that a Phase 0 probe
+   has cleared. No `MyIni`, no reflection, no `System.IO`, no threads.
+3. **Never touch** `TerminalApi.cs`, `InstrumentPower.cs`, `SealSync.cs`, `Rotation.cs`, or the
+   `LoadData`/`BeforeStart` registration timing in `GroundTruthSession.cs`. A step that
+   seems to need to is a step to escalate.
+4. **−1 means no reading.** An unavailable value is never rendered or stored as 0.
+5. **Read `docs/ENGINE_TRAPS.md` first.** It is shorter than the time any one of its entries
+   cost.
+6. **Match the file's comment voice**: comments explain *why*, including the wrong turns.
+7. **Stop and escalate** rather than improvise when the step needs an API not in the Phase 0
+   table, a decision not in §2–§3, or a change outside the files the step names.
+
+### 9.2 Opus → Sonnet handoff
+
+Sonnet starts each step by reading this document, `ENGINE_TRAPS.md` and every file the step
+names, and finishes it with a compile check and a short report: what changed, what was not
+done, what it was unsure of. It does not start the next phase; the gate does.
+
+**Phase gates stay with Opus**: review the phase's full diff against this plan, read the
+in-game results for the exit check, and decide whether the phase is done. That is where the
+Opus budget buys the most — one careful review per phase instead of supervision per edit.
+
+### 9.3 Step assignments
+
+| Step | Tier | Why |
+|---|---|---|
+| D1–D6 decisions | **You + Opus** | Design; everything downstream depends on them |
+| 0.1–0.8 probe **design** (what to log, what counts as pass) | **Opus** | Trap 12: a probe that cannot fail proves nothing |
+| Probe **code** | Sonnet | Straightforward once the pass/fail conditions are written |
+| Probe **log reading** | No model, then Opus | `grep` the `GT` / `RADARPROBE` lines out of the game log; Opus reads only those. Full logs are the most expensive thing to put in front of any model |
+| 1.1 registry rows, comment updates | DeepInfra | Two table rows and three comment rewrites to a given text |
+| 1.2 orphan check | Sonnet | Small, but it is a safety check and must stay loud for real drift |
+| 1.3 `Recompute` role gate | Sonnet | Touches the shared loop every instrument depends on |
+| 1.4 `Tactical.cs` — model, lifecycle, bounds | **Opus designs the types and state machine**, Sonnet implements | Lifecycle edge cases (closed vs. lost, selection through expiry) are where a plausible bug lives |
+| 1.4 group collapse, identification (D2) | **Opus** | Correctness depends on engine behaviour the probes reveal; a wrong answer looks right on screen |
+| 1.4 geometry: bearing/elevation, closing rate, horizon test, plot projection | DeepInfra, into `TacticalMath.cs` | Pure functions with exact expected outputs. Kept free of entity and session access so they can be tested outside the game (see below) |
+| 1.5 detail pane text | Sonnet | Follows the existing `WriteInfo` pattern |
+| 2.1 selection storage and dropdown | Sonnet | Copies the `PanelControls` pattern; the Custom Data sync question is settled by probe 0.8 |
+| 2.1 toolbar actions | Sonnet, only if 0.6 passed | |
+| 2.2–2.4 the three apps | Sonnet | `TssBase` already solves scaling, palette and resolution |
+| 2.3 radar plot layout constants, marker sprite table | DeepInfra | Numbers and a lookup, tuned against screenshots |
+| 2.5 Custom Data keys | Sonnet | Extends a hand parser whose failure mode must stay "defaults" |
+| 2.6 app id registration | DeepInfra | One list |
+| 3.1 own-ship telemetry | Sonnet | |
+| 3.2–3.3 Navigation, Sensor Status | Sonnet | |
+| 4.1–4.3 trails, sweep, layout pass | Sonnet; layout constants to DeepInfra | |
+| Test checklists from each phase's exit criteria | DeepInfra | Turns the exit paragraph into a step-by-step in-game script you can follow |
+| 5.1–5.2 stress and abuse **results** | **Opus** | Judging whether an odd result is a bug or the engine |
+| 5.3–5.4 INTEGRATION.md tables, README quick-start | DeepInfra drafts, Sonnet checks against code | The tables must match the code exactly, which is checkable |
+| 5.5 ENGINE_TRAPS entries | **Opus** | Deciding what was actually learned, and saying it symptom-first |
+| 5.6 workshop text | DeepInfra draft | |
+
+### 9.4 Making delegation safe
+
+**`TacticalMath.cs` is split out so it can be tested without the game.** Every function in it
+takes vectors and numbers and returns vectors and numbers — no `IMyEntity`, no session, no
+logging. A small test project referencing `VRage.Math.dll` from the game install, run the way
+`check-compile.ps1` references assemblies, can check it against hand-computed cases in a
+second. That is what makes it safe to hand to the cheapest tier: the output is either right
+or the test says so.
+
+**The compile check runs on your machine**, because it needs the game's assemblies. No model
+in a cloud session can run it. A delegated step is not done until you have run it.
+
+**A DeepInfra task gets a self-contained brief**: the §9.1 rules, the exact files, the exact
+change, and the expected result. If the brief cannot be written that precisely, the task
+belongs to Sonnet.
+
+---
+
+## 10. Known limits, stated up front
 
 - Range cannot exceed what the machine has streamed. Beyond sync distance there is nothing
   to detect, and the Sensor Status screen says so.
@@ -430,7 +523,7 @@ Not scheduled. Listed so the design leaves room for it.
 - Identification (D2) is only as good as the target's broadcasting. A silent enemy is a
   silent enemy.
 
-## 10. Out of scope
+## 11. Out of scope
 
 Everything in the brief's non-goals, and its list of future extensions: weapon control,
 automated targeting, fleet displays, docking, astrometrics. None is ruled out forever; none
