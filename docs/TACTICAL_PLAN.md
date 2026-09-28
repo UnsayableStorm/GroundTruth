@@ -194,10 +194,10 @@ before anything depends on it.
 
 | Field | Source | Unavailable reads as |
 |---|---|---|
-| `Id` | root grid `EntityId` of the target's mechanical group | — (always present) |
+| `Id` | `EntityId` of the group's largest member by block count, ties to the lowest id (probe 0.2 confirms this picks the hull) | — (always present) |
 | `Position` | group's world-space bounding-box centre | — |
 | `PreviousPosition` | previous scan | absent on first sighting |
-| `Velocity` | `Physics.LinearVelocity` of the root grid | zero only if genuinely static |
+| `Velocity` | `Physics.LinearVelocity` of that member (or position deltas, if probe 0.1 fails on clients) | zero only if genuinely static |
 | `Range`, `Bearing`, `Elevation` | computed from the observing dish; bearing frames reuse `Readings.Bearing` | bearing −1 where the frame is undefined |
 | `ClosingRate` | relative velocity projected on the line of sight | computed; always available once velocity is |
 | `Class` | `IsStatic` + grid size: *Station*, *Large ship*, *Small ship* | — |
@@ -305,21 +305,25 @@ step touches anything networked. `tools/check-compile.ps1` runs before every in-
 ### Phase 0 — Prove the APIs (no shipped code)
 
 The mod has lost days to APIs that compiled and never worked (ENGINE_TRAPS 9 and 12). Every
-API this plan depends on that the mod does not already use is proven first, in a probe mod
-under `probes/RadarProbe/`, logging results on both a single-player session and a DS client.
+API this plan depends on that the mod does not already use is proven first, in two probe
+mods, `probes/RadarProbe/` (read-only) and `probes/RadarActionProbe/` (touches terminal
+actions and Custom Data), run in single player and as a client on a dedicated server.
+
+**The full design — fixture world, log format, pass/fail criteria and what each result
+changes — is in [`PHASE0_PROBES.md`](PHASE0_PROBES.md).** The table below is the summary.
 
 | # | Question | Blocks |
 |---|---|---|
 | 0.1 | `GetEntitiesInSphere` returns remote `IMyCubeGrid`s on a DS client, and `Physics.LinearVelocity` is populated for them (not zero) | Phase 1 |
 | 0.2 | `IMyCubeGrid.GetGridGroup(GridLinkTypeEnum.Mechanical)` is whitelisted and returns the rotor/piston children | D0.5 |
 | 0.3 | Owner and relationship: `BigOwners`, `IMyFactionCollection` relation lookups | D2 |
-| 0.4 | A target's antenna broadcast state and radius are readable (`IMyRadioAntenna.IsBroadcasting`, `Radius`) | D2 |
-| 0.5 | `IsStatic`, `GridSizeEnum`, group `WorldAABB` | Class, Dimensions |
+| 0.4 | A target's antenna and beacon broadcast state and radius are readable, and sync when toggled | D2 |
+| 0.5 | `IsStatic`, `GridSizeEnum`, `LocalAABB` vs `WorldAABB`, and whether projections can be excluded | Class, Dimensions |
 | 0.6 | `CustomActionGetter` injects toolbar actions onto one block without registering them against the type | D4.3 |
 | 0.7 | `IMyShipController.TryGetPlanetElevation`, gravity and dampener members | Phase 3 |
 | 0.8 | Writing `CustomData` from mod code on a DS client syncs to the server and to other clients | D3 |
 
-**Exit:** a written result for every row, added to this document. Any row that fails
+**Exit:** a written result for every check, in `PHASE0_PROBES.md` §7. Any row that fails
 changes the design of the step it blocks *before* that step is built.
 
 ### Phase 1 — The host and the contact primitive

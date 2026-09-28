@@ -1,0 +1,435 @@
+# Phase 0 — Probe Design
+
+Status: **designed, not built.** This is the specification the probe code is written from
+(`TACTICAL_PLAN.md` §9.3: probe design is Opus, probe code is Sonnet). It defines what each
+probe logs, what counts as a pass, and what each result changes in the plan.
+
+Two traps shape every line of it:
+
+- **Trap 12** — a test that never ran your code is not a negative result. Every probe logs
+  the *mechanism* running, separately from the *outcome*, so "the API returned nothing" and
+  "the probe never got that far" can never look the same.
+- **Trap 9** — compiling is not the same as being delivered. A whitelisted API that returns
+  empty, zero or stale data is a failure, and a probe that only checks "no exception" cannot
+  see it. Every value is compared against something independent.
+
+---
+
+## 1. Shape
+
+Two probe mods, split by risk rather than by topic.
+
+| Mod | Probes | Touches the world? |
+|---|---|---|
+| `probes/RadarProbe` | 0.1 detection & velocity, 0.2 grid groups, 0.3 ownership, 0.4 broadcasters, 0.5 class & size, 0.7 ship controller | **No.** Read-only. |
+| `probes/RadarActionProbe` | 0.6 toolbar actions, 0.8 Custom Data sync | Yes: injects one action onto dishes, writes a `[RadarProbe]` section into dish Custom Data |
+
+The split exists so the read-only probe can run on any world without a second thought, and
+so a failure in the terminal-touching probe can be removed without losing the others.
+
+**Run both on a copy of a world, never the live save.** Nothing here is expected to damage
+anything, but 0.6 injects into terminal action lists, and this mod's history with terminal
+lists (`TerminalApi.cs`) is reason enough.
+
+### 1.1 Whitelist rejections are results, not blockers
+
+In SE a mod's scripts compile as one unit, so one prohibited member stops the whole mod. The
+game log names the member. **Procedure:** record the rejected member in §7 as a FAIL for the
+question it served, delete that call, reload. Two cheap filters come first:
+
+- `tools/check-compile.ps1` catches members that **do not exist** (wrong name, wrong
+  signature). It cannot catch members that exist but are **prohibited** — only the game does.
+- The compile checker currently has its source folder hard-coded to
+  `Data/Scripts/GroundTruth`. It needs a `-Source` parameter to check a probe. That is a
+  one-line tooling change and the first task of the build (§8).
+
+### 1.2 Where the probes must run
+
+| Pass | Why | Logs to collect |
+|---|---|---|
+| **SP** — single player | The client is the server; the easiest environment, and the control for the others | client log |
+| **DS** — dedicated server, you joined as a client | Streaming, sync and client-side physics are where this plan can actually fail | client log **and** the server's log |
+| **DS + second player** *(optional)* | Only 0.3 and 0.8 benefit; skip if not practical | the second client's log too |
+
+Every log line carries the side it came from, so the three logs can be merged and read as
+one timeline.
+
+---
+
+## 2. The test fixture
+
+One world, built once, reused by every Phase 0 probe and later by the Phase 1 exit check.
+
+**Grid names are the fixture's declaration.** Every test grid is named `RP-<letter> ` followed
+by tags saying what it is supposed to be. The probe parses the tags and checks the engine's
+answer against them. That does two things: the probe can print its own verdicts, which is
+what makes the logs cheap to read, and a mis-built fixture shows up as a disagreement instead
+of silently skewing a result.
+
+| Grid | Name | What it is |
+|---|---|---|
+| Observer | `RP-O OWN LARGE ROTOR` | Your large ship. Working, powered `GT_RotatingRadarDish`, a cockpit, a rotor with a small subgrid on it. Parked. |
+| A | `RP-A OWN LARGE ROTOR` | A second ship of yours with a rotor-mounted subgrid. Within 2 km of O. |
+| B | `RP-B OTHER SMALL BCAST` | A small ship **not owned by you**, with a working antenna, broadcast **on**, radius large enough to reach O. |
+| C | `RP-C OTHER LARGE SILENT` | A large ship not owned by you. Antenna present, broadcast **off**. |
+| D | `RP-D OTHER STATIC` | A station (static grid) not owned by you. |
+| E | `RP-E OWN SMALL MOVING` | A small ship in space with dampeners off and a forward thruster override, so it is accelerating or at max speed throughout the run. Place it so it passes O rather than leaving range within the first minute. |
+| F | `RP-F PROJ` | A projector on O or A projecting any blueprint. The projection is the thing under test. |
+| G | `RP-G OTHER SMALL DOCKED` | A small ship docked by **connector** to D. |
+| H | `RP-H OWN FAR` | Any grid placed **2 km beyond** the world's sync distance from O. |
+| I | `RP-I OTHER SMALL BEACON` | A small ship not owned by you, with a working **beacon** and no antenna. (See §6, question for D2.) |
+
+**Ownership for "OTHER".** Use whatever is easiest in your world — an NPC faction grid
+(pirate or trader encounter), a grid owned by a second account, or unowned debris. Add the
+relationship you expect as a tag: `ENEMY`, `NEUTRAL`, `FRIEND` or `NOBODY`. If you do not know
+it, leave the tag off; that check reports INCONCLUSIVE instead of guessing.
+
+Keep the whole fixture except H inside sync distance of O and outside every grid's own
+rotor reach, so nothing collides during a run.
+
+---
+
+## 3. Log format
+
+Every line starts with `RADARPROBE`, so one search extracts everything and nothing else.
+
+```
+RADARPROBE <side> <probe> <key=value ...>
+RADARPROBE <side> VERDICT <probe>.<check> PASS|FAIL|INCONCLUSIVE <reason>
+RADARPROBE <side> ALIVE <probe> sample=<n>
+```
+
+- `<side>` is `SP`, `SERVER` or `CLIENT`, decided once at load:
+  `SP` when multiplayer is not active; otherwise `SERVER` when `Multiplayer.IsServer`, else
+  `CLIENT`.
+- `ALIVE` is written **every sample, before anything that could throw**. A probe with no
+  `ALIVE` lines proved nothing (trap 12).
+- Every probe body is wrapped so an exception logs
+  `RADARPROBE <side> <probe> THREW <type>: <message>` and the other probes still run.
+- `VERDICT` lines are conveniences, not evidence. The raw lines they were computed from are
+  always logged beside them, and the gate review reads both.
+
+**Reading the logs** needs no model. On Windows:
+
+```powershell
+Select-String -Path "$env:APPDATA\SpaceEngineers\SpaceEngineers_*.log" -Pattern 'RADARPROBE' |
+  ForEach-Object { $_.Line } | Set-Content radarprobe-client.txt
+```
+
+and the same against the dedicated server's log folder. Only those extracts go in front of
+a model.
+
+---
+
+## 4. Schedule
+
+- First sample 10 s after load (600 ticks), past the loading screen — the pattern
+  `HudMarkerProbe` uses.
+- Then **every 2 s for 30 samples** (one minute), then stop. A bounded run keeps the log
+  readable and the probe harmless if forgotten in a mod list.
+- A chat command, `/radarprobe`, re-runs one sample on demand, on the machine where it is
+  typed. It cannot drive the server; the server runs its schedule regardless.
+
+---
+
+## 5. The probes
+
+Each probe states its question, what it logs, how it decides, and what each outcome does to
+the plan. The pass criteria are the part that must not be softened during the build.
+
+### 0.1 — Remote grids and their velocity, as a client sees them
+
+**Question.** Does `MyAPIGateway.Entities.GetEntitiesInSphere` return remote grids on a DS
+client, and is their `Physics.LinearVelocity` real there — not zero, not stale?
+
+**Logs**, per sample:
+- the sphere radius used (the world's sync distance) and the total entity count returned
+- the returned entities counted by kind: grids, characters, voxels, floating objects, other
+- per grid: `EntityId`, name, `Physics == null`, `LinearVelocity` length, distance to O
+- per grid, from the **previous** sample: measured speed = distance moved ÷ time elapsed.
+  This is the independent check. `LinearVelocity` is what the engine claims; the position
+  delta is what actually happened.
+- the query's cost in milliseconds (`System.Diagnostics.Stopwatch`; if the whitelist rejects
+  it, apply §1.1 and drop the timing — it informs §6 of the plan but decides nothing)
+
+**Verdicts**
+
+| Check | PASS | FAIL | INCONCLUSIVE |
+|---|---|---|---|
+| `0.1.grids` | every fixture grid inside sync distance is returned | any is missing | fixture grid not found by name |
+| `0.1.velocity` | E's `LinearVelocity` within 10% of its measured speed, on every side | reported ≈ 0 or differs > 10% while measured speed > 5 m/s | E not moving (measured < 5 m/s) |
+| `0.1.subgrids` | *(recorded, not judged)* whether rotor subgrids come back as separate entities | — | — |
+| `0.1.streaming` | *(recorded, not judged)* whether H is returned, per side | — | — |
+
+**What each outcome changes**
+- `velocity` FAIL on CLIENT only → contacts take velocity from position deltas between
+  scans, and Target Track states that closing rate is derived and lags by one scan interval.
+- `grids` FAIL on CLIENT → the whole client-side model in plan §7 is wrong; stop and redesign
+  around a server scan sent to clients before anything else is built.
+- `streaming`: H present on the server and absent on the client confirms the stated range
+  limit. H present on the client would mean the limit is looser than stated — note it.
+
+### 0.2 — Grid groups
+
+**Question.** Can mod code resolve a grid's mechanical group, and does it exclude connector
+links?
+
+**Logs**, per fixture grid and per link type (`Mechanical`, `Physical`), using **both**
+available routes so one whitelist rejection does not end the question:
+- `IMyCubeGrid.GetGridGroup(GridLinkTypeEnum.X).GetGrids(list)`
+- `MyAPIGateway.GridGroups.GetGroup(grid, GridLinkTypeEnum.X, list)`
+
+For each: member `EntityId`s, member count, and each member's block count (to decide what
+the contact's stable id should be — see below).
+
+**Verdicts**
+
+| Check | PASS | FAIL |
+|---|---|---|
+| `0.2.rotor` | A resolves to 2 grids under `Mechanical`, from either member | 1 grid, or rejected |
+| `0.2.connector` | G is **not** in D's `Mechanical` group but **is** in its `Physical` group | G in D's `Mechanical` group |
+| `0.2.control` | B (no subgrids) resolves to exactly 1 grid | anything else |
+| `0.2.routes` | *(recorded)* which of the two routes compiled and agreed | — |
+
+**Also decided here:** the contact id. The plan says "root grid `EntityId`", and a group has
+no root. Proposed rule: the member with the **most blocks**, ties to the lowest `EntityId`.
+The probe logs block counts so the gate can confirm the largest member is the hull, not a
+turret on a rotor.
+
+**What each outcome changes**
+- Both routes rejected → collapse groups by walking mechanical connection blocks (rotor,
+  hinge, piston tops) on each grid by hand. More code in `Tactical.cs`; same behaviour.
+- `connector` FAIL → docked ships are merged into one contact, and plan §10 changes to say so.
+
+### 0.3 — Ownership and relationship
+
+**Question.** Can the client determine a target's owner and its relationship to the dish's
+owner?
+
+**Logs**, per fixture grid:
+- `BigOwners` (all ids), the dish's `OwnerId`, and the local player's identity id
+- the relation from the dish owner to one functional block on the target, via
+  `IMyCubeBlock.GetUserRelationToOwner(dishOwnerId)`
+- the factions route: each side's faction tag via `Session.Factions.TryGetPlayerFaction`,
+  and `GetRelationBetweenFactions` where both have one
+
+**Verdicts**
+
+| Check | PASS | FAIL | INCONCLUSIVE |
+|---|---|---|---|
+| `0.3.own` | O, A and E report `Owner` / `FactionShare` | anything else | — |
+| `0.3.other` | each `OTHER` grid's relation matches its tag | mismatch | no relation tag in the name |
+| `0.3.sides` | CLIENT and SERVER agree for every grid | they disagree | server log not supplied |
+
+**What each outcome changes**
+- The block route passes and the faction route disagrees → use the block route only; it
+  already handles unowned grids and players without a faction.
+- `sides` FAIL → the client lacks ownership data; relationship becomes a server-sent field
+  or `UNKNOWN` everywhere on clients. That is a real cost to D2 and goes back to you before
+  Phase 1.
+
+### 0.4 — Broadcasters
+
+**Question.** Can the client read whether a target is broadcasting, and how far?
+
+**Logs**, per fixture grid, for every antenna **and every beacon** on it: `IsWorking`,
+`Enabled`, `EnableBroadcasting` (antennas), `Radius`, `HudText`, and the distance from that
+block to O. Plus `IsBroadcasting` if that member exists — `check-compile.ps1` answers that
+before the game is started; if it does not exist, remove it.
+
+**Procedure:** during the DS run, toggle B's broadcast off in its terminal (from your
+client), wait 4 s, toggle it on again. The toggle is part of the test.
+
+**Verdicts**
+
+| Check | PASS | FAIL |
+|---|---|---|
+| `0.4.state` | B broadcasting and in range; C not broadcasting | either wrong |
+| `0.4.toggle` | the SERVER log shows B's broadcast flip within 4 s of the toggle | no flip on the server |
+| `0.4.beacon` | I's beacon reads as working, with its radius | unreadable |
+
+**What each outcome changes**
+- `toggle` FAIL → broadcast state does not sync the way the terminal suggests; identification
+  on clients would use stale state. Stop and redesign D2's source before Phase 1.
+
+### 0.5 — Class and size
+
+**Question.** Are static/dynamic, grid size and real dimensions readable, and does the
+projection exclusion rule work?
+
+**Logs**, per fixture grid: `IsStatic`, `GridSizeEnum`, `LocalAABB` extents, `WorldAABB`
+extents, `Min`/`Max` cell bounds with the size they imply — `(Max − Min + 1) × GridSize` —
+and `Physics == null`.
+
+**Verdicts**
+
+| Check | PASS | FAIL |
+|---|---|---|
+| `0.5.class` | D static; B, E, G, I small; the rest large — all matching their tags | any mismatch |
+| `0.5.size` | `LocalAABB` extents within one block of the cell-bound size on every axis | worse |
+| `0.5.projection` | F (the projection) has `Physics == null` **or** is not returned by the sphere at all | F returned with physics |
+| `0.5.aabb` | *(recorded)* how much larger `WorldAABB` is than `LocalAABB` on a rotated ship | — |
+
+**What each outcome changes**
+- `projection` FAIL → a different discriminator is needed before Phase 1; projections would
+  otherwise appear as contacts.
+- `aabb` decides the Dimensions source. The expectation is `LocalAABB`: `WorldAABB` grows as
+  a ship rotates, and a contact must not appear to change size because it turned.
+
+### 0.6 — Toolbar actions on one block *(RadarActionProbe)*
+
+**Question.** Can `CustomActionGetter` put *Next / Previous / Clear* actions on the dish
+alone, without registering them against every antenna, and do they survive a reload?
+
+**Mechanism**, mirroring how `PanelControls` injects controls: subscribe to
+`MyAPIGateway.TerminalControls.CustomActionGetter`; when the block is a
+`GT_RotatingRadarDish`, create the actions with `CreateAction<IMyTerminalBlock>` and add them
+**to the list the handler was given**. Never call `AddAction`.
+
+**Logs**
+- every handler call: block subtype, action count before and after, whether ours were added
+- a **baseline**: on the first call for a *vanilla* antenna, the full list of its action ids;
+  on every later vanilla call, whether that list is still identical
+- inside each action's delegate: `RADARPROBE <side> 0.6 EXECUTED <action> on <entityId>`.
+  This is the mechanism line; an action that "did nothing" with no EXECUTED line was never
+  called
+
+**Procedure**
+1. In a cockpit on O, open the toolbar config. Find the dish; check the three probe actions
+   are listed. Find a vanilla antenna; check they are **not**.
+2. Put *Next* on the toolbar. Press it twice.
+3. Save, exit to menu, reload. Press it again **before opening any terminal or toolbar
+   screen**.
+4. Repeat 1–3 as a client on the DS.
+
+**Verdicts**
+
+| Check | PASS | FAIL |
+|---|---|---|
+| `0.6.scoped` | actions on the dish, absent on the vanilla antenna | present on vanilla |
+| `0.6.execute` | an EXECUTED line per press | presses with no line |
+| `0.6.reload` | the toolbar slot still works after reload, before any terminal is opened | slot empty, greyed or dead until a terminal is opened |
+| `0.6.vanilla` | the vanilla antenna's action list never changes from baseline | any change — **stop, remove the probe, record it** |
+| `0.6.side` | *(recorded)* which side the delegate executes on during the DS run | — |
+
+**What each outcome changes**
+- `vanilla` FAIL → toolbar actions are dropped from the plan permanently, and the result is
+  written up as an ENGINE_TRAPS entry.
+- `reload` FAIL → toolbar actions are dropped for now; D4 ships with the dropdown only.
+- `side` decides where selection writes happen, together with 0.8.
+
+### 0.7 — Ship controller telemetry *(RadarProbe)*
+
+**Question.** Do the ship-controller members the Navigation app needs exist, and do they
+agree with the vanilla HUD?
+
+**Logs**, from the cockpit on O, every sample:
+`TryGetPlanetElevation` for both `Sealevel` and `Surface` (value and return flag),
+`GetNaturalGravity` and `GetArtificialGravity` (length in m/s² and in g),
+`GetShipSpeed`, `GetShipVelocities` linear and angular, `DampenersOverride`, and whether the
+seat is occupied.
+
+The same numbers are also shown on screen with `ShowNotification` for 2 s, so a single
+screenshot holds both the probe's values and the HUD's. That screenshot is the independent
+check.
+
+**Procedure:** sample on a planet surface, then flying, then in space. Toggle dampeners
+once. Leave the seat once while it samples.
+
+**Verdicts**
+
+| Check | PASS | FAIL |
+|---|---|---|
+| `0.7.altitude` | agrees with the HUD altitude to the metre; returns false in space | disagrees, or true in space |
+| `0.7.gravity` | agrees with the HUD gravity reading | disagrees |
+| `0.7.dampeners` | flips when toggled | does not |
+| `0.7.unoccupied` | values still update with nobody seated | zeros or frozen |
+
+`0.7.altitude` and `0.7.gravity` are judged from the screenshot, so they are written up by
+hand at the gate, not by the probe.
+
+**What each outcome changes**
+- `unoccupied` FAIL → the Navigation app says "NO PILOT" rather than showing frozen values.
+
+### 0.8 — Custom Data written by mod code, on a client *(RadarActionProbe)*
+
+**Question.** When mod code on a DS client sets a dish's `CustomData`, does it reach the
+server and other clients, and does it survive a save?
+
+**Mechanism.** Typing `/radarprobe write` on a client writes a fresh stamp —
+`[RadarProbe]` / `Stamp = <random>` — into every dish on O, **preserving everything outside
+that section**. The server **polls** dish Custom Data every second and logs the first sample
+in which each new stamp appears, with the delay. It does **not** rely on
+`CustomDataChanged` — trap 18 records that event not reaching a mod handler on a dedicated
+server.
+
+**Logs**
+- client: `WROTE stamp=<x>` with the Custom Data length before and after
+- server and any second client: `SEEN stamp=<x> after=<seconds>`
+- both: whether text outside the section survived byte for byte
+
+**Procedure:** write from your client. Optionally write from a second player who has
+access to O, and from one who does not. Save the server, restart it, rejoin, and check the
+stamp is still there.
+
+**Verdicts**
+
+| Check | PASS | FAIL |
+|---|---|---|
+| `0.8.reach` | server SEEN within 2 s | never seen |
+| `0.8.preserve` | text outside the section unchanged | changed or lost |
+| `0.8.persist` | stamp present after server restart | gone |
+| `0.8.access` | *(recorded)* what happens when a player without access writes | — |
+
+**What each outcome changes**
+- `reach` FAIL → selection travels as a mod network message to the server, which writes the
+  Custom Data itself. `SealSync.cs` already runs this mod's networking and is the pattern.
+  Not free, but understood.
+- `access`: if a player without access can change the selection, the selection write must
+  check terminal access itself.
+
+---
+
+## 6. A question this design raised for D2
+
+The vanilla HUD reveals **beacons** as well as broadcasting antennas. D2 as written only
+names antennas. Probe 0.4 reads beacons so the answer is available either way, but the
+decision is yours: should a working beacon identify a contact, the same as a broadcasting
+antenna? *Recommendation:* yes — the game itself already reveals the name to you, and
+refusing to would make the sensor know less than the HUD beside it.
+
+A second, smaller one: vanilla reveals a broadcaster when it is in range of **any** antenna
+in your network, not only the one doing the looking. The plan measures range to the
+observing dish. *Recommendation:* keep the dish-only rule for Phase 1, stated as a limit, and
+revisit if it feels wrong in play.
+
+---
+
+## 7. Results
+
+To be filled in at the Phase 0 gate: one row per check, with the side it was measured on,
+the verdict, and the log line it rests on. Anything FAIL or INCONCLUSIVE carries its
+consequence from §5 into `TACTICAL_PLAN.md` before Phase 1 starts.
+
+| Check | SP | DS client | DS server | Evidence | Consequence applied |
+|---|---|---|---|---|---|
+| | | | | | |
+
+---
+
+## 8. Build handoff
+
+The probe code is a Sonnet task. The rules in `TACTICAL_PLAN.md` §9.1 apply in full.
+
+1. **Tooling first:** add a `-Source` parameter to `tools/check-compile.ps1`, defaulting to
+   today's folder. *(DeepInfra-sized.)*
+2. `probes/RadarProbe/` — `metadata.mod` copied from an existing probe, one session
+   component, one file per probe (`Probe01Detection.cs` …), a shared helper for the side tag,
+   the log format in §3, fixture-tag parsing and the schedule in §4.
+3. `probes/RadarActionProbe/` — the same skeleton for 0.6 and 0.8.
+4. Header comment on each file in the house style: the question, how to run it, and the
+   result table that decides it — as `OxygenProbe.cs` does.
+5. Compile both with the checker. Report any member that does not exist rather than
+   substituting a guess.
+
+Sonnet does **not** interpret results. The logs come back to the Phase 0 gate.
