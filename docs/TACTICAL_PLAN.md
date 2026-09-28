@@ -65,17 +65,17 @@ ships. *(Subject to the Phase 0 probe confirming `GetGridGroup` is whitelisted.)
 
 ---
 
-## 3. Open decisions
+## 3. Design decisions
 
-Each needs an answer before the phase that first depends on it. The recommendation is the
-design this plan is written against; changing one changes the phase noted.
+All six settled 2026-09-28. D1–D5 as recommended; D6 changed from the recommendation to
+the stricter rule below. Reopening one changes the phase noted against it.
 
 **D1 — Detection model** *(Phase 1)*.
 The honest minimum is a sphere at the configured range, capped by what the machine actually
 has streamed. The next step up is a **planet horizon check**: a contact on the far side of a
 planet is not seen. That is an analytic ray-versus-sphere test against the planet's radius,
 not a voxel raycast, so it is cheap.
-*Recommendation:* sphere + planet horizon in Phase 1. Terrain occlusion (mountains) is not
+*Decided:* sphere + planet horizon in Phase 1. Terrain occlusion (mountains) is not
 attempted; it would need voxel raycasts and is stated as a known limit instead.
 
 **D2 — Identification: what the sensor is allowed to know** *(Phase 1)*.
@@ -89,13 +89,13 @@ it. The game hides those unless the target broadcasts. Three options:
    class, and relationship reads `UNKNOWN`.
 3. Never reveal either.
 
-*Recommendation:* option 2. It matches what the vanilla HUD already reveals, and gives the
+*Decided:* option 2. It matches what the vanilla HUD already reveals, and gives the
 player a reason to care about broadcast state. It is also the version the brief's own rule
 ("do not invent IFF") actually permits.
 
 **D3 — Where the selected contact lives** *(Phase 2)*.
 The brief asks for one selection per ship so every display shows the same target.
-*Recommendation:* the selection is per mechanical grid group, stored as the contact's grid
+*Decided:* the selection is per mechanical grid group, stored as the contact's grid
 `EntityId` in the Custom Data of **every** working dish in the group:
 
 ```
@@ -109,7 +109,7 @@ server; this adds no new network message. There is deliberately no name fallback
 contact's name is not a stable or even a known quantity (see D2).
 
 **D4 — How a player selects** *(Phase 2)*.
-*Recommendation:* three mechanisms, in order of how much they need proving:
+*Decided:* three mechanisms, in order of how much they need proving:
 
 1. **Automatic** by default — nearest contact — so an unconfigured system is useful.
 2. A **dropdown on the dish's terminal**, listing current contacts nearest first, injected
@@ -120,19 +120,23 @@ contact's name is not a stable or even a known quantity (see D2).
    Phase 0 probe shows it does; otherwise the dropdown ships alone and this moves to later.
 
 **D5 — Radar plot orientation** *(Phase 2)*.
-*Recommendation:* ship-relative by default — the ship's forward is up on the screen, the
+*Decided:* ship-relative by default — the ship's forward is up on the screen, the
 plane is the ship's own horizontal, and each contact's height above or below that plane is
 drawn as a stalk from its plotted position. `Orientation = North` in Custom Data switches to
 a north-up plot where a north convention exists (ENGINE_TRAPS trap 7; the bearing frames
 already in `Readings` handle this).
 
-**D6 — What else the dish computes** *(Phase 1)*.
-`Recompute` currently reads environment, seal, radiation and weather for every instrument.
-For the dish those are wasted work.
-*Recommendation:* the dish gets `CapEnv` (its environment readings are free and the Sensor
-Status app can use them) but skips seal, radiation and weather. It gets a new capability bit
-`CapRadar = 128`. Bit 32 is unused but sits in the gap beside the reserved, unimplemented
-`GT_Grid` namespace, so it is left alone.
+**D6 — The dish reads nothing but contacts** *(Phase 1)*.
+Environment, sun, seal, radiation, weather and life are the other instruments' jobs. The dish
+does not take those readings, does not carry `CapEnv` or any other existing capability bit,
+and its detail pane carries no `SITE` footer. Its capabilities are `CapRadar = 128` alone.
+Bit 32 is unused but sits in the gap beside the reserved, unimplemented `GT_Grid` namespace,
+so it is left alone.
+
+*Why it matters beyond saving work:* an instrument that skips a reading holds a zeroed
+struct, not a −1. If anything ever printed the dish's `Env`, it would report 0% oxygen and a
+sun below the horizon as measurements. Keeping the capability bits off is what stops every
+consumer that branches on capabilities from asking it.
 
 ---
 
@@ -326,21 +330,24 @@ changes the design of the step it blocks *before* that step is built.
 1.2 **Fix the orphan check.** `Instruments.SubtypesWithoutComponent` will report the dish as
 having no `InstrumentPower`. Teach it that `RadioAntenna` subtypes carry their own power, so
 the check stays loud for real drift and silent for this.
-1.3 **Gate `Recompute` by role** per D6: the dish reads environment and radar, skips seal,
-radiation and weather.
+1.3 **Gate `Recompute` by role** per D6: for the dish it runs the contact scan and nothing
+else — no environment, seal, radiation, weather or bio reads. The age/timestamp bookkeeping
+at the top of `Recompute` still applies.
 1.4 **Build `Tactical.cs`**: the per-group table, the scan (sphere, group collapse, exclusions,
 horizon check per D1), identification per D2, lifecycle and bounds per §5.2.
 1.5 **Detail pane readout.** The dish's terminal info pane lists its contacts as text:
 count, then nearest first — class, range, bearing, closing rate, state, identity. This is the
 first presentation for the same reason v0.1 of this mod was detail-pane-only: it proves the
-data before anything is drawn.
+data before anything is drawn. A new `WriteRadar` case in `WriteInfoInner`; unlike the four
+existing writers it does **not** call `WriteEnvironment` (D6).
 
 **Exit:** with a dish on a ship and three other grids around it — one ours, one broadcasting
 stranger, one silent stranger, one of them with a rotor-mounted subgrid:
 the pane shows three contacts, not four; ours is named; the broadcasting stranger is named;
 the silent one is `UNIDENTIFIED`; the one behind a planet is absent; grinding one moves it to
 `EXPIRED` without passing through `LOST`; flying one out of range shows `LOST` then `EXPIRED`
-after the retention interval. The existing sixteen instruments read exactly as before.
+after the retention interval. The dish's pane has no `SITE` section and no environmental
+line of any kind. The existing sixteen instruments read exactly as before.
 
 ### Phase 2 — Selection and the core displays
 
@@ -467,7 +474,7 @@ Opus budget buys the most — one careful review per phase instead of supervisio
 
 | Step | Tier | Why |
 |---|---|---|
-| D1–D6 decisions | **You + Opus** | Design; everything downstream depends on them |
+| D1–D6 decisions | **You + Opus** — done | Settled 2026-09-28 (§3) |
 | 0.1–0.8 probe **design** (what to log, what counts as pass) | **Opus** | Trap 12: a probe that cannot fail proves nothing |
 | Probe **code** | Sonnet | Straightforward once the pass/fail conditions are written |
 | Probe **log reading** | No model, then Opus | `grep` the `GT` / `RADARPROBE` lines out of the game log; Opus reads only those. Full logs are the most expensive thing to put in front of any model |
