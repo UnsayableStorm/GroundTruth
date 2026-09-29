@@ -246,7 +246,7 @@ client), wait 4 s, toggle it on again. The toggle is part of the test.
 |---|---|---|
 | `0.4.state` | B broadcasting and in range; C not broadcasting | either wrong |
 | `0.4.toggle` | the SERVER log shows B's broadcast flip within 4 s of the toggle | no flip on the server |
-| `0.4.beacon` | I's beacon reads as working, with its radius | unreadable |
+| `0.4.beacon` | I's beacon reads as working, with its radius, on every side | unreadable, or unreadable on the client |
 
 **What each outcome changes**
 - `toggle` FAIL → broadcast state does not sync the way the terminal suggests; identification
@@ -390,18 +390,15 @@ stamp is still there.
 
 ---
 
-## 6. A question this design raised for D2
+## 6. What this design changed in D2
 
-The vanilla HUD reveals **beacons** as well as broadcasting antennas. D2 as written only
-names antennas. Probe 0.4 reads beacons so the answer is available either way, but the
-decision is yours: should a working beacon identify a contact, the same as a broadcasting
-antenna? *Recommendation:* yes — the game itself already reveals the name to you, and
-refusing to would make the sensor know less than the HUD beside it.
+Designing 0.4 exposed that the vanilla HUD reveals **beacons** as well as broadcasting
+antennas, while D2 named only antennas. **Settled 2026-09-29: a working beacon identifies a
+contact.** Check `0.4.beacon` is therefore a Phase 1 dependency, not a curiosity: if beacons
+cannot be read on a client, D2 goes back for a decision.
 
-A second, smaller one: vanilla reveals a broadcaster when it is in range of **any** antenna
-in your network, not only the one doing the looking. The plan measures range to the
-observing dish. *Recommendation:* keep the dish-only rule for Phase 1, stated as a limit, and
-revisit if it feels wrong in play.
+Vanilla also accepts a broadcaster in range of **any** antenna in your network. The plan
+measures range to the observing dish only — a stated limit for Phase 1 (plan §10).
 
 ---
 

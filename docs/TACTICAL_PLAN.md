@@ -84,14 +84,22 @@ it. The game hides those unless the target broadcasts. Three options:
 
 1. Reveal name and relationship for every contact. Simple; contradicts the mod's premise.
 2. **Reveal name and relationship only when substantiated**: the target is broadcasting
-   (a working antenna with broadcast on, within its broadcast radius of us), or the target
-   is owned by us or our faction. Otherwise the contact is `UNIDENTIFIED` with its size
+   — a working antenna with broadcast on, **or a working beacon**, with the observing dish
+   inside that block's broadcast radius — or the target is owned by us or our faction. Otherwise the contact is `UNIDENTIFIED` with its size
    class, and relationship reads `UNKNOWN`.
 3. Never reveal either.
 
 *Decided:* option 2. It matches what the vanilla HUD already reveals, and gives the
 player a reason to care about broadcast state. It is also the version the brief's own rule
 ("do not invent IFF") actually permits.
+
+*Beacons count* (settled 2026-09-29): a working beacon identifies a contact exactly as a
+broadcasting antenna does. The vanilla HUD already reveals it; the sensor must not know less
+than the HUD beside it.
+
+*Range is measured to the observing dish*, not to any antenna in the player's network as
+the vanilla HUD does. A deliberate simplification for Phase 1, listed in §10, to revisit in
+play.
 
 **D3 — Where the selected contact lives** *(Phase 2)*.
 The brief asks for one selection per ship so every display shows the same target.
@@ -204,7 +212,7 @@ before anything depends on it.
 | `Dimensions` | group AABB extents, metres | — |
 | `Name` | grid `DisplayName`, **only when identified (D2)** | `UNIDENTIFIED` |
 | `Relationship` | owner vs. dish owner via the factions API (Probe), **only when identified** | `UNKNOWN` |
-| `Broadcasting` | any working antenna on the target broadcasting and in range (Probe) | false |
+| `Broadcasting` | any working antenna with broadcast on, or any working beacon, on the target, with the dish inside its radius (Probe 0.4) | false |
 | `FirstSeen`, `LastSeen` | session seconds | — |
 | `State` | lifecycle below | — |
 | `Trail` | ring buffer of past positions, fixed length (Phase 4) | empty |
@@ -533,6 +541,9 @@ belongs to Sonnet.
   revisited in Phase 1 now that groups are a first-class idea.
 - Identification (D2) is only as good as the target's broadcasting. A silent enemy is a
   silent enemy.
+- A broadcaster identifies a contact only when the **observing dish** is inside its radius.
+  The vanilla HUD accepts any antenna in your network, so a contact can be named on the HUD
+  and `UNIDENTIFIED` on the radar when your other antennas are closer to it than the dish.
 
 ## 11. Out of scope
 
