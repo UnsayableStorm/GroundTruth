@@ -67,39 +67,56 @@ ships. *(Subject to the Phase 0 probe confirming `GetGridGroup` is whitelisted.)
 
 ## 3. Design decisions
 
-All six settled 2026-09-28. D1–D5 as recommended; D6 changed from the recommendation to
-the stricter rule below. Reopening one changes the phase noted against it.
+All six settled 2026-09-28; D1 and D2 rewritten 2026-09-29 when detection became
+broadcast-based. D3–D5 as recommended; D6 changed from the recommendation to the stricter
+rule below. Reopening one changes the phase noted against it.
 
-**D1 — Detection model** *(Phase 1)*.
-The honest minimum is a sphere at the configured range, capped by what the machine actually
-has streamed. The next step up is a **planet horizon check**: a contact on the far side of a
-planet is not seen. That is an analytic ray-versus-sphere test against the planet's radius,
-not a voxel raycast, so it is cheap.
-*Decided:* sphere + planet horizon in Phase 1. Terrain occlusion (mountains) is not
-attempted; it would need voxel raycasts and is stated as a known limit instead.
+**D1 — Detection: what the sensor can see at all** *(Phase 1)*.
+*Decided 2026-09-29.* The dish is a **signals receiver with a short-range return**, not a
+hull radar. A grid within streaming range is a contact if, and only if, one of these holds:
 
-**D2 — Identification: what the sensor is allowed to know** *(Phase 1)*.
-A radar return gives position, motion and size. It does not give a ship's name or who owns
-it. The game hides those unless the target broadcasts. Three options:
+1. **It is broadcasting** — a working antenna with broadcast on, or a working beacon — and
+   the observing dish is inside that block's broadcast radius.
+2. **It is ours** — owned by the dish's owner or shared with their faction
+   (`Owner` / `FactionShare`). You know where your own fleet is, dark or not.
+3. **It is within the dark-return range**, a fixed **2 km** from the dish. Inside it,
+   anything is detected whether it broadcasts or not.
 
-1. Reveal name and relationship for every contact. Simple; contradicts the mod's premise.
-2. **Reveal name and relationship only when substantiated**: the target is broadcasting
-   — a working antenna with broadcast on, **or a working beacon**, with the observing dish
-   inside that block's broadcast radius — or the target is owned by us or our faction. Otherwise the contact is `UNIDENTIFIED` with its size
-   class, and relationship reads `UNKNOWN`.
-3. Never reveal either.
+Anything else is **not on the tactical at all.** A player who switches off every antenna and
+beacon is hiding, and beyond 2 km the hiding works. An allied faction's ship is not "ours"
+under rule 2; it is visible when it broadcasts, like anyone else.
 
-*Decided:* option 2. It matches what the vanilla HUD already reveals, and gives the
-player a reason to care about broadcast state. It is also the version the brief's own rule
-("do not invent IFF") actually permits.
+The dark-return range is a **mod constant, not a player setting**. A per-dish setting would
+let any player type 50 km into it and delete stealth from the game. It is one constant in
+`Tactical.cs`, tuned in play, and a candidate for a server-admin setting later.
 
-*Beacons count* (settled 2026-09-29): a working beacon identifies a contact exactly as a
-broadcasting antenna does. The vanilla HUD already reveals it; the sensor must not know less
-than the HUD beside it.
+No occlusion is modelled. Radio in vanilla passes through planets, so rules 1 and 2 ignore
+them, and at 2 km rule 3 rarely meets one. The earlier planet-horizon check is dropped.
 
-*Range is measured to the observing dish*, not to any antenna in the player's network as
-the vanilla HUD does. A deliberate simplification for Phase 1, listed in §10, to revisit in
-play.
+**D2 — Identification: what the sensor knows about a contact** *(Phase 1)*.
+Follows from D1, and every contact falls into exactly one case:
+
+| Detected by | Name | Relationship |
+|---|---|---|
+| Rule 2 — ours | the grid's own name | `Owner` or `FactionShare` |
+| Rule 1 — broadcasting | **what the broadcast says**: the antenna's or beacon's HUD text, plus the ship name only if that broadcaster has *Show ship name* on — what the vanilla HUD shows, and no more | from the owner, as the HUD colours it |
+| Rule 3 — dark return only | `UNIDENTIFIED` | `UNKNOWN` |
+
+A dark return carries position, motion, size class and dimensions — what a return
+physically gives — and nothing else.
+
+*Beacons count* (settled 2026-09-29): a working beacon is a broadcaster, exactly like an
+antenna with broadcast on.
+
+*Range is measured to the observing dish*, not to any antenna in the player's network as the
+vanilla HUD does. A deliberate simplification for Phase 1, listed in §10, to revisit in play.
+
+**Going dark mid-contact.** A broadcasting ship beyond 2 km that switches off its
+broadcasters stops being detected. It becomes `LOST` — last-known position retained for the
+retention interval, drawn as last-known — then `EXPIRED`. That is the truthful account: the
+signal was held, then lost. A dark ship that closes inside 2 km reappears as `UNIDENTIFIED`,
+a **new** contact: nothing tells the sensor it is the ship it lost, and it does not pretend
+to know.
 
 **D3 — Where the selected contact lives** *(Phase 2)*.
 The brief asks for one selection per ship so every display shows the same target.
@@ -181,7 +198,7 @@ presentation — the same rule the existing apps follow.
 | File | Contents |
 |---|---|
 | `Tactical.cs` | Contact and own-ship models, the per-group contact table, lifecycle, the scan itself |
-| `TacticalMath.cs` | Pure geometry — bearing, elevation, closing rate, horizon test, plot projection. No entity or session access, so it can be tested outside the game (§9.4) |
+| `TacticalMath.cs` | Pure geometry — bearing, elevation, closing rate, broadcast-radius and dark-range tests, plot projection. No entity or session access, so it can be tested outside the game (§9.4) |
 | `TacticalSelection.cs` | Selected-contact storage and resolution (D3), dropdown injection (D4) |
 | `TacticalPanels.cs` | Radar, Contact List, Target Track |
 | `NavigationPanels.cs` | Navigation, Sensor Status |
@@ -210,9 +227,10 @@ before anything depends on it.
 | `ClosingRate` | relative velocity projected on the line of sight | computed; always available once velocity is |
 | `Class` | `IsStatic` + grid size: *Station*, *Large ship*, *Small ship* | — |
 | `Dimensions` | group AABB extents, metres | — |
-| `Name` | grid `DisplayName`, **only when identified (D2)** | `UNIDENTIFIED` |
-| `Relationship` | owner vs. dish owner via the factions API (Probe), **only when identified** | `UNKNOWN` |
-| `Broadcasting` | any working antenna with broadcast on, or any working beacon, on the target, with the dish inside its radius (Probe 0.4) | false |
+| `DetectedBy` | which D1 rule: `Ours`, `Broadcast`, `DarkReturn` (first match in that order) | — (always present) |
+| `Name` | per the D2 table: grid name, broadcast text, or nothing | `UNIDENTIFIED` |
+| `Relationship` | block owner relation to the dish owner (Probe 0.3), for `Ours` and `Broadcast` only | `UNKNOWN` |
+| `Broadcasters` | the working antennas-with-broadcast and beacons on the target, with radius and HUD text (Probe 0.4) | empty |
 | `FirstSeen`, `LastSeen` | session seconds | — |
 | `State` | lifecycle below | — |
 | `Trail` | ring buffer of past positions, fixed length (Phase 4) | empty |
@@ -262,8 +280,8 @@ app says so — it does not synthesise a heading from a dish.
 
 ### 5.4 `TacticalSystemState`
 
-Operational (any dish working), dish count / working count, configured range, effective range
-(the lower of configured and sync distance — stated, not hidden), contact count, seconds
+Operational (any dish working), dish count / working count, the dark-return range, the
+streaming limit (sync distance — stated, not hidden), contact count by `DetectedBy`, seconds
 since last scan, last error, selected contact id. All of it is state the service actually
 holds; none of it is a status message written for effect.
 
@@ -275,6 +293,7 @@ holds; none of it is a status message written for effect.
 |---|---|---|
 | Sphere query for grids | every **2 s** (configurable, 1–10) | once per mechanical group with a working dish |
 | Group collapse, own-group exclusion | per scan | per candidate entity |
+| Broadcaster list per grid | rebuilt when the grid gains or loses a block, else every 10 s | per streamed grid; the per-scan check reads the cached list, never walks blocks |
 | Contact update, lifecycle | per scan | ≤ 64 contacts |
 | Own-ship telemetry | 1 s, existing recompute | per panel-resolved controller |
 | LCD redraw | each app's own `UpdateInterval`, 1 s default | skipped when the frame is unchanged |
@@ -346,19 +365,20 @@ the check stays loud for real drift and silent for this.
 else — no environment, seal, radiation, weather or bio reads. The age/timestamp bookkeeping
 at the top of `Recompute` still applies.
 1.4 **Build `Tactical.cs`**: the per-group table, the scan (sphere, group collapse, exclusions,
-horizon check per D1), identification per D2, lifecycle and bounds per §5.2.
+the three detection rules of D1), identification per D2, lifecycle and bounds per §5.2, and
+the cached broadcaster list per grid (§6).
 1.5 **Detail pane readout.** The dish's terminal info pane lists its contacts as text:
 count, then nearest first — class, range, bearing, closing rate, state, identity. This is the
 first presentation for the same reason v0.1 of this mod was detail-pane-only: it proves the
 data before anything is drawn. A new `WriteRadar` case in `WriteInfoInner`; unlike the four
 existing writers it does **not** call `WriteEnvironment` (D6).
 
-**Exit:** with a dish on a ship and three other grids around it — one ours, one broadcasting
-stranger, one silent stranger, one of them with a rotor-mounted subgrid:
-the pane shows three contacts, not four; ours is named; the broadcasting stranger is named;
-the silent one is `UNIDENTIFIED`; the one behind a planet is absent; grinding one moves it to
-`EXPIRED` without passing through `LOST`; flying one out of range shows `LOST` then `EXPIRED`
-after the retention interval. The dish's pane has no `SITE` section and no environmental
+**Exit**, on the Phase 0 fixture (`PHASE0_PROBES.md` §2): our silent ship 3 km out is shown
+and named; the rotor ship is one contact, not two; the broadcasting stranger is shown under
+its broadcast text, not its grid name; the silent stranger 4 km out is **absent**; the silent
+stranger inside 2 km is `UNIDENTIFIED` / `UNKNOWN`; switching the broadcasting stranger's
+antenna off moves it to `LOST` then `EXPIRED`; grinding a contact moves it to `EXPIRED`
+without passing through `LOST`; the projection never appears. The dish's pane has no `SITE` section and no environmental
 line of any kind. The existing sixteen instruments read exactly as before.
 
 ### Phase 2 — Selection and the core displays
@@ -495,7 +515,7 @@ Opus budget buys the most — one careful review per phase instead of supervisio
 | 1.3 `Recompute` role gate | Sonnet | Touches the shared loop every instrument depends on |
 | 1.4 `Tactical.cs` — model, lifecycle, bounds | **Opus designs the types and state machine**, Sonnet implements | Lifecycle edge cases (closed vs. lost, selection through expiry) are where a plausible bug lives |
 | 1.4 group collapse, identification (D2) | **Opus** | Correctness depends on engine behaviour the probes reveal; a wrong answer looks right on screen |
-| 1.4 geometry: bearing/elevation, closing rate, horizon test, plot projection | DeepInfra, into `TacticalMath.cs` | Pure functions with exact expected outputs. Kept free of entity and session access so they can be tested outside the game (see below) |
+| 1.4 geometry: bearing/elevation, closing rate, broadcast-radius and dark-range tests, plot projection | DeepInfra, into `TacticalMath.cs` | Pure functions with exact expected outputs. Kept free of entity and session access so they can be tested outside the game (see below) |
 | 1.5 detail pane text | Sonnet | Follows the existing `WriteInfo` pattern |
 | 2.1 selection storage and dropdown | Sonnet | Copies the `PanelControls` pattern; the Custom Data sync question is settled by probe 0.8 |
 | 2.1 toolbar actions | Sonnet, only if 0.6 passed | |
@@ -533,14 +553,17 @@ belongs to Sonnet.
 ## 10. Known limits, stated up front
 
 - Range cannot exceed what the machine has streamed. Beyond sync distance there is nothing
-  to detect, and the Sensor Status screen says so.
-- Planets occlude; terrain does not.
+  to detect, and the Sensor Status screen says so. A 50 km broadcast is only seen as far as
+  the grid is streamed.
+- Nothing occludes. Broadcasts pass through planets as vanilla radio does; the 2 km dark
+  return sees through terrain.
+- A dark ship that closes inside 2 km is a new, unidentified contact, not the one that went
+  dark. The sensor has no basis for linking them.
 - Subgrids joined by connectors are separate contacts.
 - A panel reads a dish on its own grid only, as every Ground Truth app does today. A dish
   on a rotor-mounted subgrid is found by panels on that subgrid, not the main hull — to be
   revisited in Phase 1 now that groups are a first-class idea.
-- Identification (D2) is only as good as the target's broadcasting. A silent enemy is a
-  silent enemy.
+- A silent enemy beyond 2 km is invisible. That is the design, not a gap.
 - A broadcaster identifies a contact only when the **observing dish** is inside its radius.
   The vanilla HUD accepts any antenna in your network, so a contact can be named on the HUD
   and `UNIDENTIFIED` on the radar when your other antennas are closer to it than the dish.

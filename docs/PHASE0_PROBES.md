@@ -69,15 +69,16 @@ of silently skewing a result.
 | Grid | Name | What it is |
 |---|---|---|
 | Observer | `RP-O OWN LARGE ROTOR` | Your large ship. Working, powered `GT_RotatingRadarDish`, a cockpit, a rotor with a small subgrid on it. Parked. |
-| A | `RP-A OWN LARGE ROTOR` | A second ship of yours with a rotor-mounted subgrid. Within 2 km of O. |
+| A | `RP-A OWN LARGE ROTOR SILENT` | A second ship of yours with a rotor-mounted subgrid, no antenna broadcasting, no beacon. **About 3 km from O**, so only the ownership rule can make it visible. |
 | B | `RP-B OTHER SMALL BCAST` | A small ship **not owned by you**, with a working antenna, broadcast **on**, radius large enough to reach O. |
-| C | `RP-C OTHER LARGE SILENT` | A large ship not owned by you. Antenna present, broadcast **off**. |
+| C | `RP-C OTHER LARGE SILENT` | A large ship not owned by you. Antenna present, broadcast **off**, no beacon. **About 4 km from O** — outside the dark-return range, so Phase 1 must not see it. |
 | D | `RP-D OTHER STATIC` | A station (static grid) not owned by you. |
 | E | `RP-E OWN SMALL MOVING` | A small ship in space with dampeners off and a forward thruster override, so it is accelerating or at max speed throughout the run. Place it so it passes O rather than leaving range within the first minute. |
 | F | `RP-F PROJ` | A projector on O or A projecting any blueprint. The projection is the thing under test. |
 | G | `RP-G OTHER SMALL DOCKED` | A small ship docked by **connector** to D. |
 | H | `RP-H OWN FAR` | Any grid placed **2 km beyond** the world's sync distance from O. |
-| I | `RP-I OTHER SMALL BEACON` | A small ship not owned by you, with a working **beacon** and no antenna. (See §6, question for D2.) |
+| I | `RP-I OTHER SMALL BEACON` | A small ship not owned by you, with a working **beacon** and no antenna, more than 2 km from O. |
+| J | `RP-J OTHER SMALL SILENT NEAR` | A small ship not owned by you, nothing broadcasting, **within 1 km of O** — the dark-return case. |
 
 **Ownership for "OTHER".** Use whatever is easiest in your world — an NPC faction grid
 (pirate or trader encounter), a grid owned by a second account, or unowned debris. Add the
@@ -85,7 +86,8 @@ relationship you expect as a tag: `ENEMY`, `NEUTRAL`, `FRIEND` or `NOBODY`. If y
 it, leave the tag off; that check reports INCONCLUSIVE instead of guessing.
 
 Keep the whole fixture except H inside sync distance of O and outside every grid's own
-rotor reach, so nothing collides during a run.
+rotor reach, so nothing collides during a run. The distances on A, C, I and J matter: they
+separate the three detection rules of D1 so each one is tested alone.
 
 ---
 
@@ -233,8 +235,9 @@ owner?
 **Question.** Can the client read whether a target is broadcasting, and how far?
 
 **Logs**, per fixture grid, for every antenna **and every beacon** on it: `IsWorking`,
-`Enabled`, `EnableBroadcasting` (antennas), `Radius`, `HudText`, and the distance from that
-block to O. Plus `IsBroadcasting` if that member exists — `check-compile.ps1` answers that
+`Enabled`, `EnableBroadcasting` (antennas), `Radius`, `HudText`, `ShowShipName`, and the
+distance from that block to O. `HudText` and `ShowShipName` are what D2 names a broadcasting
+contact from, so they must read correctly on the client. Plus `IsBroadcasting` if that member exists — `check-compile.ps1` answers that
 before the game is started; if it does not exist, remove it.
 
 **Procedure:** during the DS run, toggle B's broadcast off in its terminal (from your
@@ -244,13 +247,21 @@ client), wait 4 s, toggle it on again. The toggle is part of the test.
 
 | Check | PASS | FAIL |
 |---|---|---|
-| `0.4.state` | B broadcasting and in range; C not broadcasting | either wrong |
+| `0.4.state` | B broadcasting and in range; C and J not broadcasting | any wrong |
+| `0.4.text` | B's `HudText` on the CLIENT matches what the vanilla HUD shows for B | differs or empty |
 | `0.4.toggle` | the SERVER log shows B's broadcast flip within 4 s of the toggle | no flip on the server |
 | `0.4.beacon` | I's beacon reads as working, with its radius, on every side | unreadable, or unreadable on the client |
 
 **What each outcome changes**
-- `toggle` FAIL → broadcast state does not sync the way the terminal suggests; identification
-  on clients would use stale state. Stop and redesign D2's source before Phase 1.
+This probe carries the detection model: under D1, broadcast state decides whether most
+contacts exist at all.
+
+- `state` or `toggle` FAIL on the CLIENT → clients cannot see broadcast state reliably, so
+  they cannot apply D1. Stop. The likely redesign is a server-side broadcast check sent to
+  clients; it goes back to you before Phase 1.
+- `text` FAIL → broadcasting contacts are named by grid name instead, which reveals more
+  than the HUD does. That is a D2 decision for you, not a silent fallback.
+- `beacon` FAIL → beacons cannot count on clients, and the beacon decision comes back to you.
 
 ### 0.5 — Class and size
 
@@ -390,7 +401,7 @@ stamp is still there.
 
 ---
 
-## 6. What this design changed in D2
+## 6. What this design changed in D1 and D2
 
 Designing 0.4 exposed that the vanilla HUD reveals **beacons** as well as broadcasting
 antennas, while D2 named only antennas. **Settled 2026-09-29: a working beacon identifies a
@@ -399,6 +410,11 @@ cannot be read on a client, D2 goes back for a decision.
 
 Vanilla also accepts a broadcaster in range of **any** antenna in your network. The plan
 measures range to the observing dish only — a stated limit for Phase 1 (plan §10).
+
+**Then detection itself changed (2026-09-29):** the sensor now sees only broadcasters, our
+own ships, and anything within a fixed 2 km. That made 0.4 the probe the whole detection
+model rests on, not just identification, and added fixture grid J and the distance
+requirements on A, C and I.
 
 ---
 
