@@ -1,6 +1,6 @@
 # Phase 0 — Probe Design
 
-Status: **designed, not built.** This is the specification the probe code is written from
+Status: **written, not yet compiled or run** (see the end of section 8). This is the specification the probe code was written from
 (`TACTICAL_PLAN.md` §9.3: probe design is Opus, probe code is Sonnet). It defines what each
 probe logs, what counts as a pass, and what each result changes in the plan.
 
@@ -446,3 +446,69 @@ The probe code is a Sonnet task. The rules in `TACTICAL_PLAN.md` §9.1 apply in 
    substituting a guess.
 
 Sonnet does **not** interpret results. The logs come back to the Phase 0 gate.
+
+### 8.1 Build status
+
+Written 2026-09-30 in a session with no game install, so **nothing has been compiled or run**.
+What was and was not verified:
+
+| Check | Result |
+|---|---|
+| Syntax of all 12 files | Clean, with a real C# parser (tree-sitter) that was first shown to pass a known-good mod file and reject a broken one |
+| C# 6 only, no banned APIs, none of the off-limits files touched | Grepped, clean |
+| Every `Log.*` helper used is defined in its own mod | Cross-checked |
+| **Do the members exist in the game's assemblies?** | **Not checked.** `tools\check-compile.ps1` needs the game's `Bin64` |
+| Does it load in the game (whitelist)? | Not checked; only the game can say |
+
+**First thing to do, on your machine:**
+
+```powershell
+.\tools\check-compile.ps1 -Source ..\probes\RadarProbe\Data\Scripts\RadarProbe
+.\tools\check-compile.ps1 -Source ..\probes\RadarActionProbe\Data\Scripts\RadarActionProbe
+```
+
+**Members written from memory and most likely to need a fix.** Each is isolated so the fix is a
+small deletion; the file headers list them too.
+
+| Member | File | If it does not exist |
+|---|---|---|
+| `IMyCubeGrid.GetGridGroup`, `IMyGridGroupData.GetGrids` | `Probe02Groups.cs` `Route1` | delete `Route1`; `Resolve` falls through to route 2 |
+| `MyAPIGateway.GridGroups.GetGroup` | `Probe02Groups.cs` `Route2` | delete `Route2` |
+| `IMyRadioAntenna.IsBroadcasting` | `Probe04Broadcasters.cs` `Watched.State` | drop that term |
+| `IMyProjector.ProjectedGrid` | `Probe05ClassSize.cs` `JudgeProjection` | 0.5.projection becomes a manual check |
+| `IMyMotorStator.TopGrid` | `Probe01Detection.cs` `RecordSubgrids` | drop the record |
+| `IMyFactionCollection.GetRelationBetweenFactions` | `Probe03Ownership.cs` `FactionRoute.Between` | return `"n/a"`; the block route is the decision anyway |
+| `IMyTerminalAction` namespace, `CreateAction`, `Name`/`Icon`/`Action`/`Enabled` | `Probe06Actions.cs` | fix the `using`; if `CreateAction` is absent, 0.6 is a FAIL by construction |
+| `System.Diagnostics.Stopwatch` | `ProbeCommon.cs` `Timing` | make `Timing.Ms` return -1 |
+
+If **both** group routes fail to compile, that is not "both routes rejected" in the sense of
+0.2: a missing member is a compile error and stops the whole mod. Delete the route, note it in
+section 7, and 0.2 falls back to walking rotor tops by hand as described in 0.2.
+
+**Where the build departs from the design above, and why.**
+
+- **`SUMMARY` lines** are written when a run ends (and on `/radarprobe status` in the action
+  probe): pass / fail / inconclusive counts per check. An addition to the section 3 format, so
+  the gate does not have to count thirty verdict lines.
+- **Recorded, not judged** checks (`0.1.subgrids`, `0.1.streaming`, `0.2.routes`, `0.5.aabb`,
+  `0.8.access`) are `RECORD` lines, not verdicts.
+- **0.1.subgrids** is answered through the stators' `TopGrid` rather than the group API, so it
+  does not depend on the thing 0.2 is testing.
+- **0.2 group detail** is logged on sample 1 and every tenth after; the verdicts run every sample.
+- **0.3.own** checks every `OWN`-tagged grid that is present, which is O, A, E and H where H
+  is loaded. The design named O, A and E.
+- **0.5.class** is driven by the name tags (`STATIC`, `SMALL`, `LARGE`), so J, which the design's
+  list omitted, is checked as small. A grid with no `STATIC` tag that reads `IsStatic = true` is
+  a mismatch: it would be classed as a station.
+- **0.4.toggle** uses a 6 Hz watcher in addition to the 2 s samples, and the watch list carries
+  state across rebuilds so a flip that lands between them is not lost.
+- **Checks that need a person or a second log** are emitted as `INCONCLUSIVE` with the reason
+  stated: `0.3.sides`, `0.4.text`, `0.7.altitude`, `0.7.gravity`; and `0.6.execute`, `0.6.reload`
+  and `0.6.side` produce no verdict at all, only the `EXECUTED` lines and the procedure.
+- **0.8.reach** reports a stamp that arrives after more than 2 s as `INCONCLUSIVE`, not `FAIL`,
+  because the delay is computed from two machines' clocks. "Never arrived" is still a FAIL, and
+  is recognised by a `WROTE` line with no matching `SEEN` line in the other logs.
+- **Contact id rule** (most blocks, ties to the lowest `EntityId`) is logged as `idPick` on each
+  group line, marked whether it is the named grid.
+- **`tools/check-compile.ps1`** gained `-Source`.
+

@@ -26,10 +26,16 @@
 # filtering to genuinely managed assemblies before compiling, and by treating the
 # exit code as authoritative rather than trusting a text-pattern match alone.
 
+# -Source checks a different scripts folder, e.g. a probe:
+#   .\check-compile.ps1 -Source ..\probes\RadarProbe\Data\Scripts\RadarProbe
+# Defaults to the mod itself.
+param([string]$Source = "")
+
 $ErrorActionPreference = "Stop"
 
 $bin = "F:\SteamLibrary\steamapps\common\SpaceEngineers\Bin64"
-$src = Join-Path $PSScriptRoot "..\Data\Scripts\GroundTruth"
+if ($Source) { $src = (Resolve-Path $Source).Path }
+else { $src = Join-Path $PSScriptRoot "..\Data\Scripts\GroundTruth" }
 
 $csc = Get-ChildItem "C:\Program Files (x86)\Microsoft Visual Studio\*\*\MSBuild\Current\Bin\Roslyn\csc.exe" -ErrorAction SilentlyContinue |
        Select-Object -First 1
