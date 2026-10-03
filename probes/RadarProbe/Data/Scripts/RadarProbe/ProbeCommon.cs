@@ -141,6 +141,22 @@ namespace RadarProbe
 
     public static class Fixture
     {
+        // PHASE0_PROBES.md section 2, one row per letter. F is a projection found through
+        // the projector, not by name, so it has no row.
+        private static readonly Dictionary<char, string[]> Declared = new Dictionary<char, string[]>
+        {
+            { 'O', new[] { "OWN", "LARGE", "ROTOR" } },
+            { 'A', new[] { "OWN", "LARGE", "ROTOR", "SILENT" } },
+            { 'B', new[] { "OTHER", "SMALL", "BCAST" } },
+            { 'C', new[] { "OTHER", "LARGE", "SILENT" } },
+            { 'D', new[] { "OTHER", "STATIC" } },
+            { 'E', new[] { "OWN", "SMALL", "MOVING" } },
+            { 'G', new[] { "OTHER", "SMALL", "DOCKED" } },
+            { 'H', new[] { "OWN", "FAR" } },
+            { 'I', new[] { "OTHER", "SMALL", "BEACON" } },
+            { 'J', new[] { "OTHER", "SMALL", "SILENT", "NEAR" } },
+        };
+
         // "RP-A OWN LARGE ROTOR SILENT" -> letter A, tags OWN LARGE ROTOR SILENT.
         // A subgrid on a rotor is unnamed by the builder and does not match, which is
         // correct: only the named grids are the fixture.
@@ -156,6 +172,16 @@ namespace RadarProbe
             if (head.Length != 4 || !head.StartsWith("RP-")) return null;
 
             var f = new FixtureGrid { Letter = char.ToUpperInvariant(head[3]), Grid = grid, Name = name };
+
+            // The letter alone declares the grid. The design doc's section 2 table already
+            // says what each letter is, and the first real fixture was built with bare
+            // "RP-J" names, so asking for the tags as well only made the probe blind to a
+            // correctly built fixture. Tags typed into the name are still added on top,
+            // which is how a relationship (ENEMY, NEUTRAL, FRIEND, NOBODY) is declared.
+            string[] declared;
+            if (Declared.TryGetValue(f.Letter, out declared))
+                for (int i = 0; i < declared.Length; i++) f.Tags.Add(declared[i]);
+
             for (int i = 1; i < parts.Length; i++) f.Tags.Add(parts[i].ToUpperInvariant());
             return f;
         }
