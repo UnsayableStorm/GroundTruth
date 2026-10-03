@@ -9,9 +9,9 @@ report what is measured and nothing more. Scripts are in `Data/Scripts/GroundTru
 The Rotating Antenna (`GT_RotatingRadarDish`) is being given a contact scan, and six LCD
 apps will draw from it. It is planned in full and nothing is built yet except the probes.
 
-**Phase 0 is the first step and it gates everything else.** The probes in `probes/` have
-been written but never compiled or run, because the session that wrote them had no game
-install. Do not start Phase 1 (the contact scan, role 5, the displays) until the probe
+**Phase 0 is the first step and it gates everything else.** The probes in `probes/` were
+written in a session with no game install. They compiled clean against the game's
+assemblies on 2026-10-02 (steps 1-3 below are done) but have not yet been run in game. Do not start Phase 1 (the contact scan, role 5, the displays) until the probe
 results have been reviewed.
 
 Read these before doing anything, in this order:

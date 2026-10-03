@@ -463,8 +463,8 @@ What was and was not verified:
 **First thing to do, on your machine:**
 
 ```powershell
-.\tools\check-compile.ps1 -Source ..\probes\RadarProbe\Data\Scripts\RadarProbe
-.\tools\check-compile.ps1 -Source ..\probes\RadarActionProbe\Data\Scripts\RadarActionProbe
+.\tools\check-compile.ps1 -Source probes\RadarProbe\Data\Scripts\RadarProbe
+.\tools\check-compile.ps1 -Source probes\RadarActionProbe\Data\Scripts\RadarActionProbe
 ```
 
 **Members written from memory and most likely to need a fix.** Each is isolated so the fix is a
