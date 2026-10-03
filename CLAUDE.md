@@ -22,6 +22,13 @@ merged in; not pushed). Probe code is deployed to `%APPDATA%\SpaceEngineers\Mods
 from `probes/`. Once the probes are on the Workshop, any probe code change also needs Jason to
 re-upload before a DS run, or the server runs the old build.
 
+**Once published, the AppData probe folders hold a `modinfo.sbmi` with the Workshop id, and the
+repo copies do not.** Deploy with it excluded, or `/MIR` deletes it and the next in-game upload
+creates a duplicate Workshop item (ENGINE_TRAPS 16):
+`robocopy probes\RadarProbe "$env:APPDATA\SpaceEngineers\Mods\RadarProbe" /MIR /XF modinfo.sbmi`
+Visibility must be **Unlisted**, not Private or Friends-only: a dedicated server downloads mods
+as an anonymous Steam client and cannot fetch a private item.
+
 **Next: the dedicated-server pass**, on a new vanilla Torch instance Jason is setting up on
 KORRIBAN ("Tactical Test Server"). A client and a server cannot share his PC. Steps:
 
