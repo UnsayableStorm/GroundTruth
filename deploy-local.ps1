@@ -25,7 +25,7 @@ $dest = "$env:APPDATA\SpaceEngineers\Mods\GroundTruth"
 # of "the fix isn't working" were actually "the fix was never there". It is also
 # the most likely explanation for the duplicated Illuminated Column item.
 robocopy $src $dest /MIR /XD ".git" "tools" "docs" "probes" `
-    /XF "deploy-local.ps1" "pb_test_script.cs" "README.md" ".gitignore" "LICENSE" `
+    /XF "deploy-local.ps1" "pb_test_script.cs" "README.md" "CLAUDE.md" ".gitignore" "LICENSE" `
         "modinfo.sbmi" "metadata.mod" `
     /NFL /NDL /NJH /NJS
 
