@@ -53,6 +53,7 @@ namespace RadarProbe
 
         private const double OneG = 9.81;
 
+        private long _chosenId;
         private bool _haveDamp;
         private bool _lastDamp;
         private bool _dampFlipSeen;
@@ -73,12 +74,31 @@ namespace RadarProbe
                 return;
             }
 
+            // The first controller found used to be the one read, and on the first SP run that
+            // was RP-O's cryo chamber: a ship controller that nobody flies from, so every value
+            // read zero and 0.7.unoccupied could never be judged. Now: the seat someone is in,
+            // else the main cockpit, else any seat that can fly the ship. Once chosen it is kept,
+            // so leaving the seat - which 0.7.unoccupied needs - does not switch to another block.
             IMyShipController sc = null;
+            IMyShipController seated = null, main = null, flies = null, any = null;
             var blocks = Ctx.FatBlocks(c.Observer.Grid);
             for (int i = 0; i < blocks.Count; i++)
             {
-                sc = blocks[i] as IMyShipController;
-                if (sc != null) break;
+                var s = blocks[i] as IMyShipController;
+                if (s == null) continue;
+                if (s.EntityId == _chosenId) sc = s;
+                if (seated == null && s.IsUnderControl) seated = s;
+                if (main == null && s.IsMainCockpit) main = s;
+                if (flies == null && s.CanControlShip) flies = s;
+                if (any == null) any = s;
+            }
+            if (seated != null && (sc == null || !sc.IsUnderControl)) sc = seated;
+            if (sc == null) sc = main ?? flies ?? any;
+            if (sc != null && sc.EntityId != _chosenId)
+            {
+                _chosenId = sc.EntityId;
+                Log.Line(Id, "chose controller id=" + sc.EntityId + " name=\"" + sc.CustomName + "\" occupied="
+                    + Log.B(sc.IsUnderControl) + " main=" + Log.B(sc.IsMainCockpit) + " canControl=" + Log.B(sc.CanControlShip));
             }
             if (sc == null)
             {
