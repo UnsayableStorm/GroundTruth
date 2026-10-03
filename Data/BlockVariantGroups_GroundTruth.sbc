@@ -24,7 +24,7 @@
 
     <BlockVariantGroup>
       <Id Type="MyObjectBuilder_BlockVariantGroup" Subtype="TD_GroundTruth" />
-      <Icon>Textures\Icons\MED_Radar_Dome_Icon.dds</Icon>
+      <Icon>Textures\GUI\Icons\Cubes\GT_RadiationMonitor.dds</Icon>
       <DisplayName>Ground Truth Instruments</DisplayName>
       <Description>Environmental instruments. Threshold Dynamics, Survey and Assessment.</Description>
       <Blocks>
