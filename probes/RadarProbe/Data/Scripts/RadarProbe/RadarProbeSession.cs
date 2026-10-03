@@ -21,9 +21,9 @@ namespace RadarProbe
     //   1. Load the fixture world with this mod enabled. Section 1.2 lists the three
     //      passes: single player, dedicated server as a client, and (optionally) a
     //      second player.
-    //   2. Wait. The first sample is at tick 600 (10 s), then one every 2 s for 30
+    //   2. Wait. The first sample is at tick 600 (10 s), then one every 2 s for 300
     //      samples. The log says ARMED when the mod is up, and SUMMARY when the run is
-    //      over.
+    //      over: ten minutes, or sooner if you type /radarprobe done.
     //   3. Type /radarprobe in chat to take one extra sample on demand. On a dedicated
     //      server it only samples THIS machine; the server runs its own schedule
     //      regardless.
@@ -94,10 +94,14 @@ namespace RadarProbe
     {
         private const int FirstSampleTick = 600;       // 10 s, past the loading screen
         private const int SampleIntervalTicks = 120;   // 2 s
-        private const int ScheduledSamples = 30;
+        // Ten minutes. The design said one, and the first real run showed that a person
+        // cannot fly to RP-O, toggle B's broadcast, work the dampeners and leave the seat
+        // inside a minute. /radarprobe done ends the run early once the steps are finished.
+        private const int ScheduledSamples = 300;
         private const int WatchIntervalTicks = 10;
 
         private long _tick;
+        private bool _doneRequested;
         private int _sample;
         private int _scheduled;
         private bool _finished;
@@ -142,7 +146,14 @@ namespace RadarProbe
 
             // Exactly "/radarprobe". Anything with arguments - "/radarprobe write" - belongs
             // to RadarActionProbe, and running a sample for it would be wrong.
-            if (!text.Trim().Equals("/radarprobe", StringComparison.OrdinalIgnoreCase)) return;
+            string t = text.Trim();
+            if (t.Equals("/radarprobe done", StringComparison.OrdinalIgnoreCase))
+            {
+                _doneRequested = true;
+                sendToOthers = false;
+                return;
+            }
+            if (!t.Equals("/radarprobe", StringComparison.OrdinalIgnoreCase)) return;
 
             _manual = true;
             sendToOthers = false;
@@ -173,6 +184,17 @@ namespace RadarProbe
             }
 
             if (_finished) return;
+
+            if (_doneRequested)
+            {
+                _doneRequested = false;
+                if (_sample > 0)
+                {
+                    Log.Line("SESSION", "DONE requested after " + _scheduled + " scheduled samples");
+                    Finish();
+                    return;
+                }
+            }
 
             if (_tick >= FirstSampleTick && ((_tick - FirstSampleTick) % SampleIntervalTicks) == 0)
             {
