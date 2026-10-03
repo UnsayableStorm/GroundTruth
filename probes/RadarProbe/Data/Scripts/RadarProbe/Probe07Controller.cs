@@ -53,7 +53,7 @@ namespace RadarProbe
 
         private const double OneG = 9.81;
 
-        private long _chosenId;
+        private IMyShipController _chosen;
         private bool _haveDamp;
         private bool _lastDamp;
         private bool _dampFlipSeen;
@@ -68,42 +68,57 @@ namespace RadarProbe
                 Log.Inconclusive("0.7.gravity", "judged from the screenshot against the vanilla HUD, at the gate");
             }
 
-            if (c.Observer == null)
+            // Which controller is read, in order:
+            //   1. The seat the local player is in, on ANY grid. The Moon pass flew a pasted copy
+            //      of RP-O, and with two grids of that name the probe kept reading the original,
+            //      parked 300 km away with nobody in it. The question is how ship controllers
+            //      report, which any seat answers; it was never a question about RP-O itself.
+            //   2. The last controller chosen, while it still exists. Leaving the seat is part
+            //      of the test (0.7.unoccupied), so standing up must not switch to another block.
+            //   3. On RP-O: the main cockpit, else any seat that can fly the ship, else anything.
+            //      The very first build read the first controller found, which was RP-O's cryo
+            //      chamber - a seat nobody flies from - so everything read zero.
+            IMyShipController sc = null;
+            string source = null;
+            try
             {
-                Log.Inconclusive("0.7.dampeners", "RP-O not found by name");
-                return;
+                var p = MyAPIGateway.Session.Player;
+                if (p != null && p.Controller != null)
+                    sc = p.Controller.ControlledEntity as IMyShipController;
+            }
+            catch { sc = null; }
+            if (sc != null) source = "player-seat";
+
+            if (sc == null && _chosen != null && !_chosen.Closed) { sc = _chosen; source = "last-chosen"; }
+
+            if (sc == null && c.Observer != null)
+            {
+                IMyShipController main = null, flies = null, any = null;
+                var blocks = Ctx.FatBlocks(c.Observer.Grid);
+                for (int i = 0; i < blocks.Count; i++)
+                {
+                    var s = blocks[i] as IMyShipController;
+                    if (s == null) continue;
+                    if (main == null && s.IsMainCockpit) main = s;
+                    if (flies == null && s.CanControlShip) flies = s;
+                    if (any == null) any = s;
+                }
+                sc = main ?? flies ?? any;
+                if (sc != null) source = "RP-O";
             }
 
-            // The first controller found used to be the one read, and on the first SP run that
-            // was RP-O's cryo chamber: a ship controller that nobody flies from, so every value
-            // read zero and 0.7.unoccupied could never be judged. Now: the seat someone is in,
-            // else the main cockpit, else any seat that can fly the ship. Once chosen it is kept,
-            // so leaving the seat - which 0.7.unoccupied needs - does not switch to another block.
-            IMyShipController sc = null;
-            IMyShipController seated = null, main = null, flies = null, any = null;
-            var blocks = Ctx.FatBlocks(c.Observer.Grid);
-            for (int i = 0; i < blocks.Count; i++)
-            {
-                var s = blocks[i] as IMyShipController;
-                if (s == null) continue;
-                if (s.EntityId == _chosenId) sc = s;
-                if (seated == null && s.IsUnderControl) seated = s;
-                if (main == null && s.IsMainCockpit) main = s;
-                if (flies == null && s.CanControlShip) flies = s;
-                if (any == null) any = s;
-            }
-            if (seated != null && (sc == null || !sc.IsUnderControl)) sc = seated;
-            if (sc == null) sc = main ?? flies ?? any;
-            if (sc != null && sc.EntityId != _chosenId)
-            {
-                _chosenId = sc.EntityId;
-                Log.Line(Id, "chose controller id=" + sc.EntityId + " name=\"" + sc.CustomName + "\" occupied="
-                    + Log.B(sc.IsUnderControl) + " main=" + Log.B(sc.IsMainCockpit) + " canControl=" + Log.B(sc.CanControlShip));
-            }
             if (sc == null)
             {
-                Log.Inconclusive("0.7.dampeners", "no ship controller (cockpit / remote / seat) on RP-O");
+                Log.Inconclusive("0.7.dampeners", "no seat occupied and no ship controller on RP-O");
                 return;
+            }
+            if (sc != _chosen)
+            {
+                _chosen = sc;
+                var g = sc.CubeGrid;
+                Log.Line(Id, "chose controller id=" + sc.EntityId + " name=\"" + sc.CustomName + "\" grid=\""
+                    + (g != null ? g.DisplayName : "?") + "\" source=" + source + " occupied=" + Log.B(sc.IsUnderControl)
+                    + " main=" + Log.B(sc.IsMainCockpit) + " canControl=" + Log.B(sc.CanControlShip));
             }
 
             double elevSea = 0, elevSurf = 0;
