@@ -1,6 +1,6 @@
 # Phase 0 — Probe Design
 
-Status: **written, not yet compiled or run** (see the end of section 8). This is the specification the probe code was written from
+Status: **compiled clean 2026-10-02; not yet run in game** (see the end of section 8). This is the specification the probe code was written from
 (`TACTICAL_PLAN.md` §9.3: probe design is Opus, probe code is Sonnet). It defines what each
 probe logs, what counts as a pass, and what each result changes in the plan.
 
@@ -457,7 +457,7 @@ What was and was not verified:
 | Syntax of all 12 files | Clean, with a real C# parser (tree-sitter) that was first shown to pass a known-good mod file and reject a broken one |
 | C# 6 only, no banned APIs, none of the off-limits files touched | Grepped, clean |
 | Every `Log.*` helper used is defined in its own mod | Cross-checked |
-| **Do the members exist in the game's assemblies?** | **Not checked.** `tools\check-compile.ps1` needs the game's `Bin64` |
+| **Do the members exist in the game's assemblies?** | **Yes — 2026-10-02.** Both probes compile clean against `Bin64` with `/langversion:6`, unchanged: every member in the table below exists. The checker was shown the same day to still reject a missing member and a C# 7 tuple, so the clean result is not trap 12 |
 | Does it load in the game (whitelist)? | Not checked; only the game can say |
 
 **First thing to do, on your machine:**
