@@ -105,11 +105,18 @@ namespace RadarActionProbe
                 if (!(block is Sandbox.ModAPI.IMyRadioAntenna)) return;
 
                 _calls++;
-                Log.Alive(Id, _calls);
 
                 string subtype = block.BlockDefinition.SubtypeName;
                 bool dish = Fixture.IsDish(block);
                 int before = actions.Count;
+
+                // The first SP run found the game asks for the dish's actions about 120 times a
+                // second - twice a frame - for as long as one of them sits on a toolbar, and
+                // logging every call put ~13,000 lines in one session. Dish calls are now logged
+                // for the first three and every 600th (about every 5 s); a failure is always
+                // logged, and vanilla calls, which are rare, are always logged.
+                bool loud = !dish || _dishCalls < 3 || (_dishCalls + 1) % 600 == 0;
+                if (loud) Log.Alive(Id, _calls);
 
                 if (dish)
                 {
@@ -119,10 +126,12 @@ namespace RadarActionProbe
                         if (!Has(actions, _ours[i].Id)) actions.Add(_ours[i]);
 
                     int present = CountOurs(actions);
-                    Log.Line(Id, "call subtype=" + subtype + " id=" + block.EntityId + " actionsBefore=" + before
-                        + " actionsAfter=" + actions.Count + " oursPresent=" + present + "/" + OurIds.Length);
+                    if (loud || present != OurIds.Length)
+                        Log.Line(Id, "call subtype=" + subtype + " id=" + block.EntityId + " actionsBefore=" + before
+                            + " actionsAfter=" + actions.Count + " oursPresent=" + present + "/" + OurIds.Length
+                            + " dishCalls=" + _dishCalls);
 
-                    if (present == OurIds.Length) Log.Pass("0.6.scoped", "all three actions present on the dish");
+                    if (present == OurIds.Length) { if (loud) Log.Pass("0.6.scoped", "all three actions present on the dish"); }
                     else Log.Fail("0.6.scoped", "only " + present + " of " + OurIds.Length + " actions present on the dish");
                 }
                 else

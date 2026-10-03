@@ -1,6 +1,6 @@
 # Phase 0 — Probe Design
 
-Status: **compiled clean 2026-10-02; not yet run in game** (see the end of section 8). This is the specification the probe code was written from
+Status: **SP pass complete 2026-10-03 (section 7); DS pass next** (see the end of section 8). This is the specification the probe code was written from
 (`TACTICAL_PLAN.md` §9.3: probe design is Opus, probe code is Sonnet). It defines what each
 probe logs, what counts as a pass, and what each result changes in the plan.
 
@@ -424,9 +424,59 @@ To be filled in at the Phase 0 gate: one row per check, with the side it was mea
 the verdict, and the log line it rests on. Anything FAIL or INCONCLUSIVE carries its
 consequence from §5 into `TACTICAL_PLAN.md` before Phase 1 starts.
 
+SP measured 2026-10-03 on the vanilla world `tactical testing world` (Ground Truth from the
+Workshop, both probes local, sync distance 10 km). Extracts are in `probes/results/`: `sp-run4.txt`
+is the full fixture run, `sp-run7-moon.txt` the controller run, `sp-run8-actions.txt` 0.6 and 0.8.
+The DS columns are the next session's work. Nothing below is a gate verdict yet: the gate reads SP
+and DS together.
+
 | Check | SP | DS client | DS server | Evidence | Consequence applied |
 |---|---|---|---|---|---|
-| | | | | | |
+| 0.1.grids | PASS 1328/1328 | | | every fixture grid returned inside 10 km; E inconclusive only after it flew out past 10 km | |
+| 0.1.velocity | PASS 55/55 | | | E reported 40.00 vs measured 39.99–40.00 m/s | |
+| 0.1.subgrids | rotor tops are separate entities, in the sphere | | | `RECORD subgrids` | |
+| 0.1.streaming | H returned, outside the sphere (SP loads everything) | | | `RECORD streaming H found dist=12456 inSphere=False` | |
+| 0.2.rotor / connector / control | PASS / PASS / PASS | | | both routes compiled and agreed on every grid | |
+| 0.2 contact id | largest member was the named hull on every grid | | | `idPick` lines; D's group also holds a 6-block "Small Grid 984" mechanically, correctly not picked | |
+| 0.3.own / other | PASS / PASS | | | Owner; Neutral (GCDW, CLEX, SATC); Enemies (FCTM); NoOwnership (G) | |
+| 0.3.sides | — | | | needs the server log | |
+| 0.4.state | PASS (10 FAIL = B during the deliberate toggle) | | | `0.4 antenna` lines | |
+| 0.4.text | consistent (all Pufferfish antennas read "Puffer Fish") | | | trivially true in SP; DS world gives B a unique `RP-B SIGNAL` | |
+| 0.4.toggle | flips seen within one 6 Hz poll | | | 3 `FLIP` lines; the real check is server vs client timing | |
+| 0.4.beacon | PASS | | | I's beacon working, radius 20000 | |
+| 0.5.class / size / projection | PASS / PASS (exact) / PASS | | | projection has `Physics == null` and IS returned by the sphere | |
+| 0.5.aabb | WorldAABB is 3.4–5.1× LocalAABB volume | | | `RECORD aabb` — confirms LocalAABB for Dimensions | |
+| 0.6.scoped / vanilla | PASS / PASS | | | dish 16→19 actions; Compact Antenna 16 ids, unchanged | |
+| 0.6.execute / reload | PASS / PASS | | | `EXECUTED` per press; slot worked after reload before any screen opened | |
+| 0.7.altitude / gravity | PASS / PASS (screenshots) | | | Moon: probe surf=4 m vs HUD 4 m, g=0.25 vs HUD 0.25 g; false in space | |
+| 0.7.dampeners / unoccupied | PASS / PASS | | | flip seen; live values with the seat empty | |
+| 0.8.preserve | PASS, but vacuous | | | Custom Data was empty; DS world seeds a `[Fixture]` section | |
+| 0.8.persist | PASS | | | stamp present at load after save and reload | |
+| 0.8.reach | — | | | DS only | |
+
+### 7.1 Findings from the SP run that the gate must weigh
+
+- **`CustomActionGetter` runs about 120 times a second** — twice a frame — for as long as one of
+  the dish's actions is on a toolbar. Phase 1's action handler must be allocation-free: append three
+  pre-built actions and return. No scans, no string building, no logging. The probe's own logging
+  of every call put ~13,000 lines in one session and has been throttled (first three calls, then
+  every 600th).
+- **The projection is returned by `GetEntitiesInSphere`.** It passes because its `Physics` is null,
+  so Phase 1 must filter `Physics == null` explicitly, not rely on the sphere to exclude it.
+- **The sphere query is cheap:** 0.34–1.23 ms for ~7,200 entities at a 10 km radius.
+- **`SessionSettings.SyncDistance` is hidden in the SP world screen** but read correctly from the
+  save. A world needs it set in `Sandbox_config.sbc` and `Sandbox.sbc`; offline mode is required
+  for local mods.
+
+### 7.2 Probe changes made during the SP run (all committed)
+
+- 0.7 reads the seat the local player is in, on any grid; else the last chosen controller; else
+  RP-O's main cockpit / any flyable seat. The first build read RP-O's cryo chamber.
+- Fixture letters declare their own tags (section 2 table); tags in a name still add on top, which
+  is how relationships are declared.
+- The scheduled run is 300 samples (10 minutes); `/radarprobe done` ends it early. One minute was
+  not enough for the hands-on steps.
+- 0.6 dish-call logging throttled, as above.
 
 ---
 

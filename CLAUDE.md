@@ -9,10 +9,53 @@ report what is measured and nothing more. Scripts are in `Data/Scripts/GroundTru
 The Rotating Antenna (`GT_RotatingRadarDish`) is being given a contact scan, and six LCD
 apps will draw from it. It is planned in full and nothing is built yet except the probes.
 
-**Phase 0 is the first step and it gates everything else.** The probes in `probes/` were
-written in a session with no game install. They compiled clean against the game's
-assemblies on 2026-10-02 (steps 1-3 below are done) but have not yet been run in game. Do not start Phase 1 (the contact scan, role 5, the displays) until the probe
-results have been reviewed.
+**Phase 0 is the first step and it gates everything else.** Do not start Phase 1 (the
+contact scan, role 5, the displays) until the probe results have been reviewed.
+
+## Where Phase 0 stands (2026-10-03) — start here
+
+**Single player is done.** Every SP-judgeable check passed; results, findings and the probe
+changes made during the run are in `docs/PHASE0_PROBES.md` section 7, logs in `probes/results/`.
+
+Work is on the local branch **`tactical`** (tracks `origin/claude/bold-mayer-x6lepg`, with `main`
+merged in; not pushed). Probe code is deployed to `%APPDATA%\SpaceEngineers\Mods\` by robocopy
+from `probes/`. Once the probes are on the Workshop, any probe code change also needs Jason to
+re-upload before a DS run, or the server runs the old build.
+
+**Next: the dedicated-server pass**, on a new vanilla Torch instance Jason is setting up on
+KORRIBAN ("Tactical Test Server"). A client and a server cannot share his PC. Steps:
+
+1. **World.** A server-ready copy of the fixture is at
+   `%APPDATA%\SpaceEngineers\Saves\76561197992886229\Tactical Test Server\`. It was rebuilt from
+   the pre-edit backup, so it differs from the SP world on purpose:
+   - Grids renamed with relationship tags (`RP-B NEUTRAL`, `RP-C NEUTRAL`, `RP-D ENEMY`,
+     `RP-G NOBODY`, `RP-I NEUTRAL`, `RP-J NEUTRAL`); C/D/G/I re-owned to match.
+   - B's antenna HUD text is `RP-B SIGNAL`, unique, for `0.4.text`.
+   - O's dish Custom Data holds a `[Fixture]` section, so `0.8.preserve` is not vacuous.
+   - **E is stationary**, override cleared: a server simulates before anyone joins, so a
+     pre-moving E would be gone. Jason's character is seated in E's cockpit; on joining he aims E
+     to pass O, sets dampeners off and a forward override, and hops out near O.
+   - Mods list holds Ground Truth (3781444888) only. **The two probes must be uploaded to the
+     Workshop (private/unlisted, by Jason, in game — never steamcmd)** and their ids added to the
+     world's `<Mods>` in both `Sandbox_config.sbc` and `Sandbox.sbc`, or to the Torch instance.
+2. **Server settings.** Torch instance settings can override the world's: set **sync distance
+   10000** (view distance 15000 or more) in the instance itself, not only in the world.
+   Experimental mode on. Check the first `CTX` line reports `syncRadius=10000`.
+3. **The run**, Jason as a client. 10-minute schedule; `/radarprobe done` ends it. Hands-on:
+   B's broadcast off ~4 s and on (admin "Use terminals" — GCDW owns B); seat, Z off ~5 s, Z on,
+   stand up; the 0.6 toolbar steps; `/radarprobe write`, then save, **restart the server**,
+   rejoin, `/radarprobe status` (that is `0.8.persist` on a DS). A second player is optional.
+4. **Logs.** Client log from `%APPDATA%\SpaceEngineers\`; server log from the Torch instance (on
+   KORRIBAN logs sit at the Torch root, not the Instance folder). Extract the `RADARPROBE` lines
+   of both into `probes/results/ds-client.txt` and `ds-server.txt`. One SE log can span several
+   world loads: split at the last `SESSION ARMED`.
+5. **Gate review** — Claude's own judgment, never delegated: fill the DS columns of section 7,
+   carry each FAIL's consequence from section 5 into `TACTICAL_PLAN.md`, then decide Phase 1.
+
+**Leftover for after Phase 0:** ten blocks have an empty `<MountPoints>` tag (all Radiation
+Monitors, all Weather Stations, `GT_BioScanner`, `GT_BioScanner_S`), so the engine defaults them to
+full-face mounts on all six sides. Jason's decision: give each its real single base-face mount
+point from the model geometry. Deleting the empty tags is not acceptable.
 
 Read these before doing anything, in this order:
 
@@ -23,7 +66,7 @@ Read these before doing anything, in this order:
 3. `docs/TACTICAL_PLAN.md` - sections 2 and 3 (decisions already made), section 9.1 (rules
    for delegated work). The rest is for later phases.
 
-## If you were started to run the probes
+## How the probes are run (reference; SP steps 1-6 are done)
 
 1. Compile-check both probes from the repo root. This needs the game's `Bin64` folder, which
    the script expects at the path set in `tools/check-compile.ps1`:
