@@ -445,7 +445,7 @@ Workshop (probes unlisted: RadarProbe 3812970493, RadarActionProbe 3812970925), 
 | 0.3.own / other | PASS / PASS | PASS 1759 / 2640 | PASS 2956 / 4434 | same relations as SP | none |
 | 0.3.sides | — | PASS | PASS | the 10 distinct `0.3 rel` lines are byte-identical on client and server | none — relationship computed on the client |
 | 0.4.state | PASS (10 FAIL = B during the deliberate toggle) | PASS 1343, FAIL 10 | PASS 2208, FAIL 9 | every FAIL is B inside its deliberate off window (17.2 s), plus one client sample taken before the dish's position had replicated (`dist=-1`) | none |
-| 0.4.text | consistent (all Pufferfish antennas read "Puffer Fish") | reads `RP-B SIGNAL` | reads `RP-B SIGNAL` | `0.4 antenna ... hudText="RP-B SIGNAL"`; vanilla HUD not screenshotted | none — readable; by-eye HUD match still owed, not gating |
+| 0.4.text | consistent (all Pufferfish antennas read "Puffer Fish") | PASS | reads `RP-B SIGNAL` | probe `hudText="RP-B SIGNAL"`; vanilla HUD screenshot 2026-10-04 shows **`GCDW RP-B SIGNAL`**: the HUD prefixes the owner's faction tag | plan D2: a broadcast name is the owner's faction tag, then the HUD text |
 | 0.4.toggle | flips seen within one 6 Hz poll | PASS 2 | PASS 2 | B off at client 19:19:27.390 / server 17:19:28.932, on at 19:19:44.556 / 17:19:46.098: a constant 1.54 s, inside 4 s; identical 1030-tick off span | none |
 | 0.4.beacon | PASS | PASS 451 | PASS 739 | I's beacon working with a radius | none |
 | 0.5.class / size / projection | PASS / PASS (exact) / PASS | PASS / PASS / PASS 451 | PASS / PASS / PASS 672 | projection `physicsNull=True returnedBySphere=True` on both sides | §5.1 already filters `Physics == null` (§7.1) |
@@ -520,8 +520,9 @@ any Phase 1 code:
 3. §7 and §10: the client may hold grids past sync distance; the scan's radius is the range.
 4. Selection writes check terminal access themselves, since `0.8.access` was not run.
 
-Still owed, not gating: a vanilla-HUD screenshot of B showing `RP-B SIGNAL` (0.4.text), and a
-second-player run for 0.8.access.
+0.4.text closed 2026-10-04: the vanilla HUD shows `GCDW RP-B SIGNAL`, the owner's faction tag
+before the HUD text, and D2 now names broadcasters that way. Still owed, not gating: a run for
+0.8.access with the dish owned by someone else.
 
 ---
 

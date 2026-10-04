@@ -99,7 +99,7 @@ Follows from D1, and every contact falls into exactly one case:
 | Detected by | Name | Relationship |
 |---|---|---|
 | Rule 2 — ours | the grid's own name | `Owner` or `FactionShare` |
-| Rule 1 — broadcasting | **what the broadcast says**: the antenna's or beacon's HUD text, plus the ship name only if that broadcaster has *Show ship name* on — what the vanilla HUD shows, and no more | from the owner, as the HUD colours it |
+| Rule 1 — broadcasting | **what the broadcast says**: the owner's faction tag, then the antenna's or beacon's HUD text, plus the ship name only if that broadcaster has *Show ship name* on — what the vanilla HUD shows, and no more. (Probe 0.4.text: the HUD shows `GCDW RP-B SIGNAL` for HUD text `RP-B SIGNAL`. What the HUD shows for an owner with no faction is unmeasured; Phase 1 checks it against the HUD) | from the owner, as the HUD colours it |
 | Rule 3 — dark return only | `UNIDENTIFIED` | `UNKNOWN` |
 
 A dark return carries position, motion, size class and dimensions — what a return
