@@ -72,6 +72,11 @@ namespace GroundTruth
         private float _megawatts;
         private IMyFunctionalBlock _block;
 
+        // This is the only component bound to instrument subtypes, so it also drives
+        // the spin for the ones that have a rotating subpart. See SubpartSpinner for
+        // why that is not a second component.
+        private SubpartSpinner _spinner;
+
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
             _block = Entity as IMyFunctionalBlock;
@@ -129,6 +134,13 @@ namespace GroundTruth
             // caused the damage - on our own schedule rather than the game's - so
             // nothing calls it from this file at all.
 
+            Instruments.Info instrument;
+            if (_block != null && Instruments.TryGet(_block.BlockDefinition.SubtypeName, out instrument))
+            {
+                _spinner = SubpartSpinner.TryCreate(Entity, instrument.Subpart);
+                if (_spinner != null) NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
+            }
+
             if (_megawatts <= 0f) return;
 
             try
@@ -160,6 +172,11 @@ namespace GroundTruth
             {
                 MyLog.Default.WriteLineAndConsole("GroundTruth InstrumentPower update: " + e);
             }
+        }
+
+        public override void UpdateBeforeSimulation()
+        {
+            if (_spinner != null) _spinner.Tick();
         }
 
         public override void Close()
