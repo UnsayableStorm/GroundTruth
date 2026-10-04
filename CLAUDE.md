@@ -37,10 +37,7 @@ so deploy with it excluded or `/MIR` deletes it and the next upload creates a du
 (ENGINE_TRAPS 16):
 `robocopy probes\RadarProbe "$env:APPDATA\SpaceEngineers\Mods\RadarProbe" /MIR /XF modinfo.sbmi`
 
-**Leftover for after Phase 0:** ten blocks have an empty `<MountPoints>` tag (all Radiation
-Monitors, all Weather Stations, `GT_BioScanner`, `GT_BioScanner_S`), so the engine defaults them to
-full-face mounts on all six sides. Jason's decision: give each its real single base-face mount
-point from the model geometry. Deleting the empty tags is not acceptable.
+**Done 2026-10-04 (on `main`, merged here):** the ten blocks with an empty `<MountPoints>` tag now mount on their single base face, sides taken from MTGraves' own definitions for the same models (Bottom; Back for the two wall weather stations). Also cleared the four "Possible entity type script logic collision" notices by moving the Weather Station spin into `InstrumentPower` (`SubpartSpinner` helper in `Rotation.cs`). Both came from a Workshop report of F11 noise.
 
 Read these before doing anything, in this order:
 
