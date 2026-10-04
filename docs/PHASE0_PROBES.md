@@ -427,32 +427,37 @@ consequence from §5 into `TACTICAL_PLAN.md` before Phase 1 starts.
 SP measured 2026-10-03 on the vanilla world `tactical testing world` (Ground Truth from the
 Workshop, both probes local, sync distance 10 km). Extracts are in `probes/results/`: `sp-run4.txt`
 is the full fixture run, `sp-run7-moon.txt` the controller run, `sp-run8-actions.txt` 0.6 and 0.8.
-The DS columns are the next session's work. Nothing below is a gate verdict yet: the gate reads SP
-and DS together.
+DS measured 2026-10-03 on a vanilla Torch instance on KORRIBAN, world `Tactical Test Server` (the
+SP fixture copied straight across — an SP save loads on a DS unchanged), all three mods from the
+Workshop (probes unlisted: RadarProbe 3812970493, RadarActionProbe 3812970925), sync distance
+10 km, Jason as the only client. Four server sessions: the fixture run, the post-restart run
+(0.4 toggle, 0.7 dampeners, 0.8 persist), a velocity re-run, and a Moon run for 0.7. Extracts:
+`ds-server.txt` and `ds-client.txt`, every session in each.
 
 | Check | SP | DS client | DS server | Evidence | Consequence applied |
 |---|---|---|---|---|---|
-| 0.1.grids | PASS 1328/1328 | | | every fixture grid returned inside 10 km; E inconclusive only after it flew out past 10 km | |
-| 0.1.velocity | PASS 55/55 | | | E reported 40.00 vs measured 39.99–40.00 m/s | |
-| 0.1.subgrids | rotor tops are separate entities, in the sphere | | | `RECORD subgrids` | |
-| 0.1.streaming | H returned, outside the sphere (SP loads everything) | | | `RECORD streaming H found dist=12456 inSphere=False` | |
-| 0.2.rotor / connector / control | PASS / PASS / PASS | | | both routes compiled and agreed on every grid | |
-| 0.2 contact id | largest member was the named hull on every grid | | | `idPick` lines; D's group also holds a 6-block "Small Grid 984" mechanically, correctly not picked | |
-| 0.3.own / other | PASS / PASS | | | Owner; Neutral (GCDW, CLEX, SATC); Enemies (FCTM); NoOwnership (G) | |
-| 0.3.sides | — | | | needs the server log | |
-| 0.4.state | PASS (10 FAIL = B during the deliberate toggle) | | | `0.4 antenna` lines | |
-| 0.4.text | consistent (all Pufferfish antennas read "Puffer Fish") | | | trivially true in SP; DS world gives B a unique `RP-B SIGNAL` | |
-| 0.4.toggle | flips seen within one 6 Hz poll | | | 3 `FLIP` lines; the real check is server vs client timing | |
-| 0.4.beacon | PASS | | | I's beacon working, radius 20000 | |
-| 0.5.class / size / projection | PASS / PASS (exact) / PASS | | | projection has `Physics == null` and IS returned by the sphere | |
-| 0.5.aabb | WorldAABB is 3.4–5.1× LocalAABB volume | | | `RECORD aabb` — confirms LocalAABB for Dimensions | |
-| 0.6.scoped / vanilla | PASS / PASS | | | dish 16→19 actions; Compact Antenna 16 ids, unchanged | |
-| 0.6.execute / reload | PASS / PASS | | | `EXECUTED` per press; slot worked after reload before any screen opened | |
-| 0.7.altitude / gravity | PASS / PASS (screenshots) | | | Moon: probe surf=4 m vs HUD 4 m, g=0.25 vs HUD 0.25 g; false in space | |
-| 0.7.dampeners / unoccupied | PASS / PASS | | | flip seen; live values with the seat empty | |
-| 0.8.preserve | PASS, but vacuous | | | Custom Data was empty; DS world seeds a `[Fixture]` section | |
-| 0.8.persist | PASS | | | stamp present at load after save and reload | |
-| 0.8.reach | — | | | DS only | |
+| 0.1.grids | PASS 1328/1328 | PASS 4037 | PASS 6538 | every in-range fixture grid returned; INCONCLUSIVE only for grids out of range (E past 10 km, the fixture while Jason was on the Moon) | none |
+| 0.1.velocity | PASS 55/55 | PASS 6, FAIL 1 | PASS 167 | server reported vs measured within 0.2 m/s from 5 to 26 m/s; the client FAIL is a server correction, §7.3 | §5.1 Velocity: reported velocity, never position deltas |
+| 0.1.subgrids | rotor tops are separate entities, in the sphere | as SP | as SP | `RECORD subgrids` | none |
+| 0.1.streaming | H returned, outside the sphere (SP loads everything) | **H present** at 12.3–12.5 km | H present | client `RECORD streaming H found dist=12290 inSphere=False syncRadius=10000` | plan §7/§10: the client holds more than sync distance; the radius filter is ours |
+| 0.2.rotor / connector / control | PASS / PASS / PASS | PASS 451 / 450 / 451 | PASS 739 each | both routes agreed on every grid, both sides | none |
+| 0.2 contact id | largest member was the named hull on every grid | as SP | as SP | `idPick` identical on both sides; G's Physical group picks D (docked to it), Mechanical picks G | none — §5.1 uses the Mechanical group, so docked ships stay separate as §10 says |
+| 0.3.own / other | PASS / PASS | PASS 1759 / 2640 | PASS 2956 / 4434 | same relations as SP | none |
+| 0.3.sides | — | PASS | PASS | the 10 distinct `0.3 rel` lines are byte-identical on client and server | none — relationship computed on the client |
+| 0.4.state | PASS (10 FAIL = B during the deliberate toggle) | PASS 1343, FAIL 10 | PASS 2208, FAIL 9 | every FAIL is B inside its deliberate off window (17.2 s), plus one client sample taken before the dish's position had replicated (`dist=-1`) | none |
+| 0.4.text | consistent (all Pufferfish antennas read "Puffer Fish") | reads `RP-B SIGNAL` | reads `RP-B SIGNAL` | `0.4 antenna ... hudText="RP-B SIGNAL"`; vanilla HUD not screenshotted | none — readable; by-eye HUD match still owed, not gating |
+| 0.4.toggle | flips seen within one 6 Hz poll | PASS 2 | PASS 2 | B off at client 19:19:27.390 / server 17:19:28.932, on at 19:19:44.556 / 17:19:46.098: a constant 1.54 s, inside 4 s; identical 1030-tick off span | none |
+| 0.4.beacon | PASS | PASS 451 | PASS 739 | I's beacon working with a radius | none |
+| 0.5.class / size / projection | PASS / PASS (exact) / PASS | PASS / PASS / PASS 451 | PASS / PASS / PASS 672 | projection `physicsNull=True returnedBySphere=True` on both sides | §5.1 already filters `Physics == null` (§7.1) |
+| 0.5.aabb | WorldAABB is 3.4–5.1× LocalAABB volume | 3.4–4.9× | 3.4–4.9× | `RECORD aabb` | none — LocalAABB for Dimensions |
+| 0.6.scoped / vanilla | PASS / PASS | PASS / PASS | PASS (scoped) | dish has all three actions; Compact Antenna 16 ids unchanged | none |
+| 0.6.execute / reload | PASS / PASS | EXECUTED seen; reload not repeated | — | `0.6 EXECUTED RadarProbe_Next` on the DS client | none — reload is client-local; SP result stands |
+| 0.7.altitude / gravity | PASS / PASS (screenshots) | PASS / **natural PASS, artificial differs** | n/a | Moon screenshots: probe surf=8 vs HUD 8 m, g=0.25 vs HUD P-Gravity 0.25 g; probe artificial 1.000 g vs HUD A-Gravity 0.50 g | **ENGINE_TRAPS 19**; plan §5.3 artificial-gravity source changed |
+| 0.7.dampeners / unoccupied | PASS / PASS | PASS 9 / PASS 37 (29 FAIL are an artefact, §7.3) | PASS 2 / n/a | live values with the seat empty at 18:54:46 (1.87 m/s) and from 19:34:26 (2.5 m/s and rising) | none |
+| 0.8.preserve | PASS, but vacuous | PASS | — | 69 chars outside `[RadarProbe]` unchanged, checksum `1f42e5fd` on both sides | none |
+| 0.8.persist | PASS | PASS | PASS | stamp present after three separate server restarts | none |
+| 0.8.reach | — | — | PASS | server `SEEN ... after=1.9s` | none — Custom Data selection (D3) stands |
+| 0.8.access | — | not run | not run | needs a second player without access | Phase 1 checks terminal access itself on every selection write |
 
 ### 7.1 Findings from the SP run that the gate must weigh
 
@@ -477,6 +482,46 @@ and DS together.
 - The scheduled run is 300 samples (10 minutes); `/radarprobe done` ends it early. One minute was
   not enough for the hands-on steps.
 - 0.6 dish-call logging throttled, as above.
+
+### 7.3 Findings from the DS run
+
+- **`GetArtificialGravity` is not the HUD's number in a gravity well** (ENGINE_TRAPS 19). The
+  engine scales artificial gravity by `clamp(1 − 2·g_natural, 0, 1)` for the HUD and for
+  `GetTotalGravity`, but `IMyShipController.GetArtificialGravity()` passes a multiplier of 1. On
+  the Moon: probe 1.000 g, HUD 0.50 g. SP never saw it because the SP moon ship had no gravity
+  generator.
+- **A client's position-difference velocity spikes on a server correction.** At 19:33:08 the
+  client had E moving at 3.4 m/s while the server still held it parked; at 19:33:10 the server
+  snapped it back 60 m. The probe measured 31.40 m/s against a reported 0.00 — the one 0.1.velocity
+  FAIL — and the same snap produced all 29 `0.7.unoccupied` FAILs ("zeros when empty, non-zero
+  while seated": the non-zero values were the client's rejected prediction). Reported velocity is
+  right through it; position deltas are not.
+- **A client holds grids beyond sync distance.** H, 12.3 km out against a 10 km sync distance,
+  was present on the client in every sample. Streaming is looser than the setting says, and still
+  finite: from the Moon, 4,158 km away, the fixture was absent. Range is therefore the scan's own
+  radius, never "whatever the client has".
+- **Client and server agree.** Ownership relations byte-identical; broadcast flips 1.54 s apart
+  with identical durations; the Custom Data stamp reached the server in 1.9 s and survived three
+  restarts. Nothing in the client-side model of plan §7 needs a server-sent field.
+- **The server cannot follow "the player's seat".** On a DS there is no local player, so 0.7 on
+  the server read RP-O's cockpit all run, parked in space and all zero. Irrelevant to the design —
+  panels render on clients — but any future server-side consumer (Phase 6) must name its controller.
+- **Sphere query cost on a DS:** 0.36–2.61 ms on the server, up to 1.73 ms on the client.
+
+### 7.4 Gate decision (2026-10-03)
+
+**Phase 1 may start.** No check failed on substance on either side. The detection model (0.1,
+0.4), identity and grouping (0.2, 0.5), relationship (0.3), toolbar actions (0.6) and shared
+selection (0.8) all hold on a DS client exactly as in SP. Applied to `TACTICAL_PLAN.md` before
+any Phase 1 code:
+
+1. §5.1 `Velocity` is `Physics.LinearVelocity`; the position-delta fallback is dropped.
+2. §5.3 artificial gravity uses `GetTotalGravity() − GetNaturalGravity()` (ENGINE_TRAPS 19).
+3. §7 and §10: the client may hold grids past sync distance; the scan's radius is the range.
+4. Selection writes check terminal access themselves, since `0.8.access` was not run.
+
+Still owed, not gating: a vanilla-HUD screenshot of B showing `RP-B SIGNAL` (0.4.text), and a
+second-player run for 0.8.access.
 
 ---
 

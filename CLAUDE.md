@@ -7,57 +7,35 @@ report what is measured and nothing more. Scripts are in `Data/Scripts/GroundTru
 ## Current work: tactical displays
 
 The Rotating Antenna (`GT_RotatingRadarDish`) is being given a contact scan, and six LCD
-apps will draw from it. It is planned in full and nothing is built yet except the probes.
+apps will draw from it. It is planned in full; nothing is built yet except the probes.
 
-**Phase 0 is the first step and it gates everything else.** Do not start Phase 1 (the
-contact scan, role 5, the displays) until the probe results have been reviewed.
+## Where things stand (2026-10-03) — start here
 
-## Where Phase 0 stands (2026-10-03) — start here
+**Phase 0 has passed its gate**, single player and dedicated server both. The results table,
+the DS findings and the gate decision are `docs/PHASE0_PROBES.md` §7, §7.3 and §7.4; logs in
+`probes/results/` (`ds-client.txt`, `ds-server.txt` hold every DS session). The decision's four
+consequences are already written into `docs/TACTICAL_PLAN.md` (§5.1 velocity, §5.3 artificial
+gravity — ENGINE_TRAPS 19, §7/§10 streaming range, D3 access check).
 
-**Single player is done.** Every SP-judgeable check passed; results, findings and the probe
-changes made during the run are in `docs/PHASE0_PROBES.md` section 7, logs in `probes/results/`.
+**Next: Phase 1** (`TACTICAL_PLAN.md` §8), when Jason says go. Still owed, not gating: a
+vanilla-HUD screenshot of B showing `RP-B SIGNAL` (0.4.text), and a second-player run for
+0.8.access.
 
 Work is on the local branch **`tactical`** (tracks `origin/claude/bold-mayer-x6lepg`, with `main`
-merged in; not pushed). Probe code is deployed to `%APPDATA%\SpaceEngineers\Mods\` by robocopy
-from `probes/`. Once the probes are on the Workshop, any probe code change also needs Jason to
-re-upload before a DS run, or the server runs the old build.
+merged in; not pushed).
 
-**Once published, the AppData probe folders hold a `modinfo.sbmi` with the Workshop id, and the
-repo copies do not.** Deploy with it excluded, or `/MIR` deletes it and the next in-game upload
-creates a duplicate Workshop item (ENGINE_TRAPS 16):
+**The DS test bed** is a vanilla Torch instance on KORRIBAN, mapped as `Z:\` (= KORRIBAN
+`C:\TorchServerCreative`, the creative server's slot, swapped out for testing). World
+`Instance\Saves\Tactical Test Server` is the SP fixture copied straight across — an SP save loads
+on a DS unchanged. Logs are at the Torch root, `Z:\Logs\Keen-<date>.log`. The probes are on the
+Workshop, unlisted: RadarProbe **3812970493**, RadarActionProbe **3812970925**. A probe's
+schedule is 10 minutes from world load; restart the server to get a fresh window.
+
+**Probe code changes now need a re-upload by Jason** (in game, never steamcmd) before a DS run.
+The AppData probe folders hold a `modinfo.sbmi` with the Workshop id and the repo copies do not,
+so deploy with it excluded or `/MIR` deletes it and the next upload creates a duplicate item
+(ENGINE_TRAPS 16):
 `robocopy probes\RadarProbe "$env:APPDATA\SpaceEngineers\Mods\RadarProbe" /MIR /XF modinfo.sbmi`
-Visibility must be **Unlisted**, not Private or Friends-only: a dedicated server downloads mods
-as an anonymous Steam client and cannot fetch a private item.
-
-**Next: the dedicated-server pass**, on a new vanilla Torch instance Jason is setting up on
-KORRIBAN ("Tactical Test Server"). A client and a server cannot share his PC. Steps:
-
-1. **World.** A server-ready copy of the fixture is at
-   `%APPDATA%\SpaceEngineers\Saves\76561197992886229\Tactical Test Server\`. It was rebuilt from
-   the pre-edit backup, so it differs from the SP world on purpose:
-   - Grids renamed with relationship tags (`RP-B NEUTRAL`, `RP-C NEUTRAL`, `RP-D ENEMY`,
-     `RP-G NOBODY`, `RP-I NEUTRAL`, `RP-J NEUTRAL`); C/D/G/I re-owned to match.
-   - B's antenna HUD text is `RP-B SIGNAL`, unique, for `0.4.text`.
-   - O's dish Custom Data holds a `[Fixture]` section, so `0.8.preserve` is not vacuous.
-   - **E is stationary**, override cleared: a server simulates before anyone joins, so a
-     pre-moving E would be gone. Jason's character is seated in E's cockpit; on joining he aims E
-     to pass O, sets dampeners off and a forward override, and hops out near O.
-   - Mods list holds Ground Truth (3781444888) only. **The two probes must be uploaded to the
-     Workshop (private/unlisted, by Jason, in game — never steamcmd)** and their ids added to the
-     world's `<Mods>` in both `Sandbox_config.sbc` and `Sandbox.sbc`, or to the Torch instance.
-2. **Server settings.** Torch instance settings can override the world's: set **sync distance
-   10000** (view distance 15000 or more) in the instance itself, not only in the world.
-   Experimental mode on. Check the first `CTX` line reports `syncRadius=10000`.
-3. **The run**, Jason as a client. 10-minute schedule; `/radarprobe done` ends it. Hands-on:
-   B's broadcast off ~4 s and on (admin "Use terminals" — GCDW owns B); seat, Z off ~5 s, Z on,
-   stand up; the 0.6 toolbar steps; `/radarprobe write`, then save, **restart the server**,
-   rejoin, `/radarprobe status` (that is `0.8.persist` on a DS). A second player is optional.
-4. **Logs.** Client log from `%APPDATA%\SpaceEngineers\`; server log from the Torch instance (on
-   KORRIBAN logs sit at the Torch root, not the Instance folder). Extract the `RADARPROBE` lines
-   of both into `probes/results/ds-client.txt` and `ds-server.txt`. One SE log can span several
-   world loads: split at the last `SESSION ARMED`.
-5. **Gate review** — Claude's own judgment, never delegated: fill the DS columns of section 7,
-   carry each FAIL's consequence from section 5 into `TACTICAL_PLAN.md`, then decide Phase 1.
 
 **Leftover for after Phase 0:** ten blocks have an empty `<MountPoints>` tag (all Radiation
 Monitors, all Weather Stations, `GT_BioScanner`, `GT_BioScanner_S`), so the engine defaults them to
@@ -69,11 +47,11 @@ Read these before doing anything, in this order:
 1. `docs/PHASE0_PROBES.md` - the probe design, the test fixture, the log format and the
    pass/fail criteria. Section 8.1 lists what was verified and what was not.
 2. `docs/ENGINE_TRAPS.md` - short, and cheaper than any one of its entries was to learn.
-   Traps 9, 12 and 18 matter most here.
+   Traps 9, 12, 18 and 19 matter most here.
 3. `docs/TACTICAL_PLAN.md` - sections 2 and 3 (decisions already made), section 9.1 (rules
    for delegated work). The rest is for later phases.
 
-## How the probes are run (reference; SP steps 1-6 are done)
+## How the probes are run (reference; SP and DS runs are done)
 
 1. Compile-check both probes from the repo root. This needs the game's `Bin64` folder, which
    the script expects at the path set in `tools/check-compile.ps1`:

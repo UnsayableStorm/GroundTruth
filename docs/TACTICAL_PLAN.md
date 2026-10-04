@@ -132,6 +132,9 @@ Writing it to all of them means losing one dish does not lose the selection. Cus
 already the store for panel selection because it saves with the world and syncs to the
 server; this adds no new network message. There is deliberately no name fallback: a
 contact's name is not a stable or even a known quantity (see D2).
+*Phase 0 (2026-10-03):* a client's write reached the server in 1.9 s and survived three
+restarts (0.8). What a player **without** access to the dish can do was not tested, so every
+selection write checks the writer's terminal access itself rather than trusting the engine to.
 
 **D4 — How a player selects** *(Phase 2)*.
 *Decided:* three mechanisms, in order of how much they need proving:
@@ -222,7 +225,7 @@ before anything depends on it.
 | `Id` | `EntityId` of the group's largest member by block count, ties to the lowest id (probe 0.2 confirms this picks the hull) | — (always present) |
 | `Position` | group's world-space bounding-box centre | — |
 | `PreviousPosition` | previous scan | absent on first sighting |
-| `Velocity` | `Physics.LinearVelocity` of that member (or position deltas, if probe 0.1 fails on clients) | zero only if genuinely static |
+| `Velocity` | `Physics.LinearVelocity` of that member. Never position deltas: probe 0.1 on a DS client saw a server correction turn a 60 m snap into a false 31 m/s while the reported velocity stayed right | zero only if genuinely static |
 | `Range`, `Bearing`, `Elevation` | computed from the observing dish; bearing frames reuse `Readings.Bearing` | bearing −1 where the frame is undefined |
 | `ClosingRate` | relative velocity projected on the line of sight | computed; always available once velocity is |
 | `Class` | `IsStatic` + grid size: *Station*, *Large ship*, *Small ship* | — |
@@ -270,7 +273,7 @@ they bite.
 | Acceleration | Δvelocity between samples |
 | Heading, pitch, roll | ship controller orientation vs. gravity; heading uses the existing north convention |
 | Altitude (sea level / surface) | `IMyShipController.TryGetPlanetElevation` (Probe) |
-| Natural / artificial gravity | `IMyShipController.GetNaturalGravity` / `GetArtificialGravity` |
+| Natural / artificial gravity | `IMyShipController.GetNaturalGravity` / `GetTotalGravity() − GetNaturalGravity()`. Not `GetArtificialGravity`, which ignores the weakening in a gravity well and disagrees with the HUD (ENGINE_TRAPS 19; probe 0.7: 1.00 g vs HUD 0.50 g on the Moon) |
 | Dampeners | `IMyShipController.DampenersOverride` |
 | Planet | existing `Readings.Environment.Planet` |
 
@@ -313,8 +316,10 @@ an open terminal, or (Phase 6) a script. An unwatched dish on a parked ship cost
 Readings in this mod are computed on whichever machine needs them. A panel renders on a
 client, so a client computes its own scan. Consequences, stated rather than papered over:
 
-- **Range is bounded by streaming.** A client only has grids within sync distance; a grid
-  that is not streamed does not exist to query. The effective range is shown.
+- **Range is bounded by streaming.** A grid that is not streamed does not exist to query.
+  Streaming is looser than sync distance — probe 0.1 found a grid 12.3 km out present on a
+  client with sync at 10 km — so the scan applies its own radius and never treats "whatever
+  the client has" as range. The effective range is shown.
 - **Two clients may briefly disagree** at the edge of streaming range. Both are reporting
   truthfully what their machine has.
 - **Selection is shared** through Custom Data (D3), which syncs, so every player on the ship
@@ -352,6 +357,10 @@ changes — is in [`PHASE0_PROBES.md`](PHASE0_PROBES.md).** The table below is t
 
 **Exit:** a written result for every check, in `PHASE0_PROBES.md` §7. Any row that fails
 changes the design of the step it blocks *before* that step is built.
+
+**Passed 2026-10-03** (SP and DS client/server; `PHASE0_PROBES.md` §7.4). Nothing failed on
+substance. Three findings changed this plan: §5.1 velocity source, §5.3 artificial gravity,
+§7/§10 streaming range; and selection writes check access themselves (D3).
 
 ### Phase 1 — The host and the contact primitive
 
@@ -553,7 +562,9 @@ belongs to Sonnet.
 ## 10. Known limits, stated up front
 
 - Range cannot exceed what the machine has streamed. Beyond sync distance there is nothing
-  to detect, and the Sensor Status screen says so. A 50 km broadcast is only seen as far as
+  reliable to detect, and the Sensor Status screen says so. (A client may hold a few grids a
+  little further out; the scan's radius excludes them, so two players never disagree because
+  one of them happened to stream more.) A 50 km broadcast is only seen as far as
   the grid is streamed.
 - Nothing occludes. Broadcasts pass through planets as vanilla radio does; the 2 km dark
   return sees through terrain.

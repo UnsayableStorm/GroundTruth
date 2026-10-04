@@ -710,3 +710,38 @@ be the first thing in the integration guide, not a footnote.
 **Corollary worth remembering separately.** `GetValueFloat` **throws** when a property is
 absent. Any script that tests for an optional property must use `GetProperty(id) != null`,
 or a missing API becomes a script crash instead of a graceful degradation.
+
+---
+
+## 19. `GetArtificialGravity` is not what the HUD shows inside a planet's gravity
+
+**Symptom.** A ship parked on a planet with a gravity generator running. The HUD says
+artificial gravity 0.50 g. Your code, reading the same cockpit, says 1.00 g. In space the
+two agree, which is where everyone tests.
+
+Measured 2026-10-03 on the Moon (natural 0.25 g), DS client, Ground Truth's RadarProbe:
+
+```
+HUD                                   A-Gravity 0.50g   P-Gravity 0.25g
+IMyShipController.GetNaturalGravity   2.453 m/s2 (0.250 g)
+IMyShipController.GetArtificialGravity 9.810 m/s2 (1.000 g)
+```
+
+Artificial gravity is weakened inside natural gravity. The engine scales it by
+`clamp(1 - 2 * naturalG_in_g, 0, 1)` — half strength at 0.25 g, nothing at all from 0.5 g
+up. The HUD stat (`MyStatArtificialGravity`) and `CalculateTotalGravityInPoint` both apply
+that multiplier. `MyShipController.GetArtificialGravity()` calls
+`CalculateArtificialGravityInPoint(position)` with the default multiplier of **1**: the field
+the generator would produce in empty space, not the force anything actually feels.
+
+`GetTotalGravity()` *is* scaled, so `GetTotalGravity() - GetNaturalGravity()` gives the
+artificial gravity the HUD shows. Or apply the multiplier yourself:
+
+```csharp
+double gNat = controller.GetNaturalGravity().Length() / 9.81;
+double mult = MathHelper.Clamp(1.0 - 2.0 * gNat, 0.0, 1.0);
+Vector3D felt = controller.GetArtificialGravity() * mult;
+```
+
+**The general rule.** When an API value and the HUD disagree, find the HUD's stat class
+and read what it actually computes. The HUD is the number players will check you against.
