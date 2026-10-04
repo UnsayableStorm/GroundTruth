@@ -89,7 +89,7 @@
       </Components>
       <CriticalComponent Subtype="Detector" Index="0" />
       <MountPoints>
-
+        <MountPoint Side="Bottom" StartX="0.00" StartY="0.00" EndX="1.00" EndY="1.00" />
       </MountPoints>
       <BuildProgressModels>
         <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Large\LG_1x1x1_Radar_Dome_BS1.mwm" />
@@ -135,7 +135,7 @@
       </Components>
       <CriticalComponent Subtype="Detector" Index="0" />
       <MountPoints>
-
+        <MountPoint Side="Bottom" StartX="0.00" StartY="0.00" EndX="1.00" EndY="1.00" />
       </MountPoints>
       <BuildProgressModels>
         <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Small\SM_Radar_Dome_BS1.mwm" />
@@ -181,7 +181,7 @@
       </Components>
       <CriticalComponent Subtype="Detector" Index="0" />
       <MountPoints>
-
+        <MountPoint Side="Bottom" StartX="0.00" StartY="0.00" EndX="1.00" EndY="1.00" />
       </MountPoints>
       <BuildProgressModels>
         <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Large\LG_1x1x2_Tall_Scanner_BS1.mwm" />
@@ -227,7 +227,7 @@
       </Components>
       <CriticalComponent Subtype="Detector" Index="0" />
       <MountPoints>
-
+        <MountPoint Side="Bottom" StartX="0.00" StartY="0.00" EndX="1.00" EndY="1.00" />
       </MountPoints>
       <BuildProgressModels>
         <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Small\SM_1x1x2_Tall_Scanner_BS1.mwm" />
@@ -273,7 +273,7 @@
       </Components>
       <CriticalComponent Subtype="Detector" Index="0" />
       <MountPoints>
-
+        <MountPoint Side="Bottom" StartX="0.00" StartY="0.00" EndX="1.00" EndY="1.00" />
       </MountPoints>
       <BuildProgressModels>
         <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Large\LG_1x1x1_Rotating_Sensor_BS1.mwm" />
@@ -319,7 +319,7 @@
       </Components>
       <CriticalComponent Subtype="Detector" Index="0" />
       <MountPoints>
-
+        <MountPoint Side="Bottom" StartX="0.00" StartY="0.00" EndX="1.00" EndY="1.00" />
       </MountPoints>
       <BuildProgressModels>
         <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Small\SG_1x1x1_Rotating_Sensor_BS1.mwm" />
@@ -365,7 +365,7 @@
       </Components>
       <CriticalComponent Subtype="Detector" Index="0" />
       <MountPoints>
-
+        <MountPoint Side="Back" StartX="0.00" StartY="0.00" EndX="1.00" EndY="1.00" />
       </MountPoints>
       <BuildProgressModels>
         <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Large\LG_Wall_Rotating_Sensor_BS1.mwm" />
@@ -411,7 +411,7 @@
       </Components>
       <CriticalComponent Subtype="Detector" Index="0" />
       <MountPoints>
-
+        <MountPoint Side="Back" StartX="0.00" StartY="0.00" EndX="1.00" EndY="1.00" />
       </MountPoints>
       <BuildProgressModels>
         <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Small\SG_Wall_Rotating_Sensor_BS1.mwm" />
@@ -457,7 +457,7 @@
       </Components>
       <CriticalComponent Subtype="Detector" Index="0" />
       <MountPoints>
-
+        <MountPoint Side="Bottom" StartX="0.00" StartY="0.00" EndX="1.00" EndY="1.00" />
       </MountPoints>
       <BuildProgressModels>
         <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Large\LG_1x1x1_Small_Radar_Dome_BS1.mwm" />
@@ -503,7 +503,7 @@
       </Components>
       <CriticalComponent Subtype="Detector" Index="0" />
       <MountPoints>
-
+        <MountPoint Side="Bottom" StartX="0.00" StartY="0.00" EndX="1.00" EndY="1.00" />
       </MountPoints>
       <BuildProgressModels>
         <Model BuildPercentUpperBound="0.30" File="Models\Cubes\Small\SG_1x1x1_Small_Radar_Dome_BS1.mwm" />
