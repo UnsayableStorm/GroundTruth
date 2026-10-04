@@ -457,7 +457,7 @@ Workshop (probes unlisted: RadarProbe 3812970493, RadarActionProbe 3812970925), 
 | 0.8.preserve | PASS, but vacuous | PASS | — | 69 chars outside `[RadarProbe]` unchanged, checksum `1f42e5fd` on both sides | none |
 | 0.8.persist | PASS | PASS | PASS | stamp present after three separate server restarts | none |
 | 0.8.reach | — | — | PASS | server `SEEN ... after=1.9s` | none — Custom Data selection (D3) stands |
-| 0.8.access | — | not run | not run | needs a second player without access | Phase 1 checks terminal access itself on every selection write |
+| 0.8.access | — | write applied **locally only** | **rejected silently** | 2026-10-04: O's dish re-owned to GCDW, share None, admin terminals off. Client `RECORD access hasLocalPlayerAccess=False readBackMatches=True`, then its own `SEEN after=0.6s`; server dish owner `…908`, never logged the stamp, no validation error, no kick. The engine's `[Server(ValidationType.Access \| Ownership)]` on `OnCustomDataChanged` drops it | Phase 1 checks terminal access itself on every selection write — **required**, not a backstop: without it the writer sees a selection nobody else has |
 
 ### 7.1 Findings from the SP run that the gate must weigh
 
@@ -518,11 +518,14 @@ any Phase 1 code:
 1. §5.1 `Velocity` is `Physics.LinearVelocity`; the position-delta fallback is dropped.
 2. §5.3 artificial gravity uses `GetTotalGravity() − GetNaturalGravity()` (ENGINE_TRAPS 19).
 3. §7 and §10: the client may hold grids past sync distance; the scan's radius is the range.
-4. Selection writes check terminal access themselves, since `0.8.access` was not run.
+4. Selection writes check terminal access themselves (0.8.access, below).
 
-0.4.text closed 2026-10-04: the vanilla HUD shows `GCDW RP-B SIGNAL`, the owner's faction tag
-before the HUD text, and D2 now names broadcasters that way. Still owed, not gating: a run for
-0.8.access with the dish owned by someone else.
+Closed 2026-10-04, nothing left owed:
+- **0.4.text:** the vanilla HUD shows `GCDW RP-B SIGNAL`, the owner's faction tag before the HUD
+  text, and D2 now names broadcasters that way.
+- **0.8.access:** a Custom Data write from a client without access is applied on that client and
+  silently dropped by the server — no error, no kick. The client is left holding a copy nobody else
+  has, so the access check in item 4 is required, not defensive.
 
 ---
 

@@ -17,8 +17,8 @@ the DS findings and the gate decision are `docs/PHASE0_PROBES.md` §7, §7.3 and
 consequences are already written into `docs/TACTICAL_PLAN.md` (§5.1 velocity, §5.3 artificial
 gravity — ENGINE_TRAPS 19, §7/§10 streaming range, D3 access check).
 
-**Next: Phase 1** (`TACTICAL_PLAN.md` §8), when Jason says go. Still owed, not gating: a run
-for 0.8.access with O's dish owned by someone else and admin "Use terminals" off.
+**Next: Phase 1** (`TACTICAL_PLAN.md` §8), when Jason says go. Nothing from Phase 0 is owed;
+0.4.text and 0.8.access closed 2026-10-04.
 
 Work is on the local branch **`tactical`** (tracks `origin/claude/bold-mayer-x6lepg`, with `main`
 merged in; not pushed).

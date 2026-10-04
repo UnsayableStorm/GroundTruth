@@ -133,8 +133,10 @@ already the store for panel selection because it saves with the world and syncs 
 server; this adds no new network message. There is deliberately no name fallback: a
 contact's name is not a stable or even a known quantity (see D2).
 *Phase 0 (2026-10-03):* a client's write reached the server in 1.9 s and survived three
-restarts (0.8). What a player **without** access to the dish can do was not tested, so every
-selection write checks the writer's terminal access itself rather than trusting the engine to.
+restarts (0.8). A write from a player **without** access is applied on their own client and
+silently dropped by the server (0.8.access, 2026-10-04), leaving them a selection nobody else
+sees. So every selection write checks the writer's terminal access first and refuses, visibly,
+rather than letting the engine discard it behind their back.
 
 **D4 — How a player selects** *(Phase 2)*.
 *Decided:* three mechanisms, in order of how much they need proving:
