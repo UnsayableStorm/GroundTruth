@@ -93,6 +93,19 @@ rejected member and the question it served, delete that call, and reload.
 
 ## Rules for any code in this repo
 
+- **Nothing may depend on a player having opened a terminal.** Jason, 2026-10-05: "we
+  cannot depend on a user opening a terminal before our stuff works. that is not
+  acceptable." Every feature must work straight after a world load and on a dedicated
+  server where no terminal is ever rendered. In practice:
+  - Mod code reads `GroundTruthSession.StateFor` / the Tactical cache directly, **never** its
+    own `GT_` properties (`GetValueFloat("GT_…")`). Those exist only after
+    `CustomControlGetter` fires, which never happens on a DS. The Event Controller events
+    did this and never fired; fixed in `e806ccd`, see `docs/EVENT_FIX_2026-10-05.md`.
+  - Anything that must react on the server (events, alarms, toolbar actions) cannot rely on
+    the scan or recompute being "watched" by an LCD or a pane, because those render on
+    clients. **Phase 6 events and dish properties must be designed to this rule.**
+  - Hooks that only run when a terminal is built (`CustomControlGetter`) are for UI only:
+    injecting dropdowns, writing panes. Never put behaviour there.
 - **C# 6 only.** No local functions, tuples, `out var`, pattern matching or `is` with a
   declaration. The compile checker has passed a C# 7 feature once that the game then rejected.
 - **Only APIs the mod already uses, or that a probe has cleared.** No `MyIni`, reflection,
