@@ -31,6 +31,7 @@ namespace GroundTruth
         private readonly List<IMyTerminalBlock> _observed = new List<IMyTerminalBlock>();
         private readonly EventPane _pane = new EventPane();
         private double _lastBeat = -1e9;
+        private string _triggerNote;
 
         // null means not yet evaluated. The first evaluation latches without firing, so
         // building a controller while the condition is already true does not trigger an
@@ -163,11 +164,12 @@ namespace GroundTruth
                     bool first = !_state.HasValue;
                     _state = now;
                     transition = first ? "LATCH " + (now ? "yes" : "no") : "FIRE " + (now ? "slot 1 (yes)" : "slot 2 (no)");
-                    if (!first) EventSupport.Fire(ev, now);
+                    if (!first) EventSupport.Fire(ev, now, ref _triggerNote);
                 }
             }
 
             info.Append(EventSupport.Output(_state, YesNoToolbarYesDescription, YesNoToolbarNoDescription));
+            EventSupport.AppendNote(info, _triggerNote);
             EventSupport.TraceTick(ev, transition, info, ref _lastBeat);
             _pane.Commit(ev);
         }

@@ -49,6 +49,7 @@ namespace GroundTruth
         private readonly List<IMyTerminalBlock> _observed = new List<IMyTerminalBlock>();
         private readonly EventPane _pane = new EventPane();
         private double _lastBeat = -1e9;
+        private string _triggerNote;
         private bool? _state;
 
         // Empty means "any weather".
@@ -274,10 +275,11 @@ namespace GroundTruth
                 bool first = !_state.HasValue;
                 _state = any;
                 transition = first ? "LATCH " + (any ? "yes" : "no") : "FIRE " + (any ? "slot 1 (yes)" : "slot 2 (no)");
-                if (!first) EventSupport.Fire(ev, any);
+                if (!first) EventSupport.Fire(ev, any, ref _triggerNote);
             }
 
             info.Append(EventSupport.Output(_state, YesNoToolbarYesDescription, YesNoToolbarNoDescription));
+            EventSupport.AppendNote(info, _triggerNote);
             EventSupport.TraceTick(ev, transition, info, ref _lastBeat);
             _pane.Commit(ev);
         }
