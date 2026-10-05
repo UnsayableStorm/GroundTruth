@@ -1,0 +1,11 @@
+2026-10-04 19:21:32.606 - Thread:   1 ->     Script loaded: GroundTruthTacticalTest_GroundTruth, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+2026-10-04 19:25:31.743 - Thread:   1 ->  GT TACTICAL [HOST] t=224 table=102982899351786334 NEW id=110717817452143586 "RP-A" by=ours rel=OWNER Large ship blocks=296 d=2559 lastSeen=224
+2026-10-04 19:25:31.744 - Thread:   1 ->  GT TACTICAL [HOST] t=224 table=102982899351786334 NEW id=111866375458323409 "GCDW.Antenna" by=broadcast rel=NEUTRAL Small ship blocks=1215 d=2263 lastSeen=224
+2026-10-04 19:25:31.744 - Thread:   1 ->  GT TACTICAL [HOST] t=224 table=102982899351786334 NEW id=108736143552863276 "GCDW.Beacon" by=broadcast rel=NEUTRAL Small ship blocks=528 d=3179 lastSeen=224
+2026-10-04 19:25:31.745 - Thread:   1 ->  GT TACTICAL [HOST] t=224 table=102982899351786334 NEW id=112701731259906390 "GCDW.Beacon" by=broadcast rel=NEUTRAL Small ship blocks=528 d=3860 lastSeen=224
+2026-10-04 19:25:31.745 - Thread:   1 ->  GT TACTICAL [HOST] t=224 table=102982899351786334 NEW id=76948332592533314 "UNIDENTIFIED" by=dark rel=UNKNOWN Small ship blocks=493 d=841 lastSeen=224
+2026-10-04 19:25:31.745 - Thread:   1 ->  GT TACTICAL [HOST] t=224 table=102982899351786334 NEW id=94560380323677494 "UNIDENTIFIED" by=dark rel=UNKNOWN Small ship blocks=68 d=1560 lastSeen=224
+2026-10-04 19:26:53.194 - Thread:   1 ->  GT TACTICAL [HOST] t=306 table=102982899351786334 EXPIRED id=94560380323677494 "UNIDENTIFIED" by=dark rel=UNKNOWN Small ship blocks=68 d=1560 lastSeen=304 reason=closed
+2026-10-04 19:30:05.195 - Thread:   1 ->  GT TACTICAL [HOST] t=498 table=102982899351786334 NEW id=82473970929092509 "GCDW.Puffer Fish" by=broadcast rel=NEUTRAL Small ship blocks=527 d=3876 lastSeen=498
+2026-10-04 19:31:05.195 - Thread:   1 ->  GT TACTICAL [HOST] t=558 table=102982899351786334 LOST id=82473970929092509 "GCDW.Puffer Fish" by=broadcast rel=NEUTRAL Small ship blocks=527 d=3876 lastSeen=556
+2026-10-04 19:31:35.196 - Thread:   1 ->  GT TACTICAL [HOST] t=588 table=102982899351786334 EXPIRED id=82473970929092509 "GCDW.Puffer Fish" by=broadcast rel=NEUTRAL Small ship blocks=527 d=3876 lastSeen=556 reason=retention
