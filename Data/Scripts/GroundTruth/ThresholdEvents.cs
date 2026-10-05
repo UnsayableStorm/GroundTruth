@@ -38,6 +38,7 @@ namespace GroundTruth
         public static readonly List<GTThresholdEvent> Live = new List<GTThresholdEvent>();
 
         private readonly List<IMyTerminalBlock> _observed = new List<IMyTerminalBlock>();
+        private readonly EventPane _pane = new EventPane();
         private bool? _state;
 
         /// <summary>Instrument role to accept, or 0 for any Ground Truth instrument.</summary>
@@ -46,9 +47,10 @@ namespace GroundTruth
         /// <summary>
         /// The reading on the SAME 0-1 scale the threshold slider reports. Percentages
         /// pass through unscaled; counts and durations divide by a stated full scale.
-        /// Null if this block cannot answer.
+        /// Null if this block cannot answer. Reads BlockState, never GT_ properties -
+        /// see EventSupport for why.
         /// </summary>
-        protected abstract float? Value(IMyTerminalBlock instrument);
+        protected abstract float? Value(GroundTruthSession.BlockState s);
 
         public abstract MyStringId EventDisplayName { get; }
         public abstract long UniqueSelectionId { get; }
@@ -69,18 +71,14 @@ namespace GroundTruth
         public override void OnBeforeRemovedFromContainer()
         {
             Live.Remove(this);
+            _pane.Unhook();
             base.OnBeforeRemovedFromContainer();
         }
 
         public bool IsBlockValidForList(IMyTerminalBlock block)
         {
-            if (block == null) return false;
-            try
-            {
-                float role = block.GetValueFloat("GT_SysBlockRole");
-                return WantedRole == 0f ? role > 0f : role == WantedRole;
-            }
-            catch { return false; }
+            float role = EventSupport.RoleOf(block);
+            return WantedRole == 0f ? role > 0f : role == WantedRole;
         }
 
         public void AddBlocks(List<IMyTerminalBlock> blocks)
@@ -98,10 +96,17 @@ namespace GroundTruth
             _state = null;
         }
 
-        // Threshold or condition changed: evaluate the new setting fresh rather than
-        // against the old one.
-        public void NotifyValuesChanged() { _state = null; }
+        // Threshold, condition, AND mode or the controller's On/Off changed.
+        //
+        // This used to clear the latched state, so the new setting was judged fresh -
+        // and a fresh judgement never fires. Dragging the slider across the reading,
+        // which is exactly how a player tests a new controller, therefore did nothing.
+        // Vanilla re-evaluates against the state it already holds and fires if the new
+        // setting flips it (MyEventControllerGenericEvent.NotifyValuesChanged, decompiled
+        // 2026-10-05). Keeping the latch gives the same behaviour on the next tick.
+        public void NotifyValuesChanged() { }
 
+        // Called by the controller after its block list changes.
         public void RefreshDetailedInfo() { }
 
         public void CreateTerminalInterfaceControls<T>() where T : IMyTerminalBlock { }
@@ -109,7 +114,9 @@ namespace GroundTruth
         public void Tick()
         {
             var ev = Entity as IMyEventControllerBlock;
-            if (ev == null || !ev.IsWorking || _observed.Count == 0) return;
+            if (ev == null) return;
+
+            if ((object)ev.SelectedEvent != this) { _pane.Clear(ev); return; }
 
             var ingame = ev as Sandbox.ModAPI.Ingame.IMyEventControllerBlock;
             if (ingame == null) return;
@@ -118,6 +125,20 @@ namespace GroundTruth
             bool lowerOrEqual = ingame.IsLowerOrEqualCondition;
             bool andMode = ingame.IsAndModeEnabled;
 
+            var info = _pane.Begin();
+            info.Append("Event: ").Append(EventDisplayName.String).Append('\n');
+            info.Append(lowerOrEqual ? "Condition: below or equal" : "Condition: above or equal").Append('\n');
+            info.Append("Threshold: ").Append(EventSupport.Percent(threshold)).Append('\n');
+
+            if (!ev.IsWorking)
+            {
+                info.Append("Event Controller is off or unpowered.\n");
+                _pane.Commit(ev);
+                return;
+            }
+
+            if (_observed.Count == 0) info.Append("No instruments selected.\n");
+
             bool any = false, all = true, answered = false;
 
             for (int i = _observed.Count - 1; i >= 0; i--)
@@ -125,40 +146,40 @@ namespace GroundTruth
                 var b = _observed[i];
                 if (b == null || b.Closed) { _observed.RemoveAt(i); continue; }
 
-                // A dark instrument is not a reading of zero and must not clear an alarm.
-                if (!b.IsWorking) continue;
+                info.Append(b.CustomName).Append(": ");
 
-                float? v = Value(b);
-                if (!v.HasValue) continue;
+                // A dark instrument is not a reading of zero and must not clear an alarm.
+                if (!b.IsWorking) { info.Append("not working\n"); continue; }
+
+                var s = EventSupport.State(b);
+                float? v = s == null ? null : Value(s);
+                if (!v.HasValue) { info.Append("no reading\n"); continue; }
+
+                info.Append(EventSupport.Percent(v.Value)).Append('\n');
 
                 answered = true;
                 bool met = lowerOrEqual ? v.Value <= threshold : v.Value >= threshold;
                 if (met) any = true; else all = false;
             }
 
-            if (!answered) return;
+            if (answered)
+            {
+                bool now = andMode ? all : any;
 
-            bool now = andMode ? all : any;
+                if (!_state.HasValue || _state.Value != now)
+                {
+                    bool first = !_state.HasValue;
+                    _state = now;
 
-            if (_state.HasValue && _state.Value == now) return;
-            bool first = !_state.HasValue;
-            _state = now;
-            if (first) return;
+                    // The first evaluation latches without firing, like vanilla's
+                    // AddBlocks: a controller built while the condition already holds
+                    // does not fire for something the player never saw happen.
+                    if (!first) EventSupport.Fire(ev, now);
+                }
+            }
 
-            try { ev.TriggerAction(now ? 0 : 1); }
-            catch (Exception e) { MyLog.Default.WriteLineAndConsole("GT event trigger: " + e); }
-        }
-
-        protected static float Read(IMyTerminalBlock b, string property)
-        {
-            try { return b.GetValueFloat(property); }
-            catch { return -1f; }
-        }
-
-        protected static bool ReadFlag(IMyTerminalBlock b, string property)
-        {
-            try { return b.GetValueBool(property); }
-            catch { return false; }
+            info.Append(EventSupport.Output(_state, YesNoToolbarYesDescription, YesNoToolbarNoDescription));
+            _pane.Commit(ev);
         }
     }
 
@@ -187,13 +208,13 @@ namespace GroundTruth
 
         // Weather AND daylight. The weather multiplier alone reads 100% at midnight,
         // which is true of the sky and useless as a trigger for starting a reactor.
-        protected override float? Value(IMyTerminalBlock b)
+        protected override float? Value(GroundTruthSession.BlockState s)
         {
-            float mult = Read(b, "GT_WxSolarMult");
+            float mult = s.SolarMult;                       // GT_WxSolarMult
             if (mult < 0) return null;
 
-            bool sunUp = ReadFlag(b, "GT_SunUp");
-            float elevation = Read(b, "GT_SunElevation");
+            bool sunUp = s.Env.SunElevation > 0;            // GT_SunUp
+            float elevation = (float)s.Env.SunElevation;    // GT_SunElevation
 
             // In space there is no horizon; elevation reports -999 and weather does not
             // apply, so the weather figure stands alone.
@@ -231,10 +252,10 @@ namespace GroundTruth
 
         // Breathable oxygen outside, weather already applied. AlienFog drives this to
         // zero, which is the case worth automating against.
-        protected override float? Value(IMyTerminalBlock b)
+        protected override float? Value(GroundTruthSession.BlockState s)
         {
             // Already 0-1, exactly what the slider reports. No scaling.
-            float oxy = Read(b, "GT_EnvOxygen");
+            float oxy = (float)s.Env.Oxygen;                // GT_EnvOxygen
             return oxy < 0 ? (float?)null : oxy;
         }
     }
