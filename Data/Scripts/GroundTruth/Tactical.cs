@@ -5,6 +5,7 @@ using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
+using VRage.Utils;
 using VRageMath;
 
 namespace GroundTruth
@@ -125,6 +126,7 @@ namespace GroundTruth
             public double LastTouched;
             public double ScanRadius;
             public bool Offline;         // the dish that last tried to scan was not working
+            public bool LoggedOffline;
             public bool Truncated;       // MaxContacts bit on the last scan
             public bool UnownedDish;     // nothing can be "ours" to a dish nobody owns
             public double LastScanMs;
@@ -308,8 +310,21 @@ namespace GroundTruth
                 }
             }
 
-            Age(t, now);
+            Age(t, now, dish.GetPosition());
             Bound(t, dish.GetPosition());
+
+            // One line when the sensor's own state flips, so an offline dish explains a
+            // wave of LOST lines rather than looking like every ship went dark at once.
+            if (t.Offline != t.LoggedOffline)
+            {
+                t.LoggedOffline = t.Offline;
+                try
+                {
+                    MyLog.Default.WriteLineAndConsole(string.Format("GT TACTICAL t={0:F0} table={1} SENSOR {2}",
+                        now, t.Key, t.Offline ? "OFFLINE (dish not working)" : "ONLINE"));
+                }
+                catch { }
+            }
         }
 
         // One mechanical group, in _group. Decides whether it is a contact (D1) and what
@@ -406,11 +421,13 @@ namespace GroundTruth
             else return;
 
             Contact c;
+            string was = null;
             if (!t.Contacts.TryGetValue(main.EntityId, out c))
             {
                 c = new Contact { Id = main.EntityId, FirstSeen = now };
                 t.Contacts[main.EntityId] = c;
             }
+            else was = Summary(c);
 
             c.Position = box.Center;
             c.Velocity = main.Physics != null ? (Vector3D)main.Physics.LinearVelocity : Vector3D.Zero;
@@ -426,15 +443,65 @@ namespace GroundTruth
             // (D2). Its broadcasters are not heard, so they are not listed.
             if (detectedBy != DetectedByDarkReturn) c.Broadcasters.AddRange(heard);
             c.LastSeen = now;
+            int priorState = c.State;
             c.State = StateDetected;
             _seen.Add(c.Id);
+
+            // Transitions only - a steady contact writes nothing, so the log stays
+            // readable through a ten-minute run.
+            string isNow = Summary(c);
+            if (was == null) Log(t, now, "NEW", c, dishPos);
+            else if (priorState == StateLost) Log(t, now, "REGAINED", c, dishPos);
+            else if (was != isNow) Log(t, now, "CHANGED", c, dishPos, "was " + was);
+        }
+
+        // ---- Lifecycle log ------------------------------------------------------------
+        //
+        // The pane only helps someone standing at the dish, and the interesting moments -
+        // a ship going dark 4 km away, a contact expiring 30 s later - happen while the
+        // tester is somewhere else. So every transition is written to the game log with
+        // the session clock, and the run is read afterwards:
+        //
+        //   GT TACTICAL [CLIENT] t=123 table=<key> NEW id=<id> "<name>" by=broadcast rel=NEUTRAL Small ship d=3878
+        //
+        // NEW, REGAINED, CHANGED (identity or detection rule moved), LOST, and EXPIRED with
+        // its reason: retention (30 s lost), closed (the grid is gone), bound (64 kept).
+        // The side tag matters on a dedicated server, where client and server both scan.
+
+        private static string Summary(Contact c)
+        {
+            return DetectedName(c.DetectedBy) + "|" + RelationName(c.Relation) + "|" + (c.Name ?? "");
+        }
+
+        private static string DetectedName(int by)
+        {
+            if (by == DetectedByOurs) return "ours";
+            if (by == DetectedByBroadcast) return "broadcast";
+            if (by == DetectedByDarkReturn) return "dark";
+            return "?";
+        }
+
+        private static void Log(Table t, double now, string what, Contact c, Vector3D from, string extra = null)
+        {
+            try
+            {
+                bool server = MyAPIGateway.Multiplayer == null || MyAPIGateway.Multiplayer.IsServer;
+                string name = string.IsNullOrEmpty(c.Name) ? "UNIDENTIFIED" : c.Name;
+                MyLog.Default.WriteLineAndConsole(string.Format(
+                    "GT TACTICAL [{0}] t={1:F0} table={2} {3} id={4} \"{5}\" by={6} rel={7} {8} blocks={9} d={10:F0} lastSeen={11:F0}{12}",
+                    server ? (MyAPIGateway.Utilities.IsDedicated ? "SERVER" : "HOST") : "CLIENT",
+                    now, t.Key, what, c.Id, name, DetectedName(c.DetectedBy), RelationName(c.Relation),
+                    ClassOf(c), c.Blocks, Vector3D.Distance(from, c.Position), c.LastSeen,
+                    extra == null ? "" : " " + extra));
+            }
+            catch { }
         }
 
         // Plan 5.2. A contact not seen this scan goes LOST and keeps its last-known
         // position for the retention interval; then it is removed. A contact whose grid
         // no longer exists - ground down, merged, deleted - is removed at once: there is
         // no last-known position to honour for something that is not there.
-        private static void Age(Table t, double now)
+        private static void Age(Table t, double now, Vector3D dishPos)
         {
             _drop.Clear();
             foreach (var kv in t.Contacts)
@@ -443,10 +510,20 @@ namespace GroundTruth
                 if (_seen.Contains(c.Id)) continue;
 
                 var e = MyAPIGateway.Entities.GetEntityById(c.Id);
-                if (e == null || e.Closed || e.MarkedForClose) { _drop.Add(c.Id); continue; }
+                if (e == null || e.Closed || e.MarkedForClose)
+                {
+                    Log(t, now, "EXPIRED", c, dishPos, "reason=closed");
+                    _drop.Add(c.Id);
+                    continue;
+                }
 
+                if (c.State != StateLost) Log(t, now, "LOST", c, dishPos);
                 c.State = StateLost;
-                if (now - c.LastSeen > RetentionSeconds) _drop.Add(c.Id);
+                if (now - c.LastSeen > RetentionSeconds)
+                {
+                    Log(t, now, "EXPIRED", c, dishPos, "reason=retention");
+                    _drop.Add(c.Id);
+                }
             }
             for (int i = 0; i < _drop.Count; i++) t.Contacts.Remove(_drop[i]);
         }
@@ -462,7 +539,11 @@ namespace GroundTruth
             foreach (var kv in t.Contacts) _sorted.Add(kv.Value);
             _sorted.Sort((a, b) => Vector3D.DistanceSquared(dishPos, a.Position)
                 .CompareTo(Vector3D.DistanceSquared(dishPos, b.Position)));
-            for (int i = MaxContacts; i < _sorted.Count; i++) t.Contacts.Remove(_sorted[i].Id);
+            for (int i = MaxContacts; i < _sorted.Count; i++)
+            {
+                Log(t, GroundTruthSession.Seconds, "EXPIRED", _sorted[i], dishPos, "reason=bound");
+                t.Contacts.Remove(_sorted[i].Id);
+            }
             _sorted.Clear();
         }
 
