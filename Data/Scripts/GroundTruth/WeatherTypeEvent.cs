@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Collections.Generic;
 using Sandbox.Game.Entities;
 using Sandbox.Game.EntityComponents;
@@ -8,8 +9,10 @@ using Sandbox.ModAPI.Interfaces.Terminal;
 using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
+using VRage.Game.ModAPI.Network;
 using VRage.Game.ObjectBuilders.ComponentSystem;
 using VRage.ObjectBuilders;
+using VRage.Sync;
 using VRage.Utils;
 using VRageMath;
 
@@ -51,8 +54,25 @@ namespace GroundTruth
         private double _lastBeat = -1e9;
         private bool? _state;
 
-        // Empty means "any weather".
-        public string SelectedType = "";
+        // THE SELECTED WEATHER, SAVED AND SYNCED.
+        //
+        // This was a plain string field, set by the dropdown on whichever machine drew
+        // it. It was never saved, so every reload reset the event to "any weather" until
+        // someone reopened the terminal and picked again, and it never reached a
+        // dedicated server, which therefore always watched "any weather". Both break the
+        // rule that nothing may depend on a terminal being opened (2026-10-05).
+        //
+        // Now a MySync, which replicates both ways, saved through the vanilla
+        // MyObjectBuilder_ModCustomComponent - the pattern SeMoreEvents (Workshop
+        // 2935236892) ships for its own weather event, chosen because it is proven and
+        // because a vanilla builder type still loads if this mod is ever removed.
+        //
+        // The value is a stable key of the weather NAME (KeyOf), 0 meaning "any weather".
+        // Names are what the planet's generator lists, and the list differs per planet, so
+        // a list index would point at a different weather on another planet. The key is
+        // computed here rather than taken from any engine hash, so it is identical on
+        // every machine by construction.
+        private MySync<long, SyncDirection.BothWays> _selected;
 
         public override string ComponentTypeDebugString { get { return "GT_WeatherType"; } }
 
@@ -118,6 +138,64 @@ namespace GroundTruth
 
         public void RefreshDetailedInfo() { }
 
+        // ---- the saved selection ---------------------------------------------------------
+
+        /// <summary>Stable key of a weather name; 0 is reserved for "any weather".</summary>
+        public static long KeyOf(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return 0;
+            // FNV-1a over the lower-cased name: deterministic everywhere, no engine hash.
+            ulong h = 14695981039346656037UL;
+            string s = name.ToLowerInvariant();
+            for (int i = 0; i < s.Length; i++)
+            {
+                h ^= s[i];
+                h *= 1099511628211UL;
+            }
+            long key = (long)(h & 0x7FFFFFFFFFFFFFFFUL);
+            return key == 0 ? 1 : key;
+        }
+
+        /// <summary>The selected weather's name on this controller's planet, or null for any.</summary>
+        private string SelectedName()
+        {
+            long key = _selected.Value;
+            if (key == 0) return null;
+            var ev = Entity as IMyEventControllerBlock;
+            if (ev != null)
+            {
+                var names = PlanetWeather.NamesAt(ev.GetPosition());
+                for (int i = 0; i < names.Count; i++)
+                    if (KeyOf(names[i]) == key) return names[i];
+            }
+            return "weather not found on this planet";
+        }
+
+        public override MyObjectBuilder_ComponentBase Serialize(bool copy = false)
+        {
+            return new MyObjectBuilder_ModCustomComponent
+            {
+                ComponentType = "GTEventWeatherType",
+                CustomModData = _selected.Value.ToString(CultureInfo.InvariantCulture),
+                RemoveExistingComponentOnNewInsert = true,
+                SubtypeName = "EventControllerBlockComponent"
+            };
+        }
+
+        public override void Deserialize(MyObjectBuilder_ComponentBase builder)
+        {
+            base.Deserialize(builder);
+            var custom = builder as MyObjectBuilder_ModCustomComponent;
+            long key;
+            if (custom != null && long.TryParse(custom.CustomModData, NumberStyles.Integer, CultureInfo.InvariantCulture, out key))
+                _selected.Value = key;
+        }
+
+        public override bool IsSerialized()
+        {
+            return true;
+        }
+
         // The game supplies threshold, condition and block list from the flags above. A
         // type selector is not among them, so it is built here - the same thing stock
         // events with unusual units do.
@@ -156,18 +234,21 @@ namespace GroundTruth
             combo.Getter = b =>
             {
                 var ev = Selected(b);
-                if (ev == null || string.IsNullOrEmpty(ev.SelectedType)) return 0;
-                int idx = _comboNames.IndexOf(ev.SelectedType);
-                return idx < 0 ? 0 : idx + 1;
+                if (ev == null || ev._selected.Value == 0) return 0;
+                for (int i = 0; i < _comboNames.Count; i++)
+                    if (KeyOf(_comboNames[i]) == ev._selected.Value) return i + 1;
+                return 0;
             };
 
+            // Writing the MySync replicates the choice to the server and every client and
+            // gets it saved. No latch reset: like a threshold change, a new selection that
+            // flips the answer fires on the next tick.
             combo.Setter = (b, key) =>
             {
                 var ev = Selected(b);
                 if (ev == null) return;
-                ev.SelectedType = (key <= 0 || key > _comboNames.Count)
-                    ? "" : _comboNames[(int)key - 1];
-                ev._state = null;
+                ev._selected.Value = (key <= 0 || key > _comboNames.Count)
+                    ? 0 : KeyOf(_comboNames[(int)key - 1]);
             };
 
             MyAPIGateway.TerminalControls.AddControl<IMyEventControllerBlock>(combo);
@@ -219,7 +300,7 @@ namespace GroundTruth
             string transition = null;
             info.Append("Event: ").Append(EventDisplayName.String).Append('\n');
             info.Append("Watching for: ")
-                .Append(string.IsNullOrEmpty(SelectedType) ? "any weather" : SelectedType).Append('\n');
+                .Append(SelectedName() ?? "any weather").Append('\n');
 
             if (!ev.IsWorking)
             {
@@ -260,8 +341,8 @@ namespace GroundTruth
                 info.Append(active ? name : "clear").Append('\n');
                 if (!active) continue;
 
-                if (string.IsNullOrEmpty(SelectedType) ||
-                    string.Equals(name, SelectedType, StringComparison.OrdinalIgnoreCase))
+                if (_selected.Value == 0 ||
+                    KeyOf(name) == _selected.Value)
                 {
                     any = true;
                 }

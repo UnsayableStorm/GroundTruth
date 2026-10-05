@@ -106,6 +106,18 @@ rejected member and the question it served, delete that call, and reload.
     clients. **Phase 6 events and dish properties must be designed to this rule.**
   - Hooks that only run when a terminal is built (`CustomControlGetter`) are for UI only:
     injecting dropdowns, writing panes. Never put behaviour there.
+  - Any setting a player chooses must be saved and synced, not held in a plain field, or it
+    silently reverts on reload and never reaches a dedicated server.
+  - **Audit, 2026-10-05, every feature:** readings, all nine LCD apps (Custom Data + `StateFor`),
+    seal sync (server pushes to all), power and spin (`InstrumentPower`), dish toolbar actions
+    and selection (Phase 0 proven, Custom Data), events (fixed, SP-verified with no terminal
+    opened): all independent of terminals. Two gaps found:
+    1. **Weather-type event selection** was a plain field, unsaved and unsynced. Now a `MySync`
+       saved via `MyObjectBuilder_ModCustomComponent` (SeMoreEvents' pattern). Needs an
+       in-game save/reload and DS check.
+    2. **The GT_ property API** still registers on terminal open, or via `GT_API_ENABLE` on a
+       DS. `probes/RegTimingProbe` is proving registration at load is safe: SP passed 2026-10-05;
+       DS and Animation Engine runs next, then registration moves to `InstrumentPower`.
 - **C# 6 only.** No local functions, tuples, `out var`, pattern matching or `is` with a
   declaration. The compile checker has passed a C# 7 feature once that the game then rejected.
 - **Only APIs the mod already uses, or that a probe has cleared.** No `MyIni`, reflection,
