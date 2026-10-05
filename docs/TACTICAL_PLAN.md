@@ -1,7 +1,8 @@
 # Tactical Displays — Implementation Plan
 
-Status: **Phase 0 passed (2026-10-03). Phase 1 built 2026-10-04, compile-clean, not yet tested
-in game.** Every component described here is designed and agreed before code is written, and
+Status: **Phase 0 passed (2026-10-03). Phase 1 passed its exit check 2026-10-05, single player
+(2026-10-04) and as a client on a dedicated server; logs in `probes/results/p1-*.txt`. Phase 2
+is next.** Every component described here is designed and agreed before code is written, and
 each phase ends with in-game verification before the next one starts.
 
 This plan adapts *Ground Truth Tactical Displays — Implementation Brief* (an external
@@ -391,6 +392,18 @@ stranger inside 2 km is `UNIDENTIFIED` / `UNKNOWN`; switching the broadcasting s
 antenna off moves it to `LOST` then `EXPIRED`; grinding a contact moves it to `EXPIRED`
 without passing through `LOST`; the projection never appears. The dish's pane has no `SITE` section and no environmental
 line of any kind. The existing sixteen instruments read exactly as before.
+
+**Passed 2026-10-05.** SP on `tactical testing world` (2026-10-04) and as a client on the KORRIBAN
+DS (`Tactical Test Server`, test build on the Workshop unlisted as 3813774178). Every item held on
+both: A `RP-A` ours/OWNER as one 296-block contact; B as `GCDW.RP-B SIGNAL` (the HUD's text,
+dot separator); C absent; J `UNIDENTIFIED`/`UNKNOWN` dark return at 841 m; B off/on/off gave
+LOST → REGAINED → LOST → EXPIRED retention 30 s after last seen; deleted D and G, and a despawned
+cargo ship, went straight to EXPIRED reason=closed; A's repair projection never listed; no SITE
+section; a Weather Station read as before. Also seen: an owner with no faction (G) is labelled
+with no tag, as vanilla does; the dish keeps scanning with its terminal closed; the DS server
+itself never scans, since nothing reads a dish there. E and the respawn ship were absent because
+they were 46 km and 10.96 km away, outside the 10 km scan. Lifecycle transitions are logged as
+`GT TACTICAL` lines; logs in `probes/results/p1-sp-client.txt`, `p1-ds-client.txt`.
 
 ### Phase 2 — Selection and the core displays
 

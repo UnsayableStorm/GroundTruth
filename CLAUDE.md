@@ -21,13 +21,13 @@ VRage.Math.dll). Changed: `Instruments.cs` (RoleRadar 5, CapRadar 128, dish rows
 `SelfPowered`, orphan check skips those), `GroundTruthSession.cs` (Recompute role gate,
 `WriteRadar`, `Seconds`), comment-only edits in `Rotation.cs` and `CubeBlocks_GroundTruth.sbc`.
 **Phase 1 SP exit check PASSED 2026-10-04** (every item; log in `probes/results/p1-sp-client.txt`;
-contact transitions are logged as `GT TACTICAL ...` lines in the game log). **Next: the DS pass.**
+contact transitions are logged as `GT TACTICAL ...` lines in the game log). **Phase 1 DS pass
+PASSED 2026-10-05 — Phase 1 is done** (results under the Phase 1 "Exit" paragraph of
+`TACTICAL_PLAN.md`). **Next: Phase 2** (selection and the core displays), when Jason says go.
 The test build is on the Workshop, unlisted, as **3813774178** (uploaded from
 `Mods\GroundTruthTacticalTest`, whose `modinfo.sbmi` now carries that id - redeploy with
-`/XF modinfo.sbmi`). Steps: with Torch stopped, swap 3781444888 for 3813774178 in
-`Z:\Instance\Saves\Tactical Test Server` (`Sandbox_config.sbc` and `Sandbox.sbc`; mind the
-`.sbsB5`), drop the two probes, then Jason joins, opens O's dish once, toggles B and deletes a
-grid; read the client log and `Z:\Logs\Keen-<date>.log`.
+`/XF modinfo.sbmi`, then Jason re-uploads in game). The DS test world already loads it in place
+of 3781444888, with the probes removed.
 
 **Test builds go in their own mod folder, never `Mods\GroundTruth`.** That AppData folder holds
 the live item's `modinfo.sbmi` (3781444888); Phase 1 code there would ship to every subscriber

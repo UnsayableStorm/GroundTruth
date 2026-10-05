@@ -1,0 +1,15 @@
+2026-10-05 16:19:09.648 - Thread:   1 ->     Script loaded: 3813774178.sbm_GroundTruth, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+2026-10-05 16:20:34.941 - Thread:   1 ->  GT TACTICAL [CLIENT] t=63 table=102982899351786334 NEW id=133240393742832161 "Puffer Fish" by=broadcast rel=NOBODY Small ship blocks=524 d=3703 lastSeen=63
+2026-10-05 16:20:34.942 - Thread:   1 ->  GT TACTICAL [CLIENT] t=63 table=102982899351786334 NEW id=107056194577849486 "FCTM.Astral Station" by=broadcast rel=ENEMY Station blocks=10047 d=3742 lastSeen=63
+2026-10-05 16:20:34.942 - Thread:   1 ->  GT TACTICAL [CLIENT] t=63 table=102982899351786334 NEW id=111866375458323409 "GCDW.Antenna" by=broadcast rel=NEUTRAL Small ship blocks=1215 d=2259 lastSeen=63
+2026-10-05 16:20:34.942 - Thread:   1 ->  GT TACTICAL [CLIENT] t=63 table=102982899351786334 NEW id=108736143552863276 "GCDW.Beacon" by=broadcast rel=NEUTRAL Small ship blocks=528 d=3179 lastSeen=63
+2026-10-05 16:20:34.942 - Thread:   1 ->  GT TACTICAL [CLIENT] t=63 table=102982899351786334 NEW id=110717817452143586 "RP-A" by=ours rel=OWNER Large ship blocks=296 d=2555 lastSeen=63
+2026-10-05 16:20:34.942 - Thread:   1 ->  GT TACTICAL [CLIENT] t=63 table=102982899351786334 NEW id=112701731259906390 "GCDW.Beacon" by=broadcast rel=NEUTRAL Small ship blocks=528 d=3861 lastSeen=63
+2026-10-05 16:20:34.942 - Thread:   1 ->  GT TACTICAL [CLIENT] t=63 table=102982899351786334 NEW id=82473970929092509 "GCDW.RP-B SIGNAL" by=broadcast rel=NEUTRAL Small ship blocks=527 d=3878 lastSeen=63
+2026-10-05 16:20:34.942 - Thread:   1 ->  GT TACTICAL [CLIENT] t=63 table=102982899351786334 NEW id=76948332592533314 "UNIDENTIFIED" by=dark rel=UNKNOWN Small ship blocks=493 d=841 lastSeen=63
+2026-10-05 16:22:12.191 - Thread:   1 ->  GT TACTICAL [CLIENT] t=161 table=102982899351786334 LOST id=82473970929092509 "GCDW.RP-B SIGNAL" by=broadcast rel=NEUTRAL Small ship blocks=527 d=3878 lastSeen=159
+2026-10-05 16:22:28.191 - Thread:   1 ->  GT TACTICAL [CLIENT] t=177 table=102982899351786334 REGAINED id=82473970929092509 "GCDW.RP-B SIGNAL" by=broadcast rel=NEUTRAL Small ship blocks=527 d=3878 lastSeen=177
+2026-10-05 16:22:34.191 - Thread:   1 ->  GT TACTICAL [CLIENT] t=183 table=102982899351786334 LOST id=82473970929092509 "GCDW.RP-B SIGNAL" by=broadcast rel=NEUTRAL Small ship blocks=527 d=3878 lastSeen=181
+2026-10-05 16:22:50.620 - Thread:   1 ->  GT TACTICAL [CLIENT] t=199 table=102982899351786334 EXPIRED id=133240393742832161 "Puffer Fish" by=broadcast rel=NOBODY Small ship blocks=524 d=3703 lastSeen=197 reason=closed
+2026-10-05 16:22:50.620 - Thread:   1 ->  GT TACTICAL [CLIENT] t=199 table=102982899351786334 EXPIRED id=107056194577849486 "FCTM.Astral Station" by=broadcast rel=ENEMY Station blocks=10047 d=3742 lastSeen=197 reason=closed
+2026-10-05 16:23:04.857 - Thread:   1 ->  GT TACTICAL [CLIENT] t=213 table=102982899351786334 EXPIRED id=82473970929092509 "GCDW.RP-B SIGNAL" by=broadcast rel=NEUTRAL Small ship blocks=527 d=3878 lastSeen=181 reason=retention
