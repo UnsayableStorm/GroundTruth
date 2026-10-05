@@ -2,7 +2,7 @@
 
 Status: **Phase 0 passed (2026-10-03). Phase 1 passed its exit check 2026-10-05, single player
 (2026-10-04) and as a client on a dedicated server; logs in `probes/results/p1-*.txt`. Phase 2
-is next.** Every component described here is designed and agreed before code is written, and
+built 2026-10-05, compile-clean, not yet tested in game.** Every component described here is designed and agreed before code is written, and
 each phase ends with in-game verification before the next one starts.
 
 This plan adapts *Ground Truth Tactical Displays — Implementation Brief* (an external
