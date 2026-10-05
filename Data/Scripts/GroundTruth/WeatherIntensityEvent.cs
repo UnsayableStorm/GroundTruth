@@ -56,6 +56,7 @@ namespace GroundTruth
         private bool? _state;
 
         private readonly EventPane _pane = new EventPane();
+        private double _lastBeat = -1e9;
 
         public override string ComponentTypeDebugString { get { return "GT_WeatherIntensity"; } }
 
@@ -106,6 +107,7 @@ namespace GroundTruth
             foreach (var b in blocks)
                 if (b != null && !_observed.Contains(b)) _observed.Add(b);
             _state = null;
+            EventSupport.Trace(Entity as IMyTerminalBlock, "BLOCKS +" + blocks.Count + " observing=" + _observed.Count, null);
         }
 
         public void RemoveBlocks(IEnumerable<IMyTerminalBlock> blocks)
@@ -113,6 +115,7 @@ namespace GroundTruth
             if (blocks == null) return;
             foreach (var b in blocks) _observed.Remove(b);
             _state = null;
+            EventSupport.Trace(Entity as IMyTerminalBlock, "BLOCKS - observing=" + _observed.Count, null);
         }
 
         // Threshold or condition changed in the terminal. Keep the latch so a setting
@@ -144,6 +147,7 @@ namespace GroundTruth
             bool andMode = ingame.IsAndModeEnabled;
 
             var info = _pane.Begin();
+            string transition = null;
             info.Append("Event: ").Append(EventDisplayName.String).Append('\n');
             info.Append(lowerOrEqual ? "Condition: below or equal" : "Condition: above or equal").Append('\n');
             info.Append("Threshold: ").Append(EventSupport.Percent(threshold)).Append('\n');
@@ -151,6 +155,7 @@ namespace GroundTruth
             if (!ev.IsWorking)
             {
                 info.Append("Event Controller is off or unpowered.\n");
+                EventSupport.TraceTick(ev, transition, info, ref _lastBeat);
                 _pane.Commit(ev);
                 return;
             }
@@ -201,11 +206,13 @@ namespace GroundTruth
                     // On the first evaluation, latch the state without firing. Otherwise
                     // placing the block during a storm would immediately trigger the
                     // alarm for an event the player never saw happen.
+                    transition = first ? "LATCH " + (now ? "yes" : "no") : "FIRE " + (now ? "slot 1 (yes)" : "slot 2 (no)");
                     if (!first) EventSupport.Fire(ev, now);
                 }
             }
 
             info.Append(EventSupport.Output(_state, YesNoToolbarYesDescription, YesNoToolbarNoDescription));
+            EventSupport.TraceTick(ev, transition, info, ref _lastBeat);
             _pane.Commit(ev);
         }
     }

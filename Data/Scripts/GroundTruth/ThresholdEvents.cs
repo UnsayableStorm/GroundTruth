@@ -39,6 +39,7 @@ namespace GroundTruth
 
         private readonly List<IMyTerminalBlock> _observed = new List<IMyTerminalBlock>();
         private readonly EventPane _pane = new EventPane();
+        private double _lastBeat = -1e9;
         private bool? _state;
 
         /// <summary>Instrument role to accept, or 0 for any Ground Truth instrument.</summary>
@@ -87,6 +88,7 @@ namespace GroundTruth
             foreach (var b in blocks)
                 if (b != null && !_observed.Contains(b)) _observed.Add(b);
             _state = null;
+            EventSupport.Trace(Entity as IMyTerminalBlock, "BLOCKS +" + blocks.Count + " observing=" + _observed.Count, null);
         }
 
         public void RemoveBlocks(IEnumerable<IMyTerminalBlock> blocks)
@@ -94,6 +96,7 @@ namespace GroundTruth
             if (blocks == null) return;
             foreach (var b in blocks) _observed.Remove(b);
             _state = null;
+            EventSupport.Trace(Entity as IMyTerminalBlock, "BLOCKS - observing=" + _observed.Count, null);
         }
 
         // Threshold, condition, AND mode or the controller's On/Off changed.
@@ -126,6 +129,7 @@ namespace GroundTruth
             bool andMode = ingame.IsAndModeEnabled;
 
             var info = _pane.Begin();
+            string transition = null;
             info.Append("Event: ").Append(EventDisplayName.String).Append('\n');
             info.Append(lowerOrEqual ? "Condition: below or equal" : "Condition: above or equal").Append('\n');
             info.Append("Threshold: ").Append(EventSupport.Percent(threshold)).Append('\n');
@@ -133,6 +137,7 @@ namespace GroundTruth
             if (!ev.IsWorking)
             {
                 info.Append("Event Controller is off or unpowered.\n");
+                EventSupport.TraceTick(ev, transition, info, ref _lastBeat);
                 _pane.Commit(ev);
                 return;
             }
@@ -174,11 +179,13 @@ namespace GroundTruth
                     // The first evaluation latches without firing, like vanilla's
                     // AddBlocks: a controller built while the condition already holds
                     // does not fire for something the player never saw happen.
+                    transition = first ? "LATCH " + (now ? "yes" : "no") : "FIRE " + (now ? "slot 1 (yes)" : "slot 2 (no)");
                     if (!first) EventSupport.Fire(ev, now);
                 }
             }
 
             info.Append(EventSupport.Output(_state, YesNoToolbarYesDescription, YesNoToolbarNoDescription));
+            EventSupport.TraceTick(ev, transition, info, ref _lastBeat);
             _pane.Commit(ev);
         }
     }

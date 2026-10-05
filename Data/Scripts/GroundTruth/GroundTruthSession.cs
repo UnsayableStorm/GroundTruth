@@ -451,6 +451,17 @@ namespace GroundTruth
             }
             s.Rad = Readings.ReadRadiation(block, s.Env, s.Airtight);
 
+            // Every change of seal, not just the first reading: "I vented the room and the
+            // breach event never fired" (2026-10-05) is otherwise unanswerable from the log.
+            if (s.Airtight != s.WasAirtight && Instruments.RoleOf(block.BlockDefinition.SubtypeName) == Instruments.RoleHabitat)
+            {
+                bool isServer = MyAPIGateway.Multiplayer == null || MyAPIGateway.Multiplayer.IsServer;
+                MyLog.Default.WriteLineAndConsole(string.Format(
+                    "GT SEAL CHANGE [{0}] {1}: airtight {2} -> {3} status={4} room={5} cells o2={6:F2} breachedWas={7}",
+                    isServer ? "SERVER" : "CLIENT", block.CustomName, s.WasAirtight, s.Airtight,
+                    s.SealStatus, s.RoomBlocks, s.RoomOxygen, s.Breached));
+            }
+
             // Breach latches once lost, and clears when the seal is restored.
             if (s.WasAirtight && !s.Airtight) s.Breached = true;
             if (s.Airtight) { s.Breached = false; s.SealedSeconds += 1.0; }

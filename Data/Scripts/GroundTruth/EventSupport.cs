@@ -91,6 +91,37 @@ namespace GroundTruth
             if (!state.HasValue) return "Output: waiting for a reading";
             return state.Value ? "Output: 1 - " + yes : "Output: 2 - " + no;
         }
+
+        // ---- trace --------------------------------------------------------------------
+        //
+        // "The light never came on" (2026-10-05) arrived with no log evidence either way:
+        // these events wrote nothing, so a dead tick, a reading that never changed and a
+        // fire the controller refused all looked identical (ENGINE_TRAPS 12). So every
+        // block-list change, every latch and every fire is logged, plus a heartbeat once a
+        // minute per selected event carrying exactly what the pane shows. Volume: a line
+        // a minute per configured controller, and one per real transition.
+        //
+        //   GT EVENT [SP|HOST|SERVER|CLIENT] <controller id> <what> | <pane text>
+
+        public const double HeartbeatSeconds = 60.0;
+
+        public static void Trace(IMyTerminalBlock controller, string what, StringBuilder pane)
+        {
+            string side = !IsServer ? "CLIENT"
+                : (MyAPIGateway.Multiplayer != null && MyAPIGateway.Multiplayer.MultiplayerActive
+                    ? (HasDisplay ? "HOST" : "SERVER") : "SP");
+            MyLog.Default.WriteLineAndConsole("GT EVENT [" + side + "] "
+                + (controller == null ? "?" : controller.EntityId.ToString()) + " " + what
+                + (pane == null ? "" : " | " + pane.ToString().Replace('\n', '|')));
+        }
+
+        /// <summary>Logs a latch, a fire, or the heartbeat when one is due.</summary>
+        public static void TraceTick(IMyTerminalBlock controller, string transition, StringBuilder pane, ref double lastBeat)
+        {
+            double now = GroundTruthSession.Seconds;
+            if (transition != null) { Trace(controller, transition, pane); lastBeat = now; return; }
+            if (now - lastBeat >= HeartbeatSeconds) { Trace(controller, "BEAT", pane); lastBeat = now; }
+        }
     }
 
     /// <summary>

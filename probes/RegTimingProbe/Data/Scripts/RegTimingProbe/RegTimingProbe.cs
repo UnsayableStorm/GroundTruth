@@ -317,7 +317,10 @@ namespace RegTimingProbe
                 string miss = "";
                 try
                 {
-                    if (b.GetProperty("Name") == null) miss += "Name ";
+                    // Antennas and beacons drop the base "Name" textbox and add their own
+                    // "CustomName" (MyRadioAntenna / MyBeacon.CreateTerminalControls,
+                    // decompiled 2026-10-05). Run A flagged both until this was allowed.
+                    if (b.GetProperty("Name") == null && b.GetProperty("CustomName") == null) miss += "Name ";
                     if (b.GetProperty("ShowInTerminal") == null) miss += "ShowInTerminal ";
                     if (b.GetProperty("ShowInToolbarConfig") == null) miss += "ShowInToolbarConfig ";
                     if (b is IMyFunctionalBlock && b.GetProperty("OnOff") == null) miss += "OnOff ";

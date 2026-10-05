@@ -30,6 +30,7 @@ namespace GroundTruth
 
         private readonly List<IMyTerminalBlock> _observed = new List<IMyTerminalBlock>();
         private readonly EventPane _pane = new EventPane();
+        private double _lastBeat = -1e9;
 
         // null means not yet evaluated. The first evaluation latches without firing, so
         // building a controller while the condition is already true does not trigger an
@@ -84,6 +85,7 @@ namespace GroundTruth
             foreach (var b in blocks)
                 if (b != null && !_observed.Contains(b)) _observed.Add(b);
             _state = null;
+            EventSupport.Trace(Entity as IMyTerminalBlock, "BLOCKS +" + blocks.Count + " observing=" + _observed.Count, null);
         }
 
         public void RemoveBlocks(IEnumerable<IMyTerminalBlock> blocks)
@@ -91,6 +93,7 @@ namespace GroundTruth
             if (blocks == null) return;
             foreach (var b in blocks) _observed.Remove(b);
             _state = null;
+            EventSupport.Trace(Entity as IMyTerminalBlock, "BLOCKS - observing=" + _observed.Count, null);
         }
 
         // AND mode or the controller's On/Off changed. Keep the latch so a change that
@@ -115,11 +118,13 @@ namespace GroundTruth
             bool andMode = ingame != null && ingame.IsAndModeEnabled;
 
             var info = _pane.Begin();
+            string transition = null;
             info.Append("Event: ").Append(EventDisplayName.String).Append('\n');
 
             if (!ev.IsWorking)
             {
                 info.Append("Event Controller is off or unpowered.\n");
+                EventSupport.TraceTick(ev, transition, info, ref _lastBeat);
                 _pane.Commit(ev);
                 return;
             }
@@ -157,11 +162,13 @@ namespace GroundTruth
                 {
                     bool first = !_state.HasValue;
                     _state = now;
+                    transition = first ? "LATCH " + (now ? "yes" : "no") : "FIRE " + (now ? "slot 1 (yes)" : "slot 2 (no)");
                     if (!first) EventSupport.Fire(ev, now);
                 }
             }
 
             info.Append(EventSupport.Output(_state, YesNoToolbarYesDescription, YesNoToolbarNoDescription));
+            EventSupport.TraceTick(ev, transition, info, ref _lastBeat);
             _pane.Commit(ev);
         }
     }
