@@ -76,8 +76,29 @@ namespace GroundTruth
         public static void Fire(IMyEventControllerBlock ev, bool yes)
         {
             if (!IsServer) return;
-            try { ev.TriggerAction(yes ? 0 : 1); }
+
+            // TriggerAction returns void and can decline silently (not working, not
+            // functional, blocks still resolving, or no toolbar item it is allowed to
+            // run). ActionTriggered is raised once per slot it actually activates, inside
+            // the call - so counting it says whether the controller did anything at all.
+            // 2026-10-05: the event logged FIRE and the light stayed off; this is the line
+            // that tells the event's half from the controller's.
+            int slot = yes ? 0 : 1;
+            var ran = new System.Collections.Generic.List<int>();
+            Action<int> count = i => ran.Add(i);
+            try
+            {
+                ev.ActionTriggered += count;
+                ev.TriggerAction(slot);
+            }
             catch (Exception e) { MyLog.Default.WriteLineAndConsole("GT event trigger: " + e); }
+            finally
+            {
+                try { ev.ActionTriggered -= count; } catch { }
+            }
+
+            Trace(ev, "TRIGGER slot=" + slot + " working=" + ev.IsWorking + " functional=" + ev.IsFunctional
+                + " ran=[" + string.Join(",", ran) + "]", null);
         }
 
         // Same rounding the vanilla events use: value x 100, one decimal.
