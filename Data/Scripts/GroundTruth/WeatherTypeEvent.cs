@@ -47,6 +47,7 @@ namespace GroundTruth
         private static bool _controlsCreated;
 
         private readonly List<IMyTerminalBlock> _observed = new List<IMyTerminalBlock>();
+        private readonly EventPane _pane = new EventPane();
         private bool? _state;
 
         // Empty means "any weather".
@@ -84,12 +85,13 @@ namespace GroundTruth
         public override void OnBeforeRemovedFromContainer()
         {
             Live.Remove(this);
+            _pane.Unhook();
             base.OnBeforeRemovedFromContainer();
         }
 
         public bool IsBlockValidForList(IMyTerminalBlock block)
         {
-            return Role(block) == 3f;   // Weather Station
+            return EventSupport.RoleOf(block) == Instruments.RoleWeather;
         }
 
         public void AddBlocks(List<IMyTerminalBlock> blocks)
@@ -107,7 +109,9 @@ namespace GroundTruth
             _state = null;
         }
 
-        public void NotifyValuesChanged() { _state = null; }
+        // Keep the latch so a change that flips the answer fires on the next tick, as
+        // vanilla does - see GTThresholdEvent.
+        public void NotifyValuesChanged() { }
 
         public void RefreshDetailedInfo() { }
 
@@ -201,10 +205,26 @@ namespace GroundTruth
         public void Tick()
         {
             var ev = Entity as IMyEventControllerBlock;
-            if (ev == null || !ev.IsWorking || _observed.Count == 0) return;
+            if (ev == null) return;
+
+            if ((object)ev.SelectedEvent != this) { _pane.Clear(ev); return; }
 
             var wx = MyAPIGateway.Session.WeatherEffects;
             if (wx == null) return;
+
+            var info = _pane.Begin();
+            info.Append("Event: ").Append(EventDisplayName.String).Append('\n');
+            info.Append("Watching for: ")
+                .Append(string.IsNullOrEmpty(SelectedType) ? "any weather" : SelectedType).Append('\n');
+
+            if (!ev.IsWorking)
+            {
+                info.Append("Event Controller is off or unpowered.\n");
+                _pane.Commit(ev);
+                return;
+            }
+
+            if (_observed.Count == 0) info.Append("No instruments selected.\n");
 
             bool any = false, sawInstrument = false;
 
@@ -213,11 +233,18 @@ namespace GroundTruth
                 var b = _observed[i];
                 if (b == null || b.Closed) { _observed.RemoveAt(i); continue; }
 
+                // Must genuinely be an instrument. This was GetValueFloat("GT_SysBlockRole"),
+                // which THROWS while the GT_ properties are unregistered - and the throw
+                // escaped to the session's catch, so the whole event died silently every
+                // second. See EventSupport.
+                if (EventSupport.RoleOf(b) <= 0f) continue;
+
+                info.Append(b.CustomName).Append(": ");
+
                 // The instrument must be a working one. A powered-down Weather Station
                 // reporting nothing is not the same as clear skies, and must not clear
                 // an alarm.
-                if (b.GetValueFloat("GT_SysBlockRole") < 0f) continue;
-                if (!b.IsWorking) continue;
+                if (!b.IsWorking) { info.Append("not working\n"); continue; }
 
                 sawInstrument = true;
 
@@ -225,6 +252,7 @@ namespace GroundTruth
                 try { name = wx.GetWeather(b.GetPosition()); } catch { }
 
                 bool active = !string.IsNullOrEmpty(name) && name != "Clear";
+                info.Append(active ? name : "clear").Append('\n');
                 if (!active) continue;
 
                 if (string.IsNullOrEmpty(SelectedType) ||
@@ -234,24 +262,17 @@ namespace GroundTruth
                 }
             }
 
-            if (!sawInstrument) return;
+            if (sawInstrument && (!_state.HasValue || _state.Value != any))
+            {
+                // Fire only on a change of state, and never on the first evaluation -
+                // see WeatherIntensityEvent for why both matter.
+                bool first = !_state.HasValue;
+                _state = any;
+                if (!first) EventSupport.Fire(ev, any);
+            }
 
-            // Fire only on a change of state, and never on the first evaluation - see
-            // WeatherIntensityEvent for why both matter.
-            if (_state.HasValue && _state.Value == any) return;
-            bool first = !_state.HasValue;
-            _state = any;
-            if (first) return;
-
-            try { ev.TriggerAction(any ? 0 : 1); }
-            catch (Exception e) { MyLog.Default.WriteLineAndConsole("GTEventWeatherType: " + e); }
-        }
-
-        private static float Role(IMyTerminalBlock block)
-        {
-            if (block == null) return 0f;
-            try { return block.GetValueFloat("GT_SysBlockRole"); }
-            catch { return 0f; }
+            info.Append(EventSupport.Output(_state, YesNoToolbarYesDescription, YesNoToolbarNoDescription));
+            _pane.Commit(ev);
         }
     }
 

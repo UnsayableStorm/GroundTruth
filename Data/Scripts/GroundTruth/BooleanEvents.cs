@@ -29,6 +29,7 @@ namespace GroundTruth
         public static readonly List<GTBooleanEvent> Live = new List<GTBooleanEvent>();
 
         private readonly List<IMyTerminalBlock> _observed = new List<IMyTerminalBlock>();
+        private readonly EventPane _pane = new EventPane();
 
         // null means not yet evaluated. The first evaluation latches without firing, so
         // building a controller while the condition is already true does not trigger an
@@ -38,8 +39,11 @@ namespace GroundTruth
         /// <summary>Which instrument this event watches. See Instruments.Role*.</summary>
         protected abstract float WantedRole { get; }
 
-        /// <summary>The question. Null means this block cannot answer right now.</summary>
-        protected abstract bool? Evaluate(IMyTerminalBlock instrument);
+        /// <summary>
+        /// The question. Null means this block cannot answer right now. Reads BlockState,
+        /// never GT_ properties - see EventSupport for why.
+        /// </summary>
+        protected abstract bool? Evaluate(GroundTruthSession.BlockState s);
 
         public abstract MyStringId EventDisplayName { get; }
         public abstract long UniqueSelectionId { get; }
@@ -63,6 +67,7 @@ namespace GroundTruth
         public override void OnBeforeRemovedFromContainer()
         {
             Live.Remove(this);
+            _pane.Unhook();
             base.OnBeforeRemovedFromContainer();
         }
 
@@ -70,9 +75,7 @@ namespace GroundTruth
         // on the grid and returning nothing for most is worse than not listing them.
         public bool IsBlockValidForList(IMyTerminalBlock block)
         {
-            if (block == null) return false;
-            try { return block.GetValueFloat("GT_SysBlockRole") == WantedRole; }
-            catch { return false; }
+            return EventSupport.RoleOf(block) == WantedRole;
         }
 
         public void AddBlocks(List<IMyTerminalBlock> blocks)
@@ -90,8 +93,11 @@ namespace GroundTruth
             _state = null;
         }
 
-        public void NotifyValuesChanged() { _state = null; }
+        // AND mode or the controller's On/Off changed. Keep the latch so a change that
+        // flips the answer fires on the next tick, as vanilla does - see GTThresholdEvent.
+        public void NotifyValuesChanged() { }
 
+        // Called by the controller after its block list changes.
         public void RefreshDetailedInfo() { }
 
         // Nothing custom: the block list is a standard control and the flags above ask
@@ -101,10 +107,24 @@ namespace GroundTruth
         public void Tick()
         {
             var ev = Entity as IMyEventControllerBlock;
-            if (ev == null || !ev.IsWorking || _observed.Count == 0) return;
+            if (ev == null) return;
+
+            if ((object)ev.SelectedEvent != this) { _pane.Clear(ev); return; }
 
             var ingame = ev as Sandbox.ModAPI.Ingame.IMyEventControllerBlock;
             bool andMode = ingame != null && ingame.IsAndModeEnabled;
+
+            var info = _pane.Begin();
+            info.Append("Event: ").Append(EventDisplayName.String).Append('\n');
+
+            if (!ev.IsWorking)
+            {
+                info.Append("Event Controller is off or unpowered.\n");
+                _pane.Commit(ev);
+                return;
+            }
+
+            if (_observed.Count == 0) info.Append("No instruments selected.\n");
 
             bool any = false, all = true, answered = false;
 
@@ -113,42 +133,36 @@ namespace GroundTruth
                 var b = _observed[i];
                 if (b == null || b.Closed) { _observed.RemoveAt(i); continue; }
 
+                info.Append(b.CustomName).Append(": ");
+
                 // A powered-down instrument is not the same as a false reading, and must
                 // never clear an alarm by going dark.
-                if (!b.IsWorking) continue;
+                if (!b.IsWorking) { info.Append("not working\n"); continue; }
 
-                bool? answer = Evaluate(b);
-                if (!answer.HasValue) continue;
+                var s = EventSupport.State(b);
+                bool? answer = s == null ? null : Evaluate(s);
+                if (!answer.HasValue) { info.Append("no reading\n"); continue; }
+
+                info.Append(answer.Value ? "yes\n" : "no\n");
 
                 answered = true;
                 if (answer.Value) any = true; else all = false;
             }
 
-            if (!answered) return;
+            if (answered)
+            {
+                bool now = andMode ? all : any;
 
-            bool now = andMode ? all : any;
+                if (!_state.HasValue || _state.Value != now)
+                {
+                    bool first = !_state.HasValue;
+                    _state = now;
+                    if (!first) EventSupport.Fire(ev, now);
+                }
+            }
 
-            if (_state.HasValue && _state.Value == now) return;
-            bool first = !_state.HasValue;
-            _state = now;
-            if (first) return;
-
-            try { ev.TriggerAction(now ? 0 : 1); }
-            catch (Exception e) { MyLog.Default.WriteLineAndConsole("GT event trigger: " + e); }
-        }
-
-        // Shared reading helper: -1 is the API's "no reading" sentinel, which is not the
-        // same as a false answer and must not be treated as one.
-        protected static float Read(IMyTerminalBlock b, string property)
-        {
-            try { return b.GetValueFloat(property); }
-            catch { return -1f; }
-        }
-
-        protected static bool ReadFlag(IMyTerminalBlock b, string property)
-        {
-            try { return b.GetValueBool(property); }
-            catch { return false; }
+            info.Append(EventSupport.Output(_state, YesNoToolbarYesDescription, YesNoToolbarNoDescription));
+            _pane.Commit(ev);
         }
     }
 
@@ -178,10 +192,10 @@ namespace GroundTruth
         // Exposure and accumulation are different questions. A dose below the engine's
         // ignore threshold is real and never builds, so this watches the one that
         // decides whether the player is in danger.
-        protected override bool? Evaluate(IMyTerminalBlock b)
+        protected override bool? Evaluate(GroundTruthSession.BlockState s)
         {
-            if (!ReadFlag(b, "GT_RadEnabled")) return null;   // radiation off in this world
-            return ReadFlag(b, "GT_RadAccumulates");
+            if (!s.Rad.Enabled) return null;                  // GT_RadEnabled: radiation off in this world
+            return s.Rad.Accumulates;                        // GT_RadAccumulates
         }
     }
 
@@ -210,9 +224,9 @@ namespace GroundTruth
 
         // Shelter state 0 is exposed; 1 occluded, 2 sealed, 3 atmosphere. Fires on the
         // transition into full exposure, which is when a player wants the warning.
-        protected override bool? Evaluate(IMyTerminalBlock b)
+        protected override bool? Evaluate(GroundTruthSession.BlockState s)
         {
-            float state = Read(b, "GT_RadShelterState");
+            float state = s.Rad.ShelterState;               // GT_RadShelterState
             if (state < 0) return null;
             return state == 0f;
         }
@@ -244,9 +258,9 @@ namespace GroundTruth
         // GT_HabBreached is latched: it means "this WAS sealed and is not now", which is
         // a different thing from a block that was never in a sealed room. The latch is
         // what makes this usable as a door trigger.
-        protected override bool? Evaluate(IMyTerminalBlock b)
+        protected override bool? Evaluate(GroundTruthSession.BlockState s)
         {
-            return ReadFlag(b, "GT_HabBreached");
+            return s.Breached;                               // GT_HabBreached
         }
     }
 
@@ -278,10 +292,14 @@ namespace GroundTruth
         // anyone yet, and an alarm that fires then is an alarm people learn to ignore.
         //
         // Radiation SHELTER never counts: rain declares -0.60, which protects.
-        protected override bool? Evaluate(IMyTerminalBlock b)
+        protected override bool? Evaluate(GroundTruthSession.BlockState s)
         {
-            if (!ReadFlag(b, "GT_WxActive")) return false;
-            return ReadFlag(b, "GT_WxHazardActive");
+            if (string.IsNullOrEmpty(s.Weather)) return false;   // GT_WxActive
+
+            // GT_WxHazardActive, expression for expression.
+            return (s.Effect.HasHealth && s.WeatherIntensity >= s.Effect.HealthMinIntensity) ||
+                   (s.Effect.HasRadiation && s.Effect.RadiationGain > 0 &&
+                    s.WeatherIntensity >= s.Effect.RadiationMinIntensity);
         }
     }
 
@@ -318,9 +336,9 @@ namespace GroundTruth
         // -1 means the block cannot answer, which is not the same as zero contacts.
         // Returning null leaves the alarm latched rather than clearing it on a dark
         // instrument.
-        protected override bool? Evaluate(IMyTerminalBlock b)
+        protected override bool? Evaluate(GroundTruthSession.BlockState s)
         {
-            float n = Read(b, "GT_BioContacts");
+            float n = s.Bio.Valid ? s.Bio.Contacts : -1f;    // GT_BioContacts
             if (n < 0) return null;
             return n >= 1f;
         }
@@ -357,9 +375,9 @@ namespace GroundTruth
         // Organisms only - GT_BioCount excludes bots and armed humanoids, which are
         // counted as contacts and belong to event 1012. A wolf and a soldier should
         // not ring the same bell.
-        protected override bool? Evaluate(IMyTerminalBlock b)
+        protected override bool? Evaluate(GroundTruthSession.BlockState s)
         {
-            float n = Read(b, "GT_BioCount");
+            float n = s.Bio.Valid ? s.Bio.Count : -1f;       // GT_BioCount
             if (n < 0) return null;
             return n >= 1f;
         }

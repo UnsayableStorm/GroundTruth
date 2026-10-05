@@ -55,6 +55,8 @@ namespace GroundTruth
         // already true before the player set it up.
         private bool? _state;
 
+        private readonly EventPane _pane = new EventPane();
+
         public override string ComponentTypeDebugString { get { return "GT_WeatherIntensity"; } }
 
         public MyStringId EventDisplayName
@@ -87,6 +89,7 @@ namespace GroundTruth
         public override void OnBeforeRemovedFromContainer()
         {
             Live.Remove(this);
+            _pane.Unhook();
             base.OnBeforeRemovedFromContainer();
         }
 
@@ -94,7 +97,7 @@ namespace GroundTruth
         // grid and then reading -1 off most of them would be worse than not listing them.
         public bool IsBlockValidForList(IMyTerminalBlock block)
         {
-            return Role(block) == 3f;   // RoleWeather
+            return EventSupport.RoleOf(block) == Instruments.RoleWeather;
         }
 
         public void AddBlocks(List<IMyTerminalBlock> blocks)
@@ -112,12 +115,11 @@ namespace GroundTruth
             _state = null;
         }
 
-        // Threshold or condition changed in the terminal. Forget the latched state so
-        // the new setting is evaluated fresh rather than compared against the old one.
-        public void NotifyValuesChanged()
-        {
-            _state = null;
-        }
+        // Threshold or condition changed in the terminal. Keep the latch so a setting
+        // that flips the answer fires on the next tick, as vanilla does. Clearing it
+        // here meant dragging the slider across the reading never fired - see
+        // GTThresholdEvent.
+        public void NotifyValuesChanged() { }
 
         public void RefreshDetailedInfo() { }
 
@@ -130,7 +132,9 @@ namespace GroundTruth
         public void Tick()
         {
             var ev = Entity as IMyEventControllerBlock;
-            if (ev == null || !ev.IsWorking || _observed.Count == 0) return;
+            if (ev == null) return;
+
+            if ((object)ev.SelectedEvent != this) { _pane.Clear(ev); return; }
 
             var ingame = ev as Sandbox.ModAPI.Ingame.IMyEventControllerBlock;
             if (ingame == null) return;
@@ -139,6 +143,20 @@ namespace GroundTruth
             bool lowerOrEqual = ingame.IsLowerOrEqualCondition;
             bool andMode = ingame.IsAndModeEnabled;
 
+            var info = _pane.Begin();
+            info.Append("Event: ").Append(EventDisplayName.String).Append('\n');
+            info.Append(lowerOrEqual ? "Condition: below or equal" : "Condition: above or equal").Append('\n');
+            info.Append("Threshold: ").Append(EventSupport.Percent(threshold)).Append('\n');
+
+            if (!ev.IsWorking)
+            {
+                info.Append("Event Controller is off or unpowered.\n");
+                _pane.Commit(ev);
+                return;
+            }
+
+            if (_observed.Count == 0) info.Append("No instruments selected.\n");
+
             bool any = false, all = true, sawReading = false;
 
             for (int i = _observed.Count - 1; i >= 0; i--)
@@ -146,46 +164,49 @@ namespace GroundTruth
                 var b = _observed[i];
                 if (b == null || b.Closed) { _observed.RemoveAt(i); continue; }
 
+                info.Append(b.CustomName).Append(": ");
+
+                // A powered-down Weather Station is not calm weather and must not clear
+                // an alarm - the same rule every other Ground Truth event follows.
+                if (!b.IsWorking) { info.Append("not working\n"); continue; }
+
                 // Both 0-1. The slider is LABELLED 0-100 while Threshold returns a
                 // fraction - setting 60 yields 0.6 - so the reading is compared as
                 // published and NOT scaled. Scaling it is why an early test fired on
                 // light fog at threshold 80: the comparison was 100 against 0.8.
-                float raw = b.GetValueFloat("GT_WxIntensity");
-                if (raw < 0f) continue;               // sentinel: no reading available
+                var s = EventSupport.State(b);
+                float raw = s == null ? -1f : s.WeatherIntensity;   // GT_WxIntensity
+                if (raw < 0f) { info.Append("no reading\n"); continue; }
+
+                info.Append(EventSupport.Percent(raw)).Append('\n');
 
                 sawReading = true;
-                float value = raw;
-                bool met = lowerOrEqual ? value <= threshold : value >= threshold;
+                bool met = lowerOrEqual ? raw <= threshold : raw >= threshold;
 
                 if (met) any = true; else all = false;
             }
 
-            if (!sawReading) return;
+            if (sawReading)
+            {
+                bool now = andMode ? all : any;
 
-            bool now = andMode ? all : any;
+                // Fire only on a change of state. A condition that stays true must not
+                // re-trigger every second - that would make a klaxon useless and a door
+                // unusable.
+                if (!_state.HasValue || _state.Value != now)
+                {
+                    bool first = !_state.HasValue;
+                    _state = now;
 
-            // Fire only on a change of state. A condition that stays true must not
-            // re-trigger every second - that would make a klaxon useless and a door
-            // unusable.
-            if (_state.HasValue && _state.Value == now) return;
+                    // On the first evaluation, latch the state without firing. Otherwise
+                    // placing the block during a storm would immediately trigger the
+                    // alarm for an event the player never saw happen.
+                    if (!first) EventSupport.Fire(ev, now);
+                }
+            }
 
-            bool first = !_state.HasValue;
-            _state = now;
-
-            // On the first evaluation, latch the state without firing. Otherwise placing
-            // the block during a storm would immediately trigger the alarm for an event
-            // the player never saw happen.
-            if (first) return;
-
-            try { ev.TriggerAction(now ? 0 : 1); }
-            catch (Exception e) { MyLog.Default.WriteLineAndConsole("GT event trigger: " + e); }
-        }
-
-        private static float Role(IMyTerminalBlock block)
-        {
-            if (block == null) return 0f;
-            try { return block.GetValueFloat("GT_SysBlockRole"); }
-            catch { return 0f; }   // property absent: not one of ours
+            info.Append(EventSupport.Output(_state, YesNoToolbarYesDescription, YesNoToolbarNoDescription));
+            _pane.Commit(ev);
         }
     }
 
