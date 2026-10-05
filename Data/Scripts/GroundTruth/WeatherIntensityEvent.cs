@@ -57,7 +57,6 @@ namespace GroundTruth
 
         private readonly EventPane _pane = new EventPane();
         private double _lastBeat = -1e9;
-        private string _triggerNote;
 
         public override string ComponentTypeDebugString { get { return "GT_WeatherIntensity"; } }
 
@@ -208,12 +207,11 @@ namespace GroundTruth
                     // placing the block during a storm would immediately trigger the
                     // alarm for an event the player never saw happen.
                     transition = first ? "LATCH " + (now ? "yes" : "no") : "FIRE " + (now ? "slot 1 (yes)" : "slot 2 (no)");
-                    if (!first) EventSupport.Fire(ev, now, ref _triggerNote);
+                    if (!first) EventSupport.Fire(ev, now);
                 }
             }
 
             info.Append(EventSupport.Output(_state, YesNoToolbarYesDescription, YesNoToolbarNoDescription));
-            EventSupport.AppendNote(info, _triggerNote);
             EventSupport.TraceTick(ev, transition, info, ref _lastBeat);
             _pane.Commit(ev);
         }

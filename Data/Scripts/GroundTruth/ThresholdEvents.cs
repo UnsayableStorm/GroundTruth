@@ -40,7 +40,6 @@ namespace GroundTruth
         private readonly List<IMyTerminalBlock> _observed = new List<IMyTerminalBlock>();
         private readonly EventPane _pane = new EventPane();
         private double _lastBeat = -1e9;
-        private string _triggerNote;
         private bool? _state;
 
         /// <summary>Instrument role to accept, or 0 for any Ground Truth instrument.</summary>
@@ -181,12 +180,11 @@ namespace GroundTruth
                     // AddBlocks: a controller built while the condition already holds
                     // does not fire for something the player never saw happen.
                     transition = first ? "LATCH " + (now ? "yes" : "no") : "FIRE " + (now ? "slot 1 (yes)" : "slot 2 (no)");
-                    if (!first) EventSupport.Fire(ev, now, ref _triggerNote);
+                    if (!first) EventSupport.Fire(ev, now);
                 }
             }
 
             info.Append(EventSupport.Output(_state, YesNoToolbarYesDescription, YesNoToolbarNoDescription));
-            EventSupport.AppendNote(info, _triggerNote);
             EventSupport.TraceTick(ev, transition, info, ref _lastBeat);
             _pane.Commit(ev);
         }

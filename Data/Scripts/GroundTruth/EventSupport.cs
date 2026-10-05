@@ -73,26 +73,7 @@ namespace GroundTruth
         }
 
         /// <summary>Slot 0 is the "yes" toolbar, slot 1 the "no".</summary>
-        // Shown in the pane when the controller was asked to fire and ran nothing. The
-        // usual cause, found the hard way 2026-10-05: a toolbar block with no owner of its
-        // own (a light) on a grid mostly owned by someone else - vanilla judges it by the
-        // grid's majority owner and skips it without a word. Only the machine that fires
-        // knows, so a dedicated-server client never sees this; SP and a host do.
-        public const string NothingRanNote =
-            "WARNING: the last trigger ran no actions. Toolbar blocks must be yours or shared "
-            + "with your faction - a block with no owner counts as the grid owner's.";
-
-        public static void AppendNote(StringBuilder info, string note)
-        {
-            if (!string.IsNullOrEmpty(note)) info.Append('\n').Append(note);
-        }
-
-        /// <summary>
-        /// Fires the yes or no toolbar. On the machine that fires, sets <paramref name="note"/>
-        /// to the warning if the controller ran nothing and clears it if it ran something;
-        /// elsewhere leaves it untouched.
-        /// </summary>
-        public static void Fire(IMyEventControllerBlock ev, bool yes, ref string note)
+        public static void Fire(IMyEventControllerBlock ev, bool yes)
         {
             if (!IsServer) return;
 
@@ -118,8 +99,6 @@ namespace GroundTruth
 
             Trace(ev, "TRIGGER slot=" + slot + " working=" + ev.IsWorking + " functional=" + ev.IsFunctional
                 + " ran=[" + string.Join(",", ran) + "]", null);
-
-            note = ran.Count == 0 ? NothingRanNote : null;
         }
 
         // Same rounding the vanilla events use: value x 100, one decimal.
