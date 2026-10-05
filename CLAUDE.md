@@ -23,7 +23,7 @@ VRage.Math.dll). Changed: `Instruments.cs` (RoleRadar 5, CapRadar 128, dish rows
 **Phase 1 SP exit check PASSED 2026-10-04** (every item; log in `probes/results/p1-sp-client.txt`;
 contact transitions are logged as `GT TACTICAL ...` lines in the game log). **Phase 1 DS pass
 PASSED 2026-10-05 — Phase 1 is done** (results under the Phase 1 "Exit" paragraph of
-`TACTICAL_PLAN.md`). **Next: Phase 2** (selection and the core displays), when Jason says go.
+`TACTICAL_PLAN.md`). **Phase 2 BUILT 2026-10-05, compile-clean, NOT yet tested in game:** `TacticalSelection.cs` (Track.Id in every dish, automatic = nearest ENEMY or nothing, access-checked writes, dish dropdown, Next/Previous/Automatic toolbar actions hooked from its own `TacticalSession` LoadData), `TacticalPanels.cs` (`GT_Contacts`, `GT_Radar`, `GT_Track`), PanelSelection (Radar key, display settings, `WriteBlockKey`), PanelControls (radar dropdown on the three apps). Next: the Phase 2 exit check, SP then DS.
 The test build is on the Workshop, unlisted, as **3813774178** (uploaded from
 `Mods\GroundTruthTacticalTest`, whose `modinfo.sbmi` now carries that id - redeploy with
 `/XF modinfo.sbmi`, then Jason re-uploads in game). The DS test world already loads it in place

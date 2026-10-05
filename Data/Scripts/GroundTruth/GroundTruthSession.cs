@@ -294,6 +294,10 @@ namespace GroundTruth
 
             if (!IsOurs(block)) return;
 
+            // The dish's "Tracked contact" dropdown. Injected per block, like the panel
+            // dropdowns above; it returns at once for anything that is not a dish.
+            TacticalSelection.InjectControls(block, controls);
+
             block.AppendingCustomInfo -= WriteInfo;
             block.AppendingCustomInfo += WriteInfo;
 
@@ -644,6 +648,17 @@ namespace GroundTruth
             if (t.Truncated)
                 sb.AppendLine(string.Format("Nearest {0} shown; more out there.", Tactical.MaxContacts));
 
+            bool manual;
+            var tracked = TacticalSelection.Tracked(t, dish, out manual);
+            if (tracked != null)
+                sb.AppendLine(string.Format("Tracking      {0}  ({1})",
+                    string.IsNullOrEmpty(tracked.Name) ? "UNIDENTIFIED" : tracked.Name,
+                    manual ? "selected" : "auto: nearest enemy"));
+            else
+                sb.AppendLine(TacticalSelection.StoredId(dish) != 0
+                    ? "Tracking      none (selected contact expired; auto: no enemy)"
+                    : "Tracking      none (auto: no enemy detected)");
+
             if (_paneContacts.Count == 0)
             {
                 sb.AppendLine();
@@ -683,7 +698,8 @@ namespace GroundTruth
 
                 string name = string.IsNullOrEmpty(c.Name) ? "UNIDENTIFIED" : c.Name;
                 sb.AppendLine(string.Format("   {0}", name));
-                sb.AppendLine(string.Format("   {0}  {1}", Tactical.RelationName(c.Relation), DetectedByName(c.DetectedBy)));
+                sb.AppendLine(string.Format("   {0}  {1}{2}", Tactical.RelationName(c.Relation), DetectedByName(c.DetectedBy),
+                    tracked != null && tracked.Id == c.Id ? "  << TRACKED" : ""));
             }
         }
 

@@ -84,6 +84,14 @@ namespace GroundTruth
         // equivalent block in the copy.
         private readonly Dictionary<float, long> _idByRole = new Dictionary<float, long>();
 
+        // Display settings for the tactical apps - Range, Sort, Rows, Vectors, Labels,
+        // Orientation - keyed lowercase, values raw. Stored as text and interpreted by
+        // the app that wants them, so an app parses only its own keys and a malformed
+        // value is that app's default, never another app's problem. Unknown keys are
+        // kept and ignored, which is what lets a newer panel's settings sit in an older
+        // panel's Custom Data without breaking it.
+        private readonly Dictionary<string, string> _settings = new Dictionary<string, string>();
+
         /// <summary>
         /// Re-parse if the Custom Data changed. True when it did, which is the caller's
         /// cue to drop any instrument it resolved under the old selection.
@@ -96,6 +104,7 @@ namespace GroundTruth
             _raw = customData;
             _byRole.Clear();
             _idByRole.Clear();
+            _settings.Clear();
             _any = null;
 
             if (customData.Length == 0) return true;
@@ -142,7 +151,18 @@ namespace GroundTruth
             if (role == Instruments.RoleHabitat) return "Habitat";
             if (role == Instruments.RoleWeather) return "Weather";
             if (role == Instruments.RoleBio) return "Life";
+            if (role == Instruments.RoleRadar) return "Radar";
             return null;
+        }
+
+        /// <summary>
+        /// A display setting by key (case-insensitive), or null when absent. The caller
+        /// owns the parsing and the default - see the _settings note.
+        /// </summary>
+        public string Setting(string key)
+        {
+            string v;
+            return key != null && _settings.TryGetValue(key.ToLowerInvariant(), out v) && v.Length > 0 ? v : null;
         }
 
         /// <summary>
@@ -171,11 +191,27 @@ namespace GroundTruth
                             entityId == 0 ? "" : entityId.ToString());
         }
 
+        /// <summary>
+        /// Set one key in the BLOCK-WIDE [GroundTruth] section, preserving everything
+        /// else byte for byte. The tactical selection lives here (TACTICAL_PLAN D3): it
+        /// belongs to the dish, not to one of its surfaces, and a dish has none anyway.
+        /// An empty value leaves the key present and empty, which reads as "automatic".
+        /// </summary>
+        public static string WriteBlockKey(string customData, string key, string value)
+        {
+            return WriteKeyUnder(customData, "[GroundTruth]", key, value);
+        }
+
         private static string WriteKey(string customData, int surfaceIndex,
                                        string key, string value)
         {
             if (surfaceIndex < 0) surfaceIndex = 0;
-            var header = "[" + Section + "." + surfaceIndex + "]";
+            return WriteKeyUnder(customData, "[" + Section + "." + surfaceIndex + "]", key, value);
+        }
+
+        private static string WriteKeyUnder(string customData, string header,
+                                            string key, string value)
+        {
             var headerLower = header.ToLowerInvariant();
             var keyLower = key.ToLowerInvariant();
             var line = key + " = " + (value == null ? "" : value.Trim());
@@ -271,7 +307,12 @@ namespace GroundTruth
                     case "weather": Assign(Instruments.RoleWeather, isId, value); break;
                     case "life":
                     case "bio": Assign(Instruments.RoleBio, isId, value); break;
+                    case "radar": Assign(Instruments.RoleRadar, isId, value); break;
                     case "instrument": if (!isId) _any = value; break;
+                    // Anything else is a setting, kept under its full key - including
+                    // ".Id" keys that are not role selectors, such as the dish's own
+                    // Track.Id (TacticalSelection reads that one through Setting).
+                    default: _settings[isId ? key + ".id" : key] = value; break;
                 }
             }
         }

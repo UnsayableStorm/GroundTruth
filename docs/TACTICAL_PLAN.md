@@ -142,7 +142,13 @@ rather than letting the engine discard it behind their back.
 **D4 — How a player selects** *(Phase 2)*.
 *Decided:* three mechanisms, in order of how much they need proving:
 
-1. **Automatic** by default — nearest contact — so an unconfigured system is useful.
+1. **Automatic** by default — the **nearest enemy** contact (relation `Enemies`), so an
+   unconfigured system is useful and points at the thing that matters. *Refined 2026-10-05
+   by Jason, from "nearest contact".* With no enemy detected, nothing is tracked
+   automatically and every screen says so; it never falls back to tracking a neutral. A
+   dark return's relation is `UNKNOWN`, so automatic never picks one — choosing an
+   unidentified ship is a manual decision. A LOST enemy is not auto-tracked; a manual
+   selection stays through `LOST` until `EXPIRED`, then falls back to automatic.
 2. A **dropdown on the dish's terminal**, listing current contacts nearest first, injected
    through `CustomControlGetter` exactly as `PanelControls` injects the instrument dropdown.
    Proven pattern; no registration against the antenna type.

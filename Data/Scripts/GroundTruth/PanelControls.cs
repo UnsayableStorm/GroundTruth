@@ -54,6 +54,9 @@ namespace GroundTruth
         private const string ScriptBio = "GT_Bio";
         private const string ScriptOverview = "GT_Overview";
         private const string ScriptStrip = "GT_Strip";
+        private const string ScriptContacts = "GT_Contacts";
+        private const string ScriptRadar = "GT_Radar";
+        private const string ScriptTrack = "GT_Track";
 
         // Automatic is key 0. Every other key is an instrument's EntityId, which is
         // unique, stable while the world runs, and cannot collide with 0.
@@ -74,6 +77,7 @@ namespace GroundTruth
             Add(Instruments.RoleHabitat, "Habitat Monitor");
             Add(Instruments.RoleWeather, "Weather Station");
             Add(Instruments.RoleBio, "Bio Systems Scanner");
+            Add(Instruments.RoleRadar, "Rotating Antenna");
         }
 
         private static void Add(float role, string noun)
@@ -145,14 +149,19 @@ namespace GroundTruth
                 case 0: return Instruments.RoleRadiation;
                 case 1: return Instruments.RoleHabitat;
                 case 2: return Instruments.RoleWeather;
-                default: return Instruments.RoleBio;
+                case 3: return Instruments.RoleBio;
+                default: return Instruments.RoleRadar;
             }
         }
 
-        // Which roles an app reads. Overview and Strip read all four and get four
-        // dropdowns; the per-role apps get exactly one.
+        // Which roles an app reads. Overview and Strip read the four environmental
+        // instruments and get four dropdowns; the per-role apps get exactly one. The
+        // three tactical apps read the dish and nothing else.
         private static bool AppReads(string script, float role)
         {
+            if (script == ScriptContacts || script == ScriptRadar || script == ScriptTrack)
+                return role == Instruments.RoleRadar;
+            if (role == Instruments.RoleRadar) return false;
             if (script == ScriptOverview || script == ScriptStrip) return true;
             if (script == ScriptRadiation) return role == Instruments.RoleRadiation;
             if (script == ScriptHabitat) return role == Instruments.RoleHabitat;
