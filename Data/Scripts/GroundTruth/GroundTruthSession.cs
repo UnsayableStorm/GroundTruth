@@ -174,6 +174,13 @@ namespace GroundTruth
         private static GroundTruthSession _instance;
         private double _seconds;
 
+        /// <summary>
+        /// Session seconds on the one-second recompute clock. The tactical lifecycle is
+        /// timed on this rather than a wall clock so that a contact ages exactly as fast
+        /// as the readings around it - including not at all while the game is paused.
+        /// </summary>
+        public static double Seconds { get { return _instance == null ? 0 : _instance._seconds; } }
+
         // Blocks whose terminal was just opened. They are refreshed on the very next
         // frame rather than waiting for the one-second recompute, because otherwise the
         // first click shows an empty pane and only the second shows data.
@@ -226,6 +233,7 @@ namespace GroundTruth
             if (!_registered) return;
             MyAPIGateway.TerminalControls.CustomControlGetter -= OnCustomControlGetter;
             SealSync.Close();
+            Tactical.Clear();
             _state.Clear();
             _instance = null;
             _registered = false;
@@ -365,6 +373,8 @@ namespace GroundTruth
                 block.RefreshCustomInfo();
             }
             foreach (var id in stale) _state.Remove(id);
+
+            Tactical.Forget(_seconds);
         }
 
         private static void TickEvents()
@@ -399,6 +409,19 @@ namespace GroundTruth
         {
             s.AgeSeconds = s.LastComputeSeconds < 0 ? 0 : _seconds - s.LastComputeSeconds;
             s.LastComputeSeconds = _seconds;
+
+            // D6: the dish reads contacts and nothing else. No environment, seal,
+            // radiation, weather or bio - those structs stay zeroed, and its capability
+            // bits say so, so nothing that branches on capabilities will ever print them.
+            // The age bookkeeping above still applies to it like any other block.
+            //
+            // Tactical.Update scans only if someone has read this dish's table in the
+            // last few seconds, so a dish that is merely in the cache costs nothing.
+            if (Instruments.RoleOf(block.BlockDefinition.SubtypeName) == Instruments.RoleRadar)
+            {
+                Tactical.Update(block, _seconds);
+                return;
+            }
 
             s.Env = Readings.ReadEnvironment(block);
             Readings.ReadSeal(block, out s.Airtight, out s.RoomOxygen, out s.RoomBlocks, out s.SealStatus);
@@ -568,6 +591,115 @@ namespace GroundTruth
                 case Instruments.RoleHabitat: WriteHabitat(sb, s); break;
                 case Instruments.RoleWeather: WriteWeather(sb, s); break;
                 case Instruments.RoleBio: WriteBio(sb, s); break;
+                case Instruments.RoleRadar: WriteRadar(block, sb); break;
+            }
+        }
+
+        private static readonly List<Tactical.Contact> _paneContacts = new List<Tactical.Contact>();
+
+        // The dish's contacts as text - the first presentation, for the same reason v0.1
+        // of this mod was detail-pane-only: it proves the data before anything is drawn.
+        //
+        // Unlike the four writers below it does NOT call WriteEnvironment (D6). There is
+        // no SITE footer because the dish took no site readings; printing its zeroed Env
+        // would report 0% oxygen and a sun below the horizon as measurements.
+        //
+        // The pane is narrow, so each contact is three short lines: what and how far,
+        // where and how fast, who and in what state. Range, bearing and closing rate are
+        // computed here, from THIS dish - the table stores positions, not ranges, because
+        // two dishes on one ship are in different places.
+        private static void WriteRadar(IMyTerminalBlock dish, StringBuilder sb)
+        {
+            var t = Tactical.TableFor(dish, Seconds);
+            if (t == null) { sb.AppendLine("No sensor data."); return; }
+
+            if (!string.IsNullOrEmpty(t.Error))
+            {
+                sb.AppendLine("SCAN ERROR");
+                sb.AppendLine(t.Error);
+                sb.AppendLine();
+            }
+
+            if (t.Offline)
+            {
+                sb.AppendLine("SENSOR OFFLINE");
+                sb.AppendLine("The dish is not working. Nothing new");
+                sb.AppendLine("is being detected; contacts below are");
+                sb.AppendLine("last-known and will expire.");
+                sb.AppendLine();
+            }
+
+            Tactical.Sorted(t, dish, _paneContacts);
+            int lost = 0;
+            for (int i = 0; i < _paneContacts.Count; i++)
+                if (_paneContacts[i].State == Tactical.StateLost) lost++;
+
+            sb.AppendLine(string.Format("Contacts      {0}{1}", _paneContacts.Count - lost,
+                lost > 0 ? string.Format("  (+{0} lost)", lost) : ""));
+            sb.AppendLine(string.Format("Range         {0:F1} km  (dark {1:F1} km)",
+                t.ScanRadius / 1000.0, Tactical.DarkReturnRange / 1000.0));
+            sb.AppendLine(string.Format("Scan age      {0:F0}s", Math.Max(0, Seconds - t.LastScan)));
+            if (t.UnownedDish)
+                sb.AppendLine("Dish unowned: no ship reads as ours.");
+            if (t.Truncated)
+                sb.AppendLine(string.Format("Nearest {0} shown; more out there.", Tactical.MaxContacts));
+
+            if (_paneContacts.Count == 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("No contacts.");
+                sb.AppendLine("Silent ships beyond the dark-return");
+                sb.AppendLine("range do not appear.");
+                return;
+            }
+
+            for (int i = 0; i < _paneContacts.Count; i++)
+            {
+                var c = _paneContacts[i];
+                double range = TacticalMath.Range(dish.GetPosition(), c.Position);
+                int frame;
+                double brg = Tactical.Bearing(dish, c.Position, out frame);
+                double rel = Tactical.RelativeBearing(dish, c.Position);
+                double elev = Tactical.Elevation(dish, c.Position);
+                double closing = Tactical.ClosingRate(dish, c);
+
+                sb.AppendLine();
+                sb.AppendLine(string.Format("{0,2} {1,-11} {2}", i + 1, Tactical.ClassOf(c), FormatRange(range)));
+
+                // Bearing in whichever frame exists, and always the ship-relative one
+                // beside it - the same pairing the Bio Scanner publishes, for the same
+                // reason: "45 off the nose" needs no compass mod.
+                string where = frame == Readings.FramePlanetNorth
+                    ? string.Format("brg {0:000} N / {1:000} rel", brg, rel)
+                    : (rel >= 0 ? string.Format("brg {0:000} rel", rel) : "brg --");
+                sb.AppendLine(string.Format("   {0}  el {1:+0;-0;0}", where, elev));
+
+                // A LOST contact's motion is last-known, so its closing rate is not
+                // shown as if it were current.
+                if (c.State == Tactical.StateLost)
+                    sb.AppendLine(string.Format("   LOST {0:F0}s ago, last known", Seconds - c.LastSeen));
+                else
+                    sb.AppendLine(string.Format("   {0} {1:F1} m/s", closing >= 0 ? "closing" : "opening", Math.Abs(closing)));
+
+                string name = string.IsNullOrEmpty(c.Name) ? "UNIDENTIFIED" : c.Name;
+                sb.AppendLine(string.Format("   {0}", name));
+                sb.AppendLine(string.Format("   {0}  {1}", Tactical.RelationName(c.Relation), DetectedByName(c.DetectedBy)));
+            }
+        }
+
+        private static string FormatRange(double metres)
+        {
+            return metres >= 1000 ? string.Format("{0:F2} km", metres / 1000.0) : string.Format("{0:F0} m", metres);
+        }
+
+        private static string DetectedByName(int by)
+        {
+            switch (by)
+            {
+                case Tactical.DetectedByOurs: return "ours";
+                case Tactical.DetectedByBroadcast: return "broadcast";
+                case Tactical.DetectedByDarkReturn: return "dark return";
+                default: return "";
             }
         }
 

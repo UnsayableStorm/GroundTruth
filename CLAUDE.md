@@ -7,18 +7,32 @@ report what is measured and nothing more. Scripts are in `Data/Scripts/GroundTru
 ## Current work: tactical displays
 
 The Rotating Antenna (`GT_RotatingRadarDish`) is being given a contact scan, and six LCD
-apps will draw from it. It is planned in full; nothing is built yet except the probes.
+apps will draw from it. Phase 1 (the scan and a detail-pane readout) is built; no LCD app yet.
 
-## Where things stand (2026-10-03) — start here
+## Where things stand (2026-10-04) — start here
 
-**Phase 0 has passed its gate**, single player and dedicated server both. The results table,
-the DS findings and the gate decision are `docs/PHASE0_PROBES.md` §7, §7.3 and §7.4; logs in
-`probes/results/` (`ds-client.txt`, `ds-server.txt` hold every DS session). The decision's four
-consequences are already written into `docs/TACTICAL_PLAN.md` (§5.1 velocity, §5.3 artificial
-gravity — ENGINE_TRAPS 19, §7/§10 streaming range, D3 access check).
+**Phase 0 has passed its gate**, single player and dedicated server both (`docs/PHASE0_PROBES.md`
+§7, §7.3, §7.4; logs in `probes/results/`). Nothing from it is owed.
 
-**Next: Phase 1** (`TACTICAL_PLAN.md` §8), when Jason says go. Nothing from Phase 0 is owed;
-0.4.text and 0.8.access closed 2026-10-04.
+**Phase 1 is built, compile-clean, NOT yet tested in game.** New: `Tactical.cs` (contact table
+per mechanical group, scan, D1 detection, D2 identification, lifecycle, bounds),
+`TacticalMath.cs` (pure geometry, tested by `tools/tactical-math-test/run.ps1` against the real
+VRage.Math.dll). Changed: `Instruments.cs` (RoleRadar 5, CapRadar 128, dish rows marked
+`SelfPowered`, orphan check skips those), `GroundTruthSession.cs` (Recompute role gate,
+`WriteRadar`, `Seconds`), comment-only edits in `Rotation.cs` and `CubeBlocks_GroundTruth.sbc`.
+**Next: the Phase 1 exit check** (`TACTICAL_PLAN.md` §8, Phase 1 "Exit") — SP first, then DS.
+
+**Test builds go in their own mod folder, never `Mods\GroundTruth`.** That AppData folder holds
+the live item's `modinfo.sbmi` (3781444888); Phase 1 code there would ship to every subscriber
+on the next main-branch publish. The test copy is `%APPDATA%\SpaceEngineers\Mods\GroundTruthTacticalTest`
+(deployed with `deploy-local.ps1`'s excludes, destination changed). A world under test loads it
+**instead of** Workshop Ground Truth, never beside it. For the DS it needs its own unlisted
+Workshop item, uploaded from that folder.
+
+**Known v1 bug found while building Phase 1, not fixed (outside this branch's scope):**
+`Readings.Bearing`/`BearingFrom` turn counter-clockwise — a target off the right reads 270. The
+Bio Scanner's published bearings are mirrored. `tools/tactical-math-test/MathTest.cs` holds the
+executed evidence. `TacticalMath.Bearing` is correct; Phase 1 does not use the Readings ones.
 
 Work is on the local branch **`tactical`** (tracks `origin/claude/bold-mayer-x6lepg`, with `main`
 merged in; not pushed).

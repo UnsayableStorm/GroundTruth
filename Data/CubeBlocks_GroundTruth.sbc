@@ -9,8 +9,8 @@
       permission and credited in ATTRIBUTION.txt, the Workshop description and beside
       each Model line below.
 
-      The general purpose antenna at the bottom of this file is a RadioAntenna and is
-      NOT an instrument - it carries no properties and broadcast is its whole purpose.
+      The Rotating Antenna at the bottom of this file is a RadioAntenna and stays one: it
+      is the tactical sensor (role 5, contacts only) but publishes no GT_ properties yet.
 
       WHY UpgradeModule
 
@@ -812,9 +812,10 @@
     </Definition>
 
     <!--
-      General purpose antenna. NOT an instrument - vanilla RadioAntenna behaviour, no
-      Ground Truth code attached, excluded from IsOurs() and from the API's role and
-      capability tables. It ships because a general purpose antenna belongs in a sensor
+      Rotating Antenna - the tactical sensor. Still a vanilla RadioAntenna in every
+      respect, and deliberately so (TACTICAL_PLAN D0.1; ENGINE_TRAPS 11 does not apply):
+      Ground Truth reads contacts through it, role 5, and nothing else. It shipped first
+      because a general purpose antenna belongs in a sensor
       array collection, and because the pack it came from is being retired from the
       author's modlist.
 

@@ -1,8 +1,8 @@
 # Tactical Displays — Implementation Plan
 
-Status: **planning. Nothing in this document is built.** Every component described here is
-designed and agreed before code is written, and each phase ends with in-game verification
-before the next one starts.
+Status: **Phase 0 passed (2026-10-03). Phase 1 built 2026-10-04, compile-clean, not yet tested
+in game.** Every component described here is designed and agreed before code is written, and
+each phase ends with in-game verification before the next one starts.
 
 This plan adapts *Ground Truth Tactical Displays — Implementation Brief* (an external
 brief, written without access to this repository). The brief's **goals** stand unchanged:
@@ -99,7 +99,7 @@ Follows from D1, and every contact falls into exactly one case:
 | Detected by | Name | Relationship |
 |---|---|---|
 | Rule 2 — ours | the grid's own name | `Owner` or `FactionShare` |
-| Rule 1 — broadcasting | **what the broadcast says**: the owner's faction tag, then the antenna's or beacon's HUD text, plus the ship name only if that broadcaster has *Show ship name* on — what the vanilla HUD shows, and no more. (Probe 0.4.text: the HUD shows `GCDW RP-B SIGNAL` for HUD text `RP-B SIGNAL`. What the HUD shows for an owner with no faction is unmeasured; Phase 1 checks it against the HUD) | from the owner, as the HUD colours it |
+| Rule 1 — broadcasting | **what the broadcast says**: the owner's faction tag, then the antenna's or beacon's HUD text, plus the ship name only if that broadcaster has *Show ship name* on — what the vanilla HUD shows, and no more. (Probe 0.4.text: the HUD shows `GCDW RP-B SIGNAL` for HUD text `RP-B SIGNAL`. The exact rule, read from the game's own `GetHudParams` in `MyRadioAntenna`/`MyBeacon`/`MyTerminalBlock`: `[TAG.][ShipName - ]HudText` for an antenna with HUD text or *Show ship name*, `[TAG.]HudText` for a beacon with HUD text, otherwise `[TAG.]CustomName`; the separator is a dot, small in the HUD font; an owner with no faction gets no tag and no dot. `Tactical.HudLabel` implements exactly this) | from the owner, as the HUD colours it |
 | Rule 3 — dark return only | `UNIDENTIFIED` | `UNKNOWN` |
 
 A dark return carries position, motion, size class and dimensions — what a return

@@ -114,9 +114,12 @@ namespace GroundTruth
         }
     }
 
-    // The dish is not an instrument and is deliberately absent from the Instruments
-    // table, so its subpart is named here. It is a real RadioAntenna, so this is the
-    // only component bound to it. Instruments spin from InstrumentPower instead.
+    // The dish is the tactical sensor and is in the Instruments table as RoleRadar, but
+    // with no Subpart there: InstrumentPower is not bound to it (a RadioAntenna draws its
+    // own power), so its subpart is named here instead. This is the only component bound
+    // to it - put any future dish game logic in here rather than adding a second
+    // descriptor, which would bring back the script logic collision notice.
+    // Instruments spin from InstrumentPower instead.
     [MyEntityComponentDescriptor(typeof(MyObjectBuilder_RadioAntenna), false,
         "GT_RotatingRadarDish", "GT_RotatingRadarDish_S")]
     public class SpinningAntenna : MyGameLogicComponent
