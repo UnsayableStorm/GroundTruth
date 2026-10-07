@@ -115,9 +115,13 @@ rejected member and the question it served, delete that call, and reload.
     1. **Weather-type event selection** was a plain field, unsaved and unsynced. Now a `MySync`
        saved via `MyObjectBuilder_ModCustomComponent` (SeMoreEvents' pattern). Needs an
        in-game save/reload and DS check.
-    2. **The GT_ property API** still registers on terminal open, or via `GT_API_ENABLE` on a
-       DS. `probes/RegTimingProbe` is proving registration at load is safe: SP passed 2026-10-05;
-       DS and Animation Engine runs next, then registration moves to `InstrumentPower`.
+    2. **The GT_ property API** registered only on terminal open, or via `GT_API_ENABLE` on a
+       DS. `probes/RegTimingProbe` proved registration at load safe (SP, DS server + joining
+       client, + Animation Engine: all PASS by 2026-10-07). It now registers from
+       `InstrumentPower.UpdateOnceBeforeFrame` via `TerminalApi.RegisterAtLoad`; the handshake
+       is still answered for old scripts. Why August got it wrong: ENGINE_TRAPS trap 20.
+       Needs one in-game confirmation (PB reads a GT_ property on a DS with no terminal and no
+       token) before ship.
 - **C# 6 only.** No local functions, tuples, `out var`, pattern matching or `is` with a
   declaration. The compile checker has passed a C# 7 feature once that the game then rejected.
 - **Only APIs the mod already uses, or that a probe has cleared.** No `MyIni`, reflection,

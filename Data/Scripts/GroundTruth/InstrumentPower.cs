@@ -125,14 +125,19 @@ namespace GroundTruth
                 terminal.CustomDataChanged += TerminalApi.OnInstrumentCustomDataChanged;
             }
 
-            // There used to be a TerminalApi nudge here, on the theory that a block
-            // existing proves its type's control list is already built. Disproven
-            // 2026-08-18: registering GT_ properties reactively, purely from
-            // CustomControlGetter (see GroundTruthSession), is the only timing that did
-            // not corrupt every upgrade module's terminal controls in testing. Calling
-            // into TerminalApi from here would be exactly the proactive pattern that
-            // caused the damage - on our own schedule rather than the game's - so
-            // nothing calls it from this file at all.
+            // The GT_ property API registers here, at the first instrument's first
+            // frame, on every machine. This block's own BeforeGameLogicInit has already
+            // built every control list involved, which is the one condition that makes
+            // touching them safe.
+            //
+            // There was a nudge here once before, removed 2026-08-18 as "disproven" -
+            // wrongly: the builds that broke also read GetControls at LoadData, before
+            // any block existed, and that read was the real cause. Settled by decompile
+            // and by probes/RegTimingProbe (SP, DS server + client, Animation Engine,
+            // all PASS 2026-10-07). Full account in TerminalApi.RegisterAtLoad.
+            // Wrapped: whatever happens here must not cost the instrument its power sink below.
+            try { TerminalApi.RegisterAtLoad(terminal); }
+            catch (Exception e) { MyLog.Default.WriteLineAndConsole("GroundTruth RegisterAtLoad: " + e); }
 
             Instruments.Info instrument;
             if (_block != null && Instruments.TryGet(_block.BlockDefinition.SubtypeName, out instrument))

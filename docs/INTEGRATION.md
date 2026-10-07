@@ -22,7 +22,7 @@ when it is missing.
 ## Contents
 
 - [Quick start](#quick-start)
-- [Waking the API on a server](#waking-the-api-on-a-server)
+- [The API is there at load](#the-api-is-there-at-load--no-request-needed)
 - [Finding instruments](#finding-instruments)
 - [Conventions that matter](#conventions-that-matter)
 - [Property reference](#property-reference)
@@ -63,72 +63,46 @@ they carry no `GT_` properties, and broadcasting is their entire point.
 
 ---
 
-## Waking the API on a server
+## The API is there at load — no request needed
 
-**If your script runs on a dedicated server, do this once at the top. It is two lines.**
+**Since the Tactical update, `GT_` properties exist as soon as any Ground Truth instrument
+has loaded: in single player, on a host, and on a dedicated server, with no terminal opened
+and nothing for your script to do.** A PB can read an instrument on its first run.
 
-```csharp
-// Ask Ground Truth to register its properties in this process. Harmless to repeat,
-// harmless in single player, and a no-op once done.
-foreach (var b in sensors) b.CustomData = "GT_API_ENABLE";
-```
-
-The properties are then available from the **next** run onward. The mod notices the
-token within a second — it polls the instruments it already tracks while the API is
-unregistered, and stops the moment it registers. A script that wants to be
-self-sufficient asks and returns:
+Detect instruments by subtype rather than by a `GT_` property, so the check works even on a
+grid with no instrument at all:
 
 ```csharp
 var sensors = new List<IMyUpgradeModule>();
 GridTerminalSystem.GetBlocksOfType(sensors,
     b => b.BlockDefinition.SubtypeName.StartsWith("GT_"));
-
-if (sensors.Count > 0 && sensors[0].GetProperty("GT_SysBlockRole") == null)
-{
-    sensors[0].CustomData = "GT_API_ENABLE";
-    Echo("Ground Truth API requested - properties available next run.");
-    return;
-}
 ```
 
-Note the subtype filter in that second snippet. It finds instruments **without** using a
-`GT_` property, which is the whole point: you cannot detect the API with the API when the
-question is whether the API exists yet.
+### The old handshake still works
 
-Ground Truth replaces the token with `GT_API_READY` when it registers, so the Custom Data
-afterwards reads as a record of what happened rather than as a magic word left lying
-around. It writes nothing else and leaves any other Custom Data content alone.
+Earlier versions registered the properties only when someone opened a terminal, and on a
+dedicated server only when a script wrote `GT_API_ENABLE` into an instrument's Custom
+Data. Scripts written that way keep working unchanged: the mod still watches for the token
+and still replaces it with `GT_API_READY`, it just no longer needs to be asked. New scripts
+can leave it out.
 
-### Why this is necessary
+### Why it used to need asking, and why it no longer does
 
-Terminal properties on a client register the moment anyone opens any terminal — the game
-hands the mod its control list and the mod fills it in. That hook is UI, and a dedicated
-server has no UI, so it never fires there.
+Registering terminal controls too early corrupted **every upgrade module in the game**
+during development — vanilla modules, other mods' shield generators and warp drives, all
+losing Name, Show In Terminal and Show In Toolbar Config. The fix at the time was to touch
+the shared control list only when the game had visibly built it (a terminal opening) or a
+script explicitly asked.
 
-Programmable Blocks execute **server-side** in multiplayer. So on a DS the one process
-that most needs the properties is the one process that never got them. Measured on a live
-server with `tools/pb_property_probe.cs`:
-
-```
-GT instruments on grid (by subtype): 5
-Blocks exposing GT_ properties:      0
-```
-
-The obvious alternative was for the mod to register itself on a timer at world load. That
-was deliberately not done. Registering terminal controls on a mod's own schedule, rather
-than when the game asks, is what corrupted **every upgrade module in the game** during
-development — vanilla modules, other mods' shield generators and warp drives, all of them
-losing Name, Show In Terminal and Show In Toolbar Config, because the control list is
-shared across the whole block type and a mod that touches it early decides when it comes
-into existence. That took four builds to isolate and is written up in `ENGINE_TRAPS.md`.
-
-Being fairly confident it would be harmless on a machine that renders no terminal is not
-the same as knowing. So Ground Truth touches that list in exactly two situations, and both
-are somebody else's decision: the game built a list and handed it over, or a script author
-explicitly asked. Servers where nobody asked are never touched at all.
-
-The cost is this paragraph and one line in your script. It is a fair trade for not
-breaking other people's blocks.
+The real cause turned out to be narrower. A block type's control list is created on first
+request by copying its base classes' lists *as they are at that moment*, and the game
+builds those lists during each block's own initialisation. Asking for a list before any
+block of that type has initialised freezes it incomplete; the builds that broke made
+exactly that request at world load, before any block existed. Ground Truth now registers
+from its first instrument's first frame, after that block has built every list involved.
+That was tested on single player, on a dedicated server with a joining client, and
+alongside Animation Engine (the mod that wiped the shared list on a live server), checking
+every block type in the world each time. Details in `ENGINE_TRAPS.md`.
 
 ---
 

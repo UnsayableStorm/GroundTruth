@@ -140,9 +140,15 @@ namespace GroundTruth
 
         /// <summary>
         /// Looks for GT_API_ENABLE in the Custom Data of the instruments this class
-        /// already tracks. Runs ONLY while the API is unregistered, and stops forever
-        /// once it is - see the long note on TerminalApi.ConsiderRequest for why this
+        /// already tracks - see the long note on TerminalApi.ConsiderRequest for why this
         /// exists alongside the CustomDataChanged subscription rather than instead of it.
+        ///
+        /// Since 2026-10-07 the API registers at load and nobody needs to ask. This keeps
+        /// running anyway, purely to ANSWER: scripts written to the published handshake
+        /// write the token and wait for GT_API_READY, and on a dedicated server this poll
+        /// is the only thing that sees their write. It used to stop the moment the API
+        /// was registered, which would now leave those scripts waiting forever. Cost: an
+        /// IndexOf on a handful of Custom Data strings a second.
         ///
         /// This registry is the right one to borrow: it is populated from
         /// InstrumentPower on every instrument the server loads, with no dependence on
@@ -151,7 +157,7 @@ namespace GroundTruth
         /// </summary>
         public static void PollForApiRequest()
         {
-            if (TerminalApi.Registered || _instruments.Count == 0) return;
+            if (_instruments.Count == 0) return;
 
             if (!_pollLogged)
             {
@@ -167,7 +173,6 @@ namespace GroundTruth
                 if (terminal == null || terminal.Closed) continue;
 
                 TerminalApi.ConsiderRequest(terminal, "poll");
-                if (TerminalApi.Registered) return;   // done, and never runs again
             }
         }
 

@@ -97,13 +97,69 @@ namespace GroundTruth
         // hook instead of from a timer, and needs no probing of the list's contents
         // because by the time it runs the timing question is already settled.
         //
-        // The cost, accepted deliberately: a Programmable Block on a grid where NOBODY
-        // has ever opened ANY upgrade module's terminal - ours or vanilla, anywhere in
-        // the session - sees no GT_ properties until someone does. That is a real
-        // narrowing from the original design ("a PB must read a grid nobody has
-        // opened"), and it is a far smaller cost than corrupting every upgrade module
-        // in the game, including other mods' warp drives and shield generators, which
-        // is what the proactive version actually did.
+        // The cost, accepted deliberately at the time: a Programmable Block on a grid
+        // where NOBODY has ever opened ANY upgrade module's terminal sees no GT_
+        // properties until someone does.
+        //
+        // ---- SUPERSEDED 2026-10-07: register at load, from the first instrument ----
+        //
+        // That cost was not acceptable (Jason, 2026-10-05: nothing may depend on a
+        // terminal being opened), and the August conclusion was right about the
+        // symptom but wrong about the cause. Decompiled 2026-10-05:
+        //
+        //   - MyTerminalControlFactory.GetList(type) creates a type's list on first
+        //     request by COPYING its base classes' lists as they are at that moment,
+        //     and the type then counts as created for good.
+        //   - Every terminal block builds its own and its bases' lists in
+        //     MyTerminalBlock.BeforeGameLogicInit -> CreateTerminalControls(), during
+        //     block init, on every machine. No UI is involved.
+        //   - The ModAPI's CreateProperty, AddControl and GetControls all go straight to
+        //     GetList; none of them calls EnsureControlsAreCreated.
+        //
+        // So touching a list is harmful only BEFORE any block of that type has
+        // initialised. Both "BROKEN" builds above made a GetControls call at LoadData,
+        // before ANY block existed - which freezes MyTerminalBlock's list empty and
+        // takes Name and On/Off from every block type in the game. Timing as such was
+        // never the problem; that LoadData read was.
+        //
+        // Proved by probes/RegTimingProbe, registering from an upgrade module's first
+        // frame with no terminal ever opened, checking every block type in the world by
+        // instance at 10 s, 60 s and 300 s:
+        //
+        //   A  single player, tactical testing world                    2026-10-05  PASS
+        //   B  KORRIBAN dedicated server AND a joining client           2026-10-07  PASS
+        //   C  B plus Animation Engine (2880317963), the mod that
+        //      wiped the base list on Long Haul                         2026-10-07  PASS
+        //
+        // RegisterAtLoad is called by InstrumentPower when an instrument reaches its
+        // first frame - by then its own BeforeGameLogicInit has built every list
+        // involved. That happens on servers, hosts and clients alike, so the API exists
+        // wherever an instrument exists, with no terminal and no request.
+        //
+        // RegisterReactively stays as a harmless fallback (it is idempotent): a world
+        // with no instrument at all has nothing to read anyway. Neither ever runs
+        // before a block of the type exists, which is the one rule that matters.
+        public static void RegisterAtLoad(IMyTerminalBlock trigger)
+        {
+            if (_created) return;
+
+            // reference-library/08 records MyAPIGateway.TerminalControls being null in a
+            // block's UpdateOnceBeforeFrame once, and an unguarded call there taking a
+            // session down. Not seen in any probe run, but if it happens, defer: the next
+            // instrument to load (or the terminal-open fallback) registers instead.
+            if (MyAPIGateway.TerminalControls == null) return;
+
+            // Set BEFORE RegisterAll, deliberately, as the other two paths do. If it threw
+            // halfway, some properties would already be in the shared list, and a retry
+            // would add them again under the same ids - worse than one logged failure.
+            // (Raised by review 2026-10-07; kept.)
+            _created = true;
+            MyLog.Default.WriteLineAndConsole("GT TERMINAL: API registered at load, from "
+                + (trigger == null ? "?" : trigger.BlockDefinition.SubtypeName + " " + trigger.EntityId)
+                + " - no terminal opened, no request needed.");
+            RegisterAll();
+        }
+
         public static void RegisterReactively()
         {
             if (_created) return;
@@ -172,9 +228,9 @@ namespace GroundTruth
         ///
         /// Rather than establish exactly which writes raise that event on a dedicated
         /// server, SealSync also polls the Custom Data of the instruments it already
-        /// tracks, once a second, and ONLY while unregistered. That list exists anyway,
-        /// it is a handful of blocks, and the loop stops permanently the moment anyone
-        /// asks. Paying a trivial known cost beats depending on an engine behaviour that
+        /// tracks, once a second. That list exists anyway and is a handful of blocks.
+        /// (It used to stop once registered; since registration moved to load it keeps
+        /// running so the handshake is still answered - see SealSync.PollForApiRequest.) Paying a trivial known cost beats depending on an engine behaviour that
         /// has already been observed not to happen.
         ///
         /// The `via` argument survives into the log so the next reader can see which one

@@ -711,6 +711,12 @@ be the first thing in the integration guide, not a footnote.
 absent. Any script that tests for an optional property must use `GetProperty(id) != null`,
 or a missing API becomes a script crash instead of a graceful degradation.
 
+**Superseded 2026-10-07 — see trap 20.** Ground Truth now registers at load, from its
+first instrument's first frame, on every machine. The handshake above is still honoured
+for scripts that use it (the poll keeps running purely to answer), but nobody needs it.
+The premise that registering on your own schedule *can corrupt the list* was half right:
+it can, but only if you do it before any block of that type has initialised.
+
 ---
 
 ## 19. `GetArtificialGravity` is not what the HUD shows inside a planet's gravity
@@ -745,3 +751,55 @@ Vector3D felt = controller.GetArtificialGravity() * mult;
 
 **The general rule.** When an API value and the HUD disagree, find the HUD's stat class
 and read what it actually computes. The HUD is the number players will check you against.
+
+---
+
+## 20. A control list is frozen the first time anyone asks for it
+
+**Symptom.** A mod registers terminal properties early and every block of some type —
+often every block type in the game — loses Name, On/Off, Show in Terminal. Or the mod is
+blamed for exactly that and retreats to registering only when a terminal opens, which
+leaves its API missing on dedicated servers (trap 18).
+
+**The mechanism, decompiled 2026-10-05 (01_210_014).**
+
+- `MyTerminalControlFactory.GetList(type)` creates a type's control list on first request
+  by **copying its base classes' lists as they are at that moment**. From then on the type
+  counts as created, and its block code's `if (AreControlsCreated<T>()) return;` guards
+  skip adding anything again.
+- Each terminal block builds its own and its bases' lists in
+  `MyTerminalBlock.BeforeGameLogicInit` → `CreateTerminalControls()`, during block init,
+  **on every machine, dedicated servers included**. No UI is involved.
+- The ModAPI's `CreateProperty`, `AddControl` and `GetControls` all go straight to
+  `GetList`. **None of them calls `EnsureControlsAreCreated`** — only `CreateControl` does.
+
+So touching a list — even a bare `GetControls` read — before any block of that type (and
+its base types) has initialised freezes an empty or partial copy for the whole session.
+At `LoadData` no block exists at all, so a `GetControls<IMyTerminalBlock>` there takes
+Name and On/Off from **every** block type. That read is what broke Ground Truth's August
+builds; registration timing as such was never the problem.
+
+**The safe moment.** After a block of the type has initialised — for example in that
+block's own `GameLogic.UpdateOnceBeforeFrame`, which runs after its
+`BeforeGameLogicInit`. Ground Truth registers from its first instrument's first frame.
+
+**Proved, not assumed** (`probes/RegTimingProbe`): register from an upgrade module's first
+frame with no terminal ever opened, then read every terminal block type in the world
+through a real instance at 10 s, 60 s and 300 s.
+
+```
+A  single player                                      28 -> 30 controls, 50 types intact
+B  dedicated server, and a client joining it          28 -> 30, 51 / 42 types intact
+C  B plus Animation Engine (2880317963)               28 -> 30, 51 / 42 types intact
+```
+
+Read every type **through an instance** (`block.GetProperty(id)`), never `GetControls<T>`
+for a type that may not exist in the world — that read would itself create the list early.
+
+**Probe pitfall.** Antennas and beacons have no `Name` property: `MyRadioAntenna` and
+`MyBeacon` drop the base textbox and add `CustomName` instead. A check for `Name` on every
+type flags both as damaged when they are stock.
+
+**The general lesson.** "Doing X early broke things" is a statement about a build, not
+about X. Find what the build actually did at that moment; here it was one diagnostic read
+nobody suspected.
