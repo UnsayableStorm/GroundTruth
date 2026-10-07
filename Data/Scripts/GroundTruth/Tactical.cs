@@ -405,7 +405,12 @@ namespace GroundTruth
             else if (loudest != null)
             {
                 detectedBy = DetectedByBroadcast;
-                name = HudLabel(loudest);
+                // The grid's name, under the broadcaster's faction tag. This was the
+                // vanilla HUD label (HudLabel), which for a ship broadcasting a bare
+                // antenna is just the block name - "GCDW.Antenna" in the target track,
+                // which tells a player nothing. Jason's call, 2026-10-06: grid names.
+                // The per-broadcaster list below still carries the HUD label.
+                name = TaggedGridName(loudest, main);
                 // As the HUD colours it: the broadcasting block's owner, not the grid's
                 // majority owner. That is who the signal says it is from.
                 shownRelation = (int)loudest.GetUserRelationToOwner(dishOwner);
@@ -675,6 +680,15 @@ namespace GroundTruth
             else sb.Append(block.CustomName);
 
             return sb.ToString();
+        }
+
+        // [TAG.]GridName - the tag is the broadcaster's owner's faction, as the HUD
+        // would show it, so a contact still says whose signal it is.
+        private static string TaggedGridName(IMyTerminalBlock broadcaster, IMyCubeGrid grid)
+        {
+            string tag = FactionTag(broadcaster.OwnerId);
+            string gridName = grid.CustomName ?? "";
+            return string.IsNullOrEmpty(tag) ? gridName : tag + "." + gridName;
         }
 
         private static string FactionTag(long owner)
