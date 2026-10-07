@@ -14,8 +14,8 @@ remove it from the world when done.
 
 | Run | World | Who | Status |
 |---|---|---|---|
-| A | `tactical testing world` (local, SP) + GroundTruthTacticalTest | Jason | ready 2026-10-05 |
-| B | Tactical Test Server on KORRIBAN, server log + client log | Jason | needs Workshop upload |
+| A | `tactical testing world` (local, SP) + GroundTruthTacticalTest | Jason | **PASS 2026-10-05** (after the CustomName check fix) |
+| B | Tactical Test Server on KORRIBAN, server log + client log | Jason | **PASS 2026-10-07** both sides: trigger at load (GT_HabitatMonitor), 28 -> 30, 51 types intact on server, 42 types on client, read 42, zero terminals |
 | C | A or B with Animation Engine (2880317963) added: the mod that wiped the base list on Long Haul | Jason | after A/B |
 
 ## Procedure, run A
