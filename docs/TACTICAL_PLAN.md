@@ -418,7 +418,7 @@ actions if 0.6 passed. Selection survives reload.
 2.2 **Contact List app** (`GT_Contacts`). Text rows sized to the surface; configurable sort
 (range, bearing, closing rate, class) and a row cap; unavailable fields print as `—`, never
 as `0`.
-2.3 **Tactical Radar app** (`GT_Radar`). Plot per D5; range rings with labels; own heading
+2.3 **Tactical Radar app** (`GT_Radar`). Plot per D5; range rings with labels, the outer ring fixed at the sensor's range (view distance; Custom Data `Range` overrides - Jason 2026-10-07, replacing auto-zoom); own heading
 mark; contact markers by class; elevation stalks; optional velocity vectors; tracked
 contact highlighted; lost contacts hollow. Built-in sprites only (`Circle`,
 `CircleHollow`, `SquareSimple`, `Triangle`) — no new textures, so ENGINE_TRAPS 2 and 3 do

@@ -328,7 +328,6 @@ namespace GroundTruth
 
         protected override string Title { get { return "TACTICAL"; } }
 
-        private static readonly double[] StepsKm = { 1, 2, 3, 5, 7.5, 10, 15, 20, 25, 30, 50 };
 
         protected override void DrawTactical(MySpriteDrawFrame frame, IMyTerminalBlock dish, Color fg)
         {
@@ -360,15 +359,14 @@ namespace GroundTruth
             }
 
             // ---- range ----
+            // The outer ring IS the sensor's range - the world's view distance (Tactical,
+            // ScanRadius) - so the plot shows everything the dish can see and the edge of
+            // the screen means the edge of detection. Jason, 2026-10-07. This was an
+            // auto-zoom to the next step above the farthest contact, which put the outer
+            // ring at 7.5 km with a 15 km sensor and hid how far the dish actually reaches.
+            // A "Range" key in Custom Data still overrides it for a closer view.
             double scanKm = Table != null && Table.ScanRadius > 0 ? Table.ScanRadius / 1000.0 : 10;
-            double farthest = 0;
-            for (int i = 0; i < Contacts.Count; i++)
-                farthest = Math.Max(farthest, TacticalMath.Range(pos, Contacts[i].Position) / 1000.0);
-            double autoKm = scanKm;
-            for (int i = 0; i < StepsKm.Length; i++)
-                if (StepsKm[i] >= Math.Max(Tactical.DarkReturnRange / 1000.0, farthest * 1.1)) { autoKm = StepsKm[i]; break; }
-            autoKm = Math.Min(autoKm, Math.Max(scanKm, 1));
-            double rangeKm = SettingKm("range", autoKm);
+            double rangeKm = SettingKm("range", scanKm);
             double rangeM = rangeKm * 1000.0;
 
             // ---- plot geometry ----
