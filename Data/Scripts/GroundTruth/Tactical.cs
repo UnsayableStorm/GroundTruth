@@ -701,8 +701,21 @@ namespace GroundTruth
         private static string TaggedGridName(IMyTerminalBlock broadcaster, IMyCubeGrid grid)
         {
             string tag = FactionTag(broadcaster.OwnerId);
-            string gridName = grid.CustomName ?? "";
+            string gridName = StripNpcPrefix(grid.CustomName ?? "");
             return string.IsNullOrEmpty(tag) ? gridName : tag + "." + gridName;
+        }
+
+        // MES names its spawns "(NPC-IMDC) Protos-Class Corvette Mk.2". Under the faction
+        // tag that read "IMDC.(NPC-IMDC) Proto.." on the Target Track - the faction twice
+        // and the ship class cut off. The tag already says whose it is, and the relation
+        // already says it is not a player, so the prefix goes (Jason, 2026-10-07).
+        private static string StripNpcPrefix(string name)
+        {
+            if (!name.StartsWith("(NPC-", StringComparison.OrdinalIgnoreCase)) return name;
+            int close = name.IndexOf(')');
+            if (close < 0 || close + 1 >= name.Length) return name;   // nothing left: keep it
+            string rest = name.Substring(close + 1).TrimStart();
+            return rest.Length == 0 ? name : rest;
         }
 
         private static string FactionTag(long owner)
