@@ -267,8 +267,22 @@ namespace GroundTruth
             long dishOwner = dish.OwnerId;
             t.UnownedDish = dishOwner == 0;
 
+            // Range is the world's VIEW distance (or sync distance, if that is larger).
+            //
+            // This was sync distance, so two players on a server could never disagree
+            // because one happened to stream more. Jason, 2026-10-07: in a full-modpack
+            // world with sync 3 km and view 15 km, an IMDC corvette sat on the HUD at 5 km
+            // and only reached the radar at 3 km - the sensor was blinder than the
+            // helmet. View distance is what the player can already see. In SP and for a
+            // host every grid is present, so this is the whole answer there; a dedicated-
+            // server client still only sees what it has streamed (TACTICAL_PLAN §10).
             double radius = 3000;
-            try { radius = MyAPIGateway.Session.SessionSettings.SyncDistance; } catch { }
+            try
+            {
+                var settings = MyAPIGateway.Session.SessionSettings;
+                radius = Math.Max(settings.ViewDistance, settings.SyncDistance);
+            }
+            catch { }
             if (radius < 100) radius = 3000;
             t.ScanRadius = radius;
 

@@ -293,7 +293,7 @@ app says so — it does not synthesise a heading from a dish.
 ### 5.4 `TacticalSystemState`
 
 Operational (any dish working), dish count / working count, the dark-return range, the
-streaming limit (sync distance — stated, not hidden), contact count by `DetectedBy`, seconds
+scan range (view distance, or sync if larger — stated, not hidden), contact count by `DetectedBy`, seconds
 since last scan, last error, selected contact id. All of it is state the service actually
 holds; none of it is a status message written for effect.
 
@@ -582,11 +582,13 @@ belongs to Sonnet.
 
 ## 10. Known limits, stated up front
 
-- Range cannot exceed what the machine has streamed. Beyond sync distance there is nothing
-  reliable to detect, and the Sensor Status screen says so. (A client may hold a few grids a
-  little further out; the scan's radius excludes them, so two players never disagree because
-  one of them happened to stream more.) A 50 km broadcast is only seen as far as
-  the grid is streamed.
+- **Range is the world's view distance** (or sync distance if larger), changed 2026-10-07 by
+  Jason: with sync 3 km and view 15 km, an enemy sat on the HUD at 5 km and reached the radar
+  only at 3 km. In SP and for a host every grid is present, so that is the full range. A
+  dedicated-server client can still only detect what it has streamed - roughly sync
+  distance, sometimes more - so on a DS two players may now briefly disagree at the edge.
+  Closing that needs the server to send contacts (not scheduled). Was: sync distance, chosen
+  so two players could never disagree.
 - Nothing occludes. Broadcasts pass through planets as vanilla radio does; the 2 km dark
   return sees through terrain.
 - A dark ship that closes inside 2 km is a new, unidentified contact, not the one that went
