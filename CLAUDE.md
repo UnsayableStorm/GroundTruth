@@ -120,8 +120,7 @@ rejected member and the question it served, delete that call, and reload.
        client, + Animation Engine: all PASS by 2026-10-07). It now registers from
        `InstrumentPower.UpdateOnceBeforeFrame` via `TerminalApi.RegisterAtLoad`; the handshake
        is still answered for old scripts. Why August got it wrong: ENGINE_TRAPS trap 20.
-       Needs one in-game confirmation (PB reads a GT_ property on a DS with no terminal and no
-       token) before ship.
+       **Confirmed 2026-10-07 on KORRIBAN:** `tools/pb_property_probe.cs` read the Habitat Monitor on its first run, verdict PASS, no token. Every feature is now terminal-independent.
 - **C# 6 only.** No local functions, tuples, `out var`, pattern matching or `is` with a
   declaration. The compile checker has passed a C# 7 feature once that the game then rejected.
 - **Only APIs the mod already uses, or that a probe has cleared.** No `MyIni`, reflection,
