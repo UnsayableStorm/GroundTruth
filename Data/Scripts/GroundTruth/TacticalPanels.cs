@@ -203,6 +203,12 @@ namespace GroundTruth
 
         protected override string Title { get { return "CONTACTS"; } }
 
+        protected override void AddPresetSettings(List<string[]> keys)
+        {
+            keys.Add(new[] { "Sort", "Sort: range, bearing, closing or class. Empty = range." });
+            keys.Add(new[] { "Rows", "Rows: most contacts listed, e.g. 8. Empty = as many as fit." });
+        }
+
         private const float RowStep = 30f;
         private const float RowScale = 0.58f;
         private const float Top = 108f;
@@ -327,6 +333,14 @@ namespace GroundTruth
             : base(surface, block, size) { }
 
         protected override string Title { get { return "TACTICAL"; } }
+
+        protected override void AddPresetSettings(List<string[]> keys)
+        {
+            keys.Add(new[] { "Range", "Range: outer ring, e.g. 5km or 2000m. Empty = the sensor's full range (view distance)." });
+            keys.Add(new[] { "Orientation", "Orientation: ship (nose up) or north (north up, on a planet). Empty = ship." });
+            keys.Add(new[] { "Vectors", "Vectors: on or off - a velocity line on each contact. Empty = off." });
+            keys.Add(new[] { "Labels", "Labels: tracked, all or none - which contacts get a name. Empty = tracked." });
+        }
 
 
         protected override void DrawTactical(MySpriteDrawFrame frame, IMyTerminalBlock dish, Color fg)

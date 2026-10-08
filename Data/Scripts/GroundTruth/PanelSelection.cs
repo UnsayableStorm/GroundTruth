@@ -261,6 +261,83 @@ namespace GroundTruth
             return string.Join("\n", lines.ToArray());
         }
 
+        // ---- presets: every option written out, so nobody has to look up the syntax ----
+        //
+        // Jason, 2026-10-07: "rather than forcing the user to go look it up and get the
+        // syntax wrong". When an app first runs on a surface, the keys it understands are
+        // written into that surface's section, each EMPTY and under a one-line comment
+        // saying what it takes. Empty already means "default" to the parser, so a fresh
+        // preset changes nothing about how the screen behaves; the player fills in a
+        // value after the '='.
+        //
+        // Two rules keep it from ever overriding a choice:
+        //   - A key already present - in this surface's section OR the block-wide one -
+        //     is skipped. An empty per-surface key would otherwise silently reset a
+        //     block-wide "Habitat = Galley" to nearest (see the Refresh note above).
+        //   - A marker comment records that this app's preset was written. Once it is
+        //     there nothing is added again, so a key the player deleted stays deleted.
+
+        /// <summary>
+        /// <paramref name="customData"/> with <paramref name="app"/>'s preset merged into
+        /// this surface's section, or unchanged when there is nothing to add. Each entry
+        /// of <paramref name="keys"/> is { key, help }.
+        /// </summary>
+        public static string WithPreset(string customData, int surfaceIndex, string app, List<string[]> keys)
+        {
+            customData = customData ?? "";
+            if (keys == null || keys.Count == 0) return customData;
+
+            string marker = "; Ground Truth " + app + " settings";
+            if (customData.IndexOf(marker, System.StringComparison.OrdinalIgnoreCase) >= 0) return customData;
+
+            string header = surfaceIndex >= 0 ? "[GroundTruth." + surfaceIndex + "]" : "[GroundTruth]";
+            var lines = new List<string>(customData.Split('\n'));
+            for (int i = 0; i < lines.Count; i++) lines[i] = lines[i].TrimEnd('\r');
+
+            var present = new HashSet<string>();
+            CollectKeys(lines, "[groundtruth]", present);
+            CollectKeys(lines, header.ToLowerInvariant(), present);
+
+            var add = new List<string>();
+            add.Add(marker + " - leave a value empty for the default");
+            for (int i = 0; i < keys.Count; i++)
+            {
+                if (present.Contains(keys[i][0].ToLowerInvariant())) continue;
+                add.Add("; " + keys[i][1]);
+                add.Add(keys[i][0] + " =");
+            }
+            if (add.Count == 1) return customData;   // every key already set: nothing to say
+
+            int at = -1;
+            for (int i = 0; i < lines.Count; i++)
+                if (lines[i].Trim().ToLowerInvariant() == header.ToLowerInvariant()) { at = i; break; }
+
+            if (at < 0)
+            {
+                while (lines.Count > 0 && lines[lines.Count - 1].Trim().Length == 0) lines.RemoveAt(lines.Count - 1);
+                if (lines.Count > 0) lines.Add("");
+                lines.Add(header);
+                lines.AddRange(add);
+            }
+            else lines.InsertRange(at + 1, add);
+
+            return string.Join("\n", lines.ToArray());
+        }
+
+        private static void CollectKeys(List<string> lines, string headerLower, HashSet<string> into)
+        {
+            bool inSection = false;
+            for (int i = 0; i < lines.Count; i++)
+            {
+                var t = lines[i].Trim();
+                if (t.Length == 0 || t[0] == ';' || t[0] == '#') continue;
+                if (t[0] == '[') { inSection = t.ToLowerInvariant() == headerLower; continue; }
+                if (!inSection) continue;
+                int eq = t.IndexOf('=');
+                if (eq > 0) into.Add(t.Substring(0, eq).Trim().ToLowerInvariant());
+            }
+        }
+
         /// <summary>True when any selector at all is set, for the help text.</summary>
         public bool Any { get { return _any != null || _byRole.Count > 0; } }
 

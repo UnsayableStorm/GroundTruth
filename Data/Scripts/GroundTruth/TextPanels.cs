@@ -4,6 +4,7 @@ using Sandbox.Game.GameSystems.TextSurfaceScripts;
 using Sandbox.ModAPI;
 using VRage.Game.GUI.TextPanel;
 using VRage.Game.ModAPI;
+using VRage.Utils;
 using VRageMath;
 
 namespace GroundTruth
@@ -274,12 +275,87 @@ namespace GroundTruth
 
             if (_surfaceIndex == -2) _surfaceIndex = FindSurfaceIndex();
 
+            if (!_presetChecked)
+            {
+                _presetChecked = true;
+                QueuePreset(tb);
+            }
+
             if (_selection.Refresh(tb.CustomData, _surfaceIndex))
             {
                 _byRole.Clear();
                 _statusByRole.Clear();
                 _searchCooldown = 0;
             }
+        }
+
+        // ---- the Custom Data preset (PanelSelection.WithPreset) ----
+        //
+        // Once per app instance, the first time it reads its selection. Written only by
+        // a player who may edit the block - the server drops a write without access
+        // anyway (TACTICAL_PLAN D3), and asking first keeps a passer-by's client from
+        // trying - and never on a dedicated server, which runs no screens. Queued to the
+        // game thread because this runs inside the screen's draw, and Custom Data is
+        // re-read there so it merges into whatever is current, not a stale copy.
+        //
+        // The text is deterministic, so two players' clients arriving at once write the
+        // same thing.
+        private bool _presetChecked;
+
+        /// <summary>Settings this app reads beyond its instrument: { key, help } each.</summary>
+        protected virtual void AddPresetSettings(List<string[]> keys) { }
+
+        private void QueuePreset(IMyTerminalBlock tb)
+        {
+            try
+            {
+                if (MyAPIGateway.Utilities == null || MyAPIGateway.Utilities.IsDedicated) return;
+                if (!tb.HasLocalPlayerAccess()) return;
+
+                var keys = new List<string[]>();
+                if (WantedRole == 0f)
+                {
+                    keys.Add(SelectorKey(Instruments.RoleRadiation));
+                    keys.Add(SelectorKey(Instruments.RoleHabitat));
+                    keys.Add(SelectorKey(Instruments.RoleWeather));
+                    keys.Add(SelectorKey(Instruments.RoleBio));
+                }
+                else
+                {
+                    var k = SelectorKey(WantedRole);
+                    if (k != null) keys.Add(k);
+                }
+                AddPresetSettings(keys);
+                keys.RemoveAll(k => k == null);
+
+                string app = Title;
+                int surface = _surfaceIndex;
+                MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+                {
+                    try
+                    {
+                        if (tb.Closed) return;
+                        string now = tb.CustomData;
+                        string next = PanelSelection.WithPreset(now, surface, app, keys);
+                        if (next != now) tb.CustomData = next;
+                    }
+                    catch (Exception e) { MyLog.Default.WriteLineAndConsole("GroundTruth preset write: " + e.Message); }
+                });
+            }
+            catch (Exception e) { MyLog.Default.WriteLineAndConsole("GroundTruth preset: " + e.Message); }
+        }
+
+        private static string[] SelectorKey(float role)
+        {
+            string key = PanelSelection.KeyFor(role);
+            if (key == null) return null;
+            string what =
+                role == Instruments.RoleRadiation ? "Radiation Monitor" :
+                role == Instruments.RoleHabitat ? "Habitat Monitor" :
+                role == Instruments.RoleWeather ? "Weather Station" :
+                role == Instruments.RoleBio ? "Bio Scanner" :
+                role == Instruments.RoleRadar ? "Rotating Antenna" : "instrument";
+            return new[] { key, key + ": name of the " + what + " this screen reads. Empty = the nearest one." };
         }
 
         // Which of this block's surfaces we are drawing on, so a cockpit can address
