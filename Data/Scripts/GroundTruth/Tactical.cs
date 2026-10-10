@@ -486,6 +486,12 @@ namespace GroundTruth
         // NEW, REGAINED, CHANGED (identity or detection rule moved), LOST, and EXPIRED with
         // its reason: retention (30 s lost), closed (the grid is gone), bound (64 kept).
         // The side tag matters on a dedicated server, where client and server both scan.
+        //
+        // OFF for release (Jason, 2026-10-09): on a busy server every ship coming and going
+        // writes a line on every machine with a dish watched. It earned its keep through
+        // Phases 1-2 and acceptance; set this true for a debug build. Sensor ONLINE /
+        // OFFLINE lines are not affected - they are rare and say why a radar is blank.
+        private static readonly bool LogContactTransitions = false;
 
         private static string Summary(Contact c)
         {
@@ -502,6 +508,7 @@ namespace GroundTruth
 
         private static void Log(Table t, double now, string what, Contact c, Vector3D from, string extra = null)
         {
+            if (!LogContactTransitions) return;
             try
             {
                 bool server = MyAPIGateway.Multiplayer == null || MyAPIGateway.Multiplayer.IsServer;

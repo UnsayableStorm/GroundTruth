@@ -118,12 +118,16 @@ namespace GroundTruth
         // "The light never came on" (2026-10-05) arrived with no log evidence either way:
         // these events wrote nothing, so a dead tick, a reading that never changed and a
         // fire the controller refused all looked identical (ENGINE_TRAPS 12). So every
-        // block-list change, every latch and every fire is logged, plus a heartbeat once a
-        // minute per selected event carrying exactly what the pane shows. Volume: a line
-        // a minute per configured controller, and one per real transition.
+        // block-list change, every latch and every fire is logged - one line per real
+        // event, nothing while a controller sits idle.
         //
         //   GT EVENT [SP|HOST|SERVER|CLIENT] <controller id> <what> | <pane text>
-
+        //
+        // During acceptance testing there was also a heartbeat: the pane text once a
+        // minute per configured controller. That is a line a minute per controller on
+        // every subscriber's server, forever, so it is OFF for release (Jason,
+        // 2026-10-09). Set this true for a debug build; nothing else changes.
+        private const bool Heartbeat = false;
         public const double HeartbeatSeconds = 60.0;
 
         public static void Trace(IMyTerminalBlock controller, string what, StringBuilder pane)
@@ -141,7 +145,7 @@ namespace GroundTruth
         {
             double now = GroundTruthSession.Seconds;
             if (transition != null) { Trace(controller, transition, pane); lastBeat = now; return; }
-            if (now - lastBeat >= HeartbeatSeconds) { Trace(controller, "BEAT", pane); lastBeat = now; }
+            if (Heartbeat && now - lastBeat >= HeartbeatSeconds) { Trace(controller, "BEAT", pane); lastBeat = now; }
         }
     }
 
