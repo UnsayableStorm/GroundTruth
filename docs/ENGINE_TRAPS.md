@@ -642,7 +642,7 @@ completely absent on a server. No error, no log line, nothing to search for.
 
 `CustomControlGetter` is the correct place to register terminal controls — it is the
 game telling you it has built the control list, which is the only timing that does not
-corrupt the shared list for every block of that type (trap 11). But it is a **UI** hook.
+corrupt the shared list for every block of that type (trap 20). But it is a **UI** hook.
 A dedicated server renders no terminal, so it never fires there at all.
 
 That would be a cosmetic problem if terminal properties were only read by players. They
@@ -654,14 +654,14 @@ a live server, with five instruments on the grid:
 GT instruments on grid (by subtype): 5
 Blocks exposing GT_ properties:      0     <- API absent server-side
 Upgrade modules on grid:            39
-  ...still have 'Name':             39     <- vanilla list intact, so this is not trap 11
+  ...still have 'Name':             39     <- vanilla list intact, so this is not trap 20
 ```
 
 Both numbers matter. The second one is what proves the diagnosis: the list is healthy
 and our properties are simply not in it.
 
 **The fix that is wrong.** Register on a timer at world load, gated on the list looking
-built. That is exactly the proactive shape that caused trap 11, now aimed at other
+built. That is exactly the proactive shape that caused trap 20, now aimed at other
 people's servers, and "probably harmless where nothing is rendered" is not knowledge.
 
 **The fix.** Make it an explicit request, and give scripts a way to make one. A PB writes

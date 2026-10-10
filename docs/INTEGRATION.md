@@ -28,6 +28,7 @@ when it is missing.
 - [Property reference](#property-reference)
 - [Event Controller events](#event-controller-events)
 - [LCD apps](#lcd-apps)
+- [Tactical sensor](#tactical-sensor)
 - [Cost model](#cost-model)
 - [Known limits](#known-limits)
 - [Versioning](#versioning)
@@ -39,9 +40,10 @@ when it is missing.
 ```csharp
 // Every instrument is an UpgradeModule block. Filter by role to exclude other modules.
 //
-// GetProperty, not GetValueFloat: GetValueFloat THROWS when a property does not exist,
-// and on a dedicated server it does not exist until something asks for it. See the next
-// section - a one-line handshake at the top of your script covers it.
+// GetProperty, not GetValueFloat, for the test: GetValueFloat THROWS when a property does
+// not exist - and it does not exist in a world with no Ground Truth instrument, or with
+// Ground Truth not installed. Where an instrument exists, the properties are there from
+// world load, single player and dedicated server alike (API 1.2+, next section).
 var sensors = new List<IMyUpgradeModule>();
 GridTerminalSystem.GetBlocksOfType(sensors, b => b.GetProperty("GT_SysBlockRole") != null);
 
@@ -58,8 +60,10 @@ and `IMyUpgradeModule` is the narrowest one that also renders a detail info pane
 declare no `<Upgrades>`, so they do nothing at all next to a refinery — the base type is a
 means, not a purpose.
 
-The two Rotating Antennas are the exception: those are real `RadioAntenna` blocks,
-they carry no `GT_` properties, and broadcasting is their entire point.
+The two Rotating Antennas are the exception: those are real `RadioAntenna` blocks and
+carry **no `GT_` properties**. Since the Tactical release they are also the ship's
+**tactical sensor** — see [Tactical sensor](#tactical-sensor) for what that exposes and,
+just as important, what it does not yet expose to scripts.
 
 ---
 
@@ -67,7 +71,14 @@ they carry no `GT_` properties, and broadcasting is their entire point.
 
 **Since the Tactical update, `GT_` properties exist as soon as any Ground Truth instrument
 has loaded: in single player, on a host, and on a dedicated server, with no terminal opened
-and nothing for your script to do.** A PB can read an instrument on its first run.
+and nothing for your script to do.** A PB can read an instrument on its first run. This is
+API **1.2**; `GT_SysApiVersion` reports it.
+
+Precisely: the properties are registered when the **first instrument in the world
+finishes loading**, on each machine. In a world with no instrument they do not exist,
+which is harmless — there is nothing to read. Registration does not wait for a terminal and
+does not need a request. (Why that took until 1.2 to get right is trap 20 in
+[`ENGINE_TRAPS.md`](ENGINE_TRAPS.md).)
 
 Detect instruments by subtype rather than by a `GT_` property, so the check works even on a
 grid with no instrument at all:
@@ -250,7 +261,7 @@ Live state:
 | `GT_WxTrend` | float | +1 building, 0 steady, −1 easing |
 | `GT_WxElapsed` | float | s since first seen |
 | `GT_WxPeaked` | bool | |
-| `GT_WxTimeToClear` | float | s, **−1 unless the onset was observed** |
+| `GT_WxTimeToClear` | float | s. **−1 while the effect is still building** (before `GT_WxPeaked`), and **−1 if its onset was not observed**; otherwise the time remaining by the symmetry rule, ≥ 0 |
 | `GT_WxSpeed` | float | m/s of the block itself |
 
 Live effect on systems:
@@ -351,11 +362,15 @@ always relative to the grid and needs no compass mod.
 
 ## Event Controller events
 
-Ten events, usable with no scripting. They read the same properties documented above, so
-an event and a script watching the same instrument cannot disagree.
+Ten events, usable with no scripting. They read the same per-block state that backs the
+properties documented above — directly, not through the terminal properties — so an
+event and a script watching the same instrument cannot disagree, and an event does not
+depend on the property API being registered.
 
-Each offers a block list filtered to instruments that can answer it, and honours the
-controller's AND/OR mode.
+Each offers a block list filtered to instruments that can answer it (by role, read from
+the block's subtype). The boolean and threshold events honour the controller's AND/OR
+mode; **Weather type always uses OR** — any selected Weather Station seeing that weather
+is a yes.
 
 ### Boolean — no threshold
 
@@ -387,7 +402,15 @@ that survives is a **percentage**, so the slider means what it appears to mean.
 
 | Event | Id | Notes |
 |---|---|---|
-| Weather type | 1002 | choices populated from the planet's own generator |
+| Weather type | 1002 | choices populated from the planet's own generator; `Any weather` matches anything but clear |
+
+The chosen weather is stored **on the controller, saved with the world and synced** to the
+server and every client (a `MySync` field, saved through a vanilla
+`MyObjectBuilder_ModCustomComponent`, so a world still loads if the mod is removed). It is
+stored as a key derived from the weather's **subtype name**, not as a list position, so it
+means the same weather on any planet and survives the list changing. A selection the
+current planet cannot produce shows as `weather not found on this planet` in the info
+pane and can never report *yes*.
 
 ### Ids 1007, 1010 and 1011 are retired
 
@@ -408,28 +431,89 @@ alarm into a different one.
 
 ### Shared behaviour
 
-- Fire on a **change of state**, never repeatedly
-- The **first evaluation latches silently** — building a controller during a storm does
-  not raise an alarm for an event nobody saw start
+- **Evaluated once a second**, on the same cadence as the readings.
+- Fire on a **change of state**, never repeatedly.
+- The **first evaluation latches silently** — after the block list is set, and after a
+  world load — so building a controller during a storm does not raise an alarm for an
+  event nobody saw start.
+- **Changing a setting re-evaluates against the state already held**, and fires if the
+  new setting flips it. Dragging the threshold past the current reading, switching
+  above/below, toggling AND mode or the controller's On/Off, or picking a different
+  weather type all fire immediately when they change the answer. This matches vanilla
+  events, and it is how you test a controller.
 - A **powered-down instrument is skipped**, not read as false. A dark sensor never clears
   an alarm.
+- In **AND** mode the answer is "every answering instrument says yes"; in **OR**, "any
+  does". Instruments that cannot answer right now are left out of both. (Weather type is
+  always OR, as above.)
 - Ids are permanent and never recycled. Saved controllers store them.
+
+### Wiring the outputs
+
+The controller's toolbar is pairs of slots. The **yes** condition fires the **first** slot
+of every pair (toolbar indices 0, 2, 4…), the **no** condition the **second** (1, 3, 5…) —
+the vanilla convention: `TriggerAction(0)` and `TriggerAction(1)` step through the toolbar
+two at a time. The slot captions say which is which, e.g. *Pressure seal lost* /
+*Pressure seal restored*.
+
+**Vanilla ownership rules apply to the toolbar, and they fail silently.** The controller
+only runs an action on a block its owner may use. A target block with **no owner of its
+own** (lights are the common case) is judged by its **grid's majority owner** — so a light
+on a ship mostly owned by an NPC is skipped without a word, and the event appears not to
+work. On a grid you own, it does. This is engine behaviour, not Ground Truth's.
+
+### Where it runs
+
+Events work **straight after a world load and on dedicated servers**, with nobody needing
+to open a terminal first. Every machine evaluates (that is what feeds the info pane), but
+**only the server fires** the toolbar — `TriggerAction` is server-only in the engine, and
+the mod says so explicitly rather than relying on it.
+
+### The info pane
+
+The selected event writes the controller's **Custom Info** (shown under its Detailed Info
+in the terminal): the event's name, condition and threshold where it has them, each
+selected instrument's current value — or `not working` / `no reading` — and the active
+output, e.g. `Output: 1 - Pressure seal lost`. Each client builds this from its own
+readings, so it costs no network traffic. Only the selected event writes; the others on
+the same controller stay silent.
+
+### Diagnostic log lines
+
+So a "did not fire" report can be answered from the game log, each event writes one line
+per real transition, never while idle:
+
+```
+GT EVENT [SP|HOST|SERVER|CLIENT] <controller id> BLOCKS +1 observing=1
+GT EVENT [SERVER] <controller id> LATCH no | <pane text>
+GT EVENT [SERVER] <controller id> TRIGGER slot=0 working=True functional=True ran=[0]
+GT EVENT [SERVER] <controller id> FIRE slot 1 (yes) | <pane text>
+```
+
+`TRIGGER … ran=[]` means the controller was asked to fire and ran **nothing** — almost
+always the ownership rule above, or an empty toolbar. A Habitat Monitor also logs every
+change of seal: `GT SEAL CHANGE [SERVER] … airtight True -> False …`.
 
 ---
 
 ## LCD apps
 
-Six text surface scripts ship with the mod. The script id is what a Programmable Block
+Nine text surface scripts ship with the mod. The script id is what a Programmable Block
 writes to `IMyTextSurface.Script`, and what the LCD's script list stores.
 
-| Script id | Name | Notes |
-|---|---|---|
-| `GT_Radiation` | Ground Truth: Radiation | one instrument, full detail |
-| `GT_Habitat` | Ground Truth: Habitat | |
-| `GT_Weather` | Ground Truth: Weather | |
-| `GT_Bio` | Ground Truth: Life Detection | species icons |
-| `GT_Overview` | Ground Truth: Overview | all four, layout branches on aspect ratio |
-| `GT_Strip` | Ground Truth: Strip (corner LCD) | small label over large value, one column each |
+| Script id | Name | Reads | Notes |
+|---|---|---|---|
+| `GT_Radiation` | Ground Truth: Radiation | Radiation Monitor | one instrument, full detail |
+| `GT_Habitat` | Ground Truth: Habitat | Habitat Monitor | |
+| `GT_Weather` | Ground Truth: Weather | Weather Station | |
+| `GT_Bio` | Ground Truth: Life Detection | Bio Scanner | species icons |
+| `GT_Overview` | Ground Truth: Overview | all four | layout branches on aspect ratio |
+| `GT_Strip` | Ground Truth: Strip (corner LCD) | all four | small label over large value, one column each |
+| `GT_Contacts` | Ground Truth: Contact List | Rotating Antenna | every contact: name, class, range, bearing, closing |
+| `GT_Radar` | Ground Truth: Tactical Radar | Rotating Antenna | plan plot; outer ring = sensor range |
+| `GT_Track` | Ground Truth: Target Track | Rotating Antenna | the tracked contact in detail |
+
+The three tactical apps are described under [Tactical sensor](#tactical-sensor).
 
 ![Overview](images/panel-overview.png)
 
@@ -516,8 +600,56 @@ to name matching.
 
 Room identity is deliberately **not** used for matching, even though it would be the ideal
 key for the Habitat app. Rooms come from the pressurisation system and a dedicated-server
-*client* has none — trap 10 in [`ENGINE_TRAPS.md`](ENGINE_TRAPS.md). Selection would then
+*client* has none — trap 15 in [`ENGINE_TRAPS.md`](ENGINE_TRAPS.md). Selection would then
 work in single player and silently pick a different instrument on a server.
+
+### Options in Custom Data
+
+Every app writes the options it understands into its surface's section the first time it
+runs, each **empty** and under a comment saying what it accepts. Empty means "default", so
+a fresh preset changes nothing; a player fills in a value after the `=`.
+
+```
+[GroundTruth.0]
+; Ground Truth TACTICAL settings - leave a value empty for the default
+; Radar: name of the Rotating Antenna this screen reads. Empty = the nearest one.
+Radar =
+; Range: outer ring, e.g. 5km or 2000m. Empty = the sensor's full range (view distance).
+Range =
+...
+```
+
+The preset **never overrides a choice**: a key already present in this surface's section
+or the block-wide one is skipped, and a marker comment (`; Ground Truth <APP> settings`)
+records that the preset was written, so nothing is added again and a key a player deletes
+stays deleted. It is written once per app per surface, on the game thread, only by a
+player with access to the block, and never by a dedicated server (which runs no screens).
+Other sections and lines are preserved byte for byte.
+
+Every key an app reads, with the default when the key is absent or empty:
+
+| App | Key | Accepts | Default |
+|---|---|---|---|
+| Radiation | `Radiation` (or `Instrument`) | name or part of a name; `Radiation.Id` written by the dropdown | nearest Radiation Monitor |
+| Habitat | `Habitat` (or `Instrument`) | as above | nearest Habitat Monitor |
+| Weather | `Weather` (or `Instrument`) | as above | nearest Weather Station |
+| Life Detection | `Life` / `Bio` (or `Instrument`) | as above | nearest Bio Scanner |
+| Overview, Strip | `Radiation`, `Habitat`, `Weather`, `Life` | as above, one per role | nearest of each |
+| Contact List, Tactical Radar, Target Track | `Radar` | name of a Rotating Antenna | nearest Rotating Antenna |
+| Tactical Radar | `Range` | a distance: `5km`, `2000m`, or a bare number in km; 0.05–1000 km | the sensor's range (view distance) |
+| Tactical Radar | `Orientation` | `ship` (nose up) or `north` (north up; needs natural gravity) | `ship` |
+| Tactical Radar | `Vectors` | `on`/`off` (also `true`/`false`, `yes`/`no`, `1`/`0`) | `off` |
+| Tactical Radar | `Labels` | `tracked`, `all` or `none` | `tracked` |
+| Contact List | `Sort` | `range`, `bearing`, `closing` or `class` | `range` |
+| Contact List | `Rows` | a whole number, 1–199 | as many as fit |
+
+`Instrument` is the fallback for **any** role without a key of its own — on Overview and
+Strip it applies to all four at once, which is rarely what you want there; use the role
+keys.
+
+Keys are case-insensitive. A malformed value is that app's default, never an error.
+Unknown keys are kept and ignored, so a newer app's settings can sit in an older app's
+Custom Data harmlessly. Edits take effect within a second.
 
 ### Whose reading is it
 
@@ -538,6 +670,158 @@ instrument normally mounted indoors.
 
 ---
 
+## Tactical sensor
+
+The **Rotating Antenna** (`GT_RotatingRadarDish`, small grid `GT_RotatingRadarDish_S`) is a
+real, working radio antenna that is also the ship's tactical sensor. It must be **working**
+— powered, on and functional — to detect anything; an offline dish keeps its last-known
+contacts until they expire. Three LCD apps read it: `GT_Contacts`, `GT_Radar`, `GT_Track`.
+
+![Target Track](images/panel-target-track.webp)
+
+### For scripts and mods: what is, and is not, exposed
+
+Read this first if you are writing against the radar.
+
+- **The dish has no `GT_` properties.** It is a `RadioAntenna`, and the property API is
+  registered against `IMyUpgradeModule`. There is no terminal-property or mod-message API
+  for contacts yet. Scalar radar properties and radar events are on the list, not
+  scheduled; open an issue if you need them.
+- **The tracked contact is readable and writable** through the dish's Custom Data — see
+  [Tracking](#tracking). That is the one integration point today.
+- **The three LCD apps** can be put on any surface by script id, like the others.
+- The **toolbar actions** (`GT_TrackNext`, `GT_TrackPrevious`, `GT_TrackAutomatic`) are
+  proven from player toolbars and button panels, including after a reload with no terminal
+  opened. Calling them from a Programmable Block with `ApplyAction` is **not verified** — do
+  not rely on it; write `Track.Id` instead.
+
+### What counts as a contact
+
+The sensor is a **signals receiver with a short-range return**, not a hull radar. A
+"ship" is a **mechanical group** — grids joined by rotors, pistons, hinges and the like —
+and a docked ship (connector) stays separate. A group is a contact if, and only if:
+
+1. **It is ours**: its majority owner (`BigOwners[0]`) is the dish's owner or shares a
+   faction with it. Always known, at any range within the scan.
+2. **It is broadcasting to us**: a working antenna with broadcasting on, or a working
+   beacon, anywhere on the group, whose broadcast radius **reaches this dish**.
+3. **It is close**: the nearest point of its hull is within **2 km** — the dark return.
+   Fixed in the mod, deliberately not a setting, so stealth still works beyond 2 km.
+
+Groups under **5 blocks** are debris and ignored. Projections are ignored. The scan only
+considers grids within the sensor's **range: the world's view distance, or sync distance if
+that is larger**, measured from the dish.
+
+Two differences from the vanilla HUD, both deliberate: vanilla shows a broadcaster that
+reaches **any antenna in your network**, while this sensor requires it to reach **this
+dish**; and on a **dedicated-server client** the sensor can only see grids the server has
+streamed to that client — roughly sync distance, sometimes a little more — so two players
+may briefly disagree about a ship at the edge. In single player and for a host every grid
+is present, so the full range applies.
+
+### What the sensor knows about a contact
+
+| Detected by | Name | Relationship |
+|---|---|---|
+| ours | the main grid's name | `OWNER` or `FACTION` |
+| broadcast | `TAG.GridName` — the main grid's name, under the faction tag of the strongest broadcaster's owner; Modular Encounters' `(NPC-XXX) ` prefix is removed | the strongest broadcaster's owner relative to the dish's owner: normally `FRIENDLY`, `NEUTRAL`, `ENEMY` or `NOBODY`. It can read `OWNER` or `FACTION` when that broadcaster is yours on a ship mostly owned by someone else — the relationship is the signal's, the "ours" rule is the hull's |
+| dark return | `UNIDENTIFIED` | `UNKNOWN` |
+
+The **main grid** of a group is the one with the most blocks (ties to the lowest
+EntityId), and its EntityId is the **contact id**. The **strongest broadcaster** is the one
+with the largest radius (ties to the lowest id), so a name never flickers between two equal
+antennas. An unowned dish has no owner to compare against, so nothing reads as ours.
+
+Each contact also carries: **position** (centre of the bounding box of the whole group), **velocity** (the
+grid's physics velocity — never derived from position changes, which a server's
+corrections make unreliable), **class** (`Station` if static, else `Large ship` / `Small
+ship`), **size** (the main grid's own dimensions, not the whole group's), block count
+(the whole group's), when it was first seen, and for broadcasters the
+list of signals with each one's HUD text and radius.
+
+### Lifecycle
+
+| State | Meaning |
+|---|---|
+| DETECTED | met a rule on the latest scan |
+| LOST | met no rule on the latest scan; shown at its last-known position |
+| EXPIRED | lost for **30 s**, or the grid no longer exists — removed from the table |
+
+A LOST contact that is detected again is the same contact (same id), not a new one. At
+most **64** contacts are kept, nearest first; when that bites, the dish's terminal info
+pane says `Nearest 64 shown; more out there`.
+
+### Scanning
+
+One contact table per ship, shared by every dish on the mechanical group, so two dishes do
+not scan twice and three screens do not scan at all — they read the table. Range and
+bearing are computed when shown, from the dish the reader is looking at.
+
+The table is scanned every **2 seconds**, but **only while something is reading it**: one
+of the three apps on a visible screen, the dish's terminal info pane, or a tracking action,
+within the last 5 seconds. An unwatched dish costs nothing. Each machine scans for itself —
+there is no network traffic for contacts — which is why a dedicated server's clients can
+differ at the edge of streaming range.
+
+Broadcaster state (on/off, radius, HUD text) is read live on every scan. The list of which
+blocks on a grid *are* broadcasters is cached for 10 s, so a newly **built** antenna can
+take up to 10 s to be noticed; switching one on or off is seen on the next scan.
+
+The game log carries `GT TACTICAL … SENSOR ONLINE` / `SENSOR OFFLINE` when a dish starts or
+stops working.
+
+### Tracking
+
+Each ship tracks **one contact at a time**, shared by every screen and every player aboard.
+
+**Automatic** (the default): the **nearest DETECTED contact whose relationship is
+`ENEMY`**. It never falls back to a neutral, and never picks a dark return — choosing an
+unidentified ship is a manual decision. With no enemy detected, nothing is tracked and the
+screens say so.
+
+**Manual**: the dish's terminal dropdown *Tracked contact*, or the toolbar actions *Track
+next contact*, *Track previous contact* and *Track automatic (nearest enemy)*. A manual
+selection holds while the contact is LOST, and falls back to automatic once it EXPIRES.
+
+**Where it is stored**: the contact id, in the block-wide `[GroundTruth]` section of the
+Custom Data of **every dish** on the ship, so losing one dish does not lose the selection:
+
+```
+[GroundTruth]
+Track.Id = 104857600012345
+```
+
+Empty or absent means automatic. A script may **read** this to learn what the ship is
+tracking (the contact id is the target grid's EntityId), and may **write** it to select a
+contact — any valid contact id is picked up within a second; an id that is not in the
+table means automatic until that grid is detected. Writes made through the terminal and
+toolbar are refused, visibly, for a player without access to the dish; the engine itself
+also drops a Custom Data write from a client without access.
+
+A stale id is deliberately left in place after the contact expires, so if the same grid is
+detected again the ship is tracking it again.
+
+### The three apps
+
+- **Contact List** (`GT_Contacts`) — every contact with name, class, range, relative
+  bearing and closing speed; LOST contacts show how long ago. Options: `Sort`, `Rows`.
+- **Tactical Radar** (`GT_Radar`) — plan view around the ship. Ship-relative (nose up) by
+  default, or north-up where there is natural gravity. Four range rings, the outer one at
+  the sensor's range unless `Range` sets a closer view; a fainter ring marks the 2 km
+  dark-return boundary when it falls inside the plot. Markers: square for a station,
+  triangle for a large ship, circle for a small ship, and a hollow circle for any LOST
+  contact; coloured by relationship, with an elevation stalk; the tracked contact is ringed and labelled.
+  Options: `Range`, `Orientation`, `Vectors`, `Labels`.
+- **Target Track** (`GT_Track`) — the tracked contact: name, relationship, class, how it
+  was detected, whether the track is automatic or manual, range, bearing relative to the
+  ship's nose, elevation, speed, closing rate, size, how long it has been held, and its
+  signals.
+
+Bearings are relative to the ship's nose, because there is no vanilla compass (ENGINE_TRAPS
+trap 7). Closing speed is positive when the range is shrinking.
+
+---
+
 ## Cost model
 
 Readings are computed **once per second per block** into a cache. A property read returns
@@ -547,7 +831,17 @@ the cached value.
 raycast or a sphere query by reading a property.
 
 The Bio Scanner is the exception: its sphere query runs every **5 seconds**, declared in
-`GT_BioWindow`. It is the one genuinely expensive operation in the mod.
+`GT_BioWindow`. It is the one genuinely expensive operation among the instruments.
+
+The **tactical sensor** is the other: a sphere query out to the sensor's range every
+**2 seconds**, plus a walk of each grid's blocks at most once per 10 s — but **only while
+the table is being read** (see [Scanning](#scanning)). A dish nobody is looking at costs a
+dictionary lookup. With a large view distance and many grids nearby, a radar screen in
+view is the most expensive thing Ground Truth does.
+
+Event Controller events evaluate once a second per controller whose selected event is a
+Ground Truth one, reading the same cached state; idle controllers cost nothing more.
+LCD presets are written once per app per screen.
 
 ---
 
@@ -564,6 +858,18 @@ for mod code at runtime.
 **Bearing is undefined in space and near the poles.** Check `GT_BioBearingFrame`.
 
 **`GT_Grid` is reserved and unimplemented.** Do not code against those names yet.
+
+**The radar has no script API** beyond `Track.Id` in the dish's Custom Data. See
+[Tactical sensor](#for-scripts-and-mods-what-is-and-is-not-exposed).
+
+**On a dedicated-server client the radar sees only streamed grids** — roughly sync
+distance — even though its configured range is the view distance.
+
+**Event Controller toolbars obey vanilla ownership**: an unowned target block on a grid
+mostly owned by someone else is skipped silently. Not something the mod can change.
+
+**Weather-type selection is by name.** A selection made on one planet means the same
+weather everywhere, but shows as *not found* on a planet that cannot produce it.
 
 ---
 
@@ -584,6 +890,7 @@ whether the old contract still holds.
 
 | Version | Change |
 |---|---|
+| 1.2 | The Tactical release. **No property added, removed or changed.** The properties now exist from **world load on every machine**, dedicated servers included, wherever an instrument exists — the `GT_API_ENABLE` handshake is no longer needed, though it is still answered. Scripts may test `GT_SysApiVersion >= 1.2` to skip it. Event Controller events now fire on settings changes and on dedicated servers with no terminal opened (see [Shared behaviour](#shared-behaviour)). New: the tactical sensor and three LCD apps, which add **no** properties. |
 | 1.1 | Added `GT_HabSealKnown`. Seal state is synced from the server, and this distinguishes "not sealed" from "not yet told". Additive; 1.0 consumers are unaffected, though on a dedicated server they may briefly read a seal as open just after joining. |
 | 1.0 | Initial published contract. |
 

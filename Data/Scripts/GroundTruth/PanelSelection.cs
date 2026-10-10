@@ -26,7 +26,7 @@ namespace GroundTruth
     // Deliberately NOT used for matching: the pressurised room the panel sits in, which
     // would be the ideal key for the Habitat app. Room identity comes from the
     // pressurisation system, and a dedicated-server CLIENT has none - see ENGINE_TRAPS
-    // trap 10. Selection would then work in single player and silently pick a different
+    // trap 15. Selection would then work in single player and silently pick a different
     // instrument on a server, which is worse than a rule that is merely approximate.
     //
     // ---- Custom Data format ----

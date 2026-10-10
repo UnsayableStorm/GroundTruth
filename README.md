@@ -1,7 +1,8 @@
 # Ground Truth: Environmental and Tactical Information Systems
 
 Sensor blocks for Space Engineers that measure what is actually happening around a grid,
-and report it accurately. Radiation, weather, atmosphere, life.
+and report it accurately. Radiation, weather, atmosphere, life — and, through the
+Rotating Antenna, which other ships are out there.
 
 No progression, no gating, no tech tree. The instruments measure; what you do with the
 readings is your business.
@@ -44,6 +45,29 @@ terminal lists them and pins the screen to one; see
 Life Detection reporting a nil return — *"no returns; the instrument has no opinion as to
 why"*. An instrument that finds nothing has not proved the place is empty.
 
+Every screen writes its options into the LCD's Custom Data the first time it runs — each
+one empty, with a note saying what it accepts — so nobody has to look up a key or guess the
+syntax. See [`docs/INTEGRATION.md`](docs/INTEGRATION.md#options-in-custom-data).
+
+### Tactical displays
+
+![Target Track](docs/images/panel-target-track.webp)
+
+The **Rotating Antenna** is the ship's tactical sensor. It identifies any ship whose antenna
+or beacon reaches it, picks up anything within 2 km whether broadcasting or not, and sees
+as far as the world's view distance. Three apps read it: **Contact List**, **Tactical
+Radar** and **Target Track**, which follows the nearest enemy by default — or whatever you
+pick from the antenna's terminal or a toolbar button. How detection, identification and
+tracking work, exactly: [`docs/INTEGRATION.md`](docs/INTEGRATION.md#tactical-sensor).
+
+### Event Controller
+
+Ten Ground Truth events appear in the vanilla Event Controller — seal breached, radiation
+building, dangerous weather, a specific weather type, solar output, outside oxygen,
+wildlife, non-biological contacts and more. They work on dedicated servers and straight
+after a world load, fire when a setting change flips the answer, and show what each sensor
+is reading in the controller's info panel.
+
 ---
 
 ## What is in this repository
@@ -52,8 +76,9 @@ why"*. An instrument that finds nothing has not proved the place is empty.
 |---|---|
 | `Data/` | the mod — block definitions, scripts, LCD textures |
 | `Models/`, `Textures/` | art |
-| `docs/INTEGRATION.md` | **API reference and integration guide** for scripters and modders |
-| `docs/ENGINE_TRAPS.md` | **engine findings** — seventeen things that cost real time, published so nobody else pays for them twice |
+| `docs/INTEGRATION.md` | **API reference and integration guide** for scripters and modders — every property, event, LCD option and the tactical sensor's rules |
+| `docs/ENGINE_TRAPS.md` | **engine findings** — twenty things that cost real time, published so nobody else pays for them twice |
+| `docs/TACTICAL_PLAN.md` | the tactical sensor's design record: decisions, probe results, and what changed in testing |
 | `probes/` | whitelist probe mods, ready to copy |
 | `tools/` | the icon build pipeline |
 
@@ -63,17 +88,24 @@ why"*. An instrument that finds nothing has not proved the place is empty.
 
 ## For scripters and modders
 
-Start with [`docs/INTEGRATION.md`](docs/INTEGRATION.md). Around 76 terminal properties,
-ten Event Controller events, documented conventions, and a stated version contract.
+Start with [`docs/INTEGRATION.md`](docs/INTEGRATION.md). 76 terminal properties, ten Event
+Controller events, nine LCD apps and every option they read, the tactical sensor's
+detection rules, documented conventions, and a stated version contract (currently **1.2**).
 
 Short version:
 
 ```csharp
+// Find instruments by subtype: works even where the properties do not exist yet.
 var sensors = new List<IMyUpgradeModule>();
-GridTerminalSystem.GetBlocksOfType(sensors, b => b.GetValueFloat("GT_SysBlockRole") > 0);
+GridTerminalSystem.GetBlocksOfType(sensors, b => b.BlockDefinition.SubtypeName.StartsWith("GT_"));
 
 float rads = sensors[0].GetValueFloat("GT_RadRate");   // -1 means "no reading"
 ```
+
+The properties exist from **world load**, on single player and dedicated servers alike —
+no terminal needs opening and no request is needed (API 1.2). The radar has **no**
+properties yet; the tracked contact is readable and writable as `Track.Id` in the Rotating
+Antenna's Custom Data.
 
 Role numbers **1000+** are reserved for anyone publishing instruments that follow the same
 conventions.
@@ -105,6 +137,12 @@ you meet them:
   overwrote the file holding the id
 - Component descriptors drifting from your own registry, because an attribute cannot read
   a dictionary
+- A terminal hook that never fires on a dedicated server — where Programmable Blocks
+  actually run
+- `GetArtificialGravity` disagreeing with the HUD inside a planet's gravity
+- A block type's terminal control list **frozen the first time anyone asks for it**: why
+  touching it at world load strips Name and On/Off from every block in the game, and the
+  moment when registering early is provably safe
 
 `probes/` holds the probe mods these came from. Most are tiny and execute nothing behind a
 `const false` guard, answering "can mod code reach this" in one game load. Two of them do

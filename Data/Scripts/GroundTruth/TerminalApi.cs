@@ -47,7 +47,12 @@ namespace GroundTruth
         //
         // 1.1 added GT_HabSealKnown. Additive by the rule above, so anything written
         // against 1.0 is unaffected.
-        public const float ApiVersion = 1.1f;
+        //
+        // 1.2 (the Tactical release): no property added or changed. The properties now
+        // exist from world load on every machine, dedicated servers included, so the
+        // GT_API_ENABLE handshake is no longer needed (still answered). A script can use
+        // ">= 1.2" to skip it. Minor, because nothing a 1.1 consumer relies on changed.
+        public const float ApiVersion = 1.2f;
 
         // Roles are permanent and never recycled. 1-99 core, 100-999 future expansion,
         // 1000+ reserved for third parties adopting this contract.
