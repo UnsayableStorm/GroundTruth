@@ -4,7 +4,20 @@ A Space Engineers mod: environmental instruments (radiation, weather, habitat, l
 report what is measured and nothing more. Scripts are in `Data/Scripts/GroundTruth`. Read
 `README.md` for what ships.
 
-## Current work: tactical displays
+## Current state (2026-10-09) — read this first
+
+**`tactical` is now the main development line.** The separate "tactical session" is retired
+(Jason, 2026-10-09); this branch carries everything and will be published as Ground Truth
+itself (Workshop 3781444888) after one more multiplayer acceptance run. Single-player
+acceptance is essentially done. Since the Phase notes below were written, this branch also
+gained: Event Controller fixes (state read directly, server-only fire, info pane, trace
+lines), weather-type selection saved and synced, GT_ properties registered at load
+(ENGINE_TRAPS 20), contacts named by grid with MES `(NPC-…)` stripped, sensor range = view
+distance, radar outer ring = sensor range, and Custom Data presets on every LCD app. The
+history sections below are kept as the record; where they disagree with this paragraph,
+this paragraph wins.
+
+## Original work: tactical displays
 
 The Rotating Antenna (`GT_RotatingRadarDish`) is being given a contact scan, and six LCD
 apps will draw from it. Phase 1 (the scan and a detail-pane readout) is built; no LCD app yet.
