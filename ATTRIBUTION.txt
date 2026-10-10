@@ -1,4 +1,4 @@
-Ground Truth - Environmental Instruments
+Ground Truth: Environmental and Tactical Information Systems
 Third-party assets and their licences.
 
 --------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <ModInfo xmlns:xsd="http://www.w3.org/2001/XMLSchema"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <FriendlyName>Ground Truth - Environmental Instruments</FriendlyName>
+  <FriendlyName>Ground Truth: Environmental and Tactical Information Systems</FriendlyName>
   <Description>
     Instruments that measure local conditions and report them accurately.
     Radiation exposure and survivable time, habitat seal integrity, and weather

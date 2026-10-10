@@ -1,4 +1,4 @@
-# Ground Truth — Environmental Instruments
+# Ground Truth: Environmental and Tactical Information Systems
 
 Sensor blocks for Space Engineers that measure what is actually happening around a grid,
 and report it accurately. Radiation, weather, atmosphere, life.

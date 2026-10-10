@@ -8,7 +8,7 @@ using VRage.Utils;
 
 namespace GroundTruth
 {
-    // Ground Truth - Environmental Instruments
+    // Ground Truth: Environmental and Tactical Information Systems
     // Threshold Dynamics, Survey and Assessment
     //
     // v0.1: detail-pane readouts only. Terminal properties, LCD apps and Event
