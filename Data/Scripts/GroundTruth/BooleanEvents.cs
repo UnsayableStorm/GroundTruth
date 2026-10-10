@@ -142,7 +142,10 @@ namespace GroundTruth
 
                 // A powered-down instrument is not the same as a false reading, and must
                 // never clear an alarm by going dark.
-                if (!b.IsWorking) { info.Append("not working\n"); continue; }
+                // Enabled, functional AND powered: IsWorking alone ignores power on an
+                // UpgradeModule, so an unpowered instrument used to keep answering.
+                string offline = Instruments.OfflineReason(b);
+                if (offline != null) { info.Append("offline - ").Append(offline.ToLowerInvariant()).Append('\n'); continue; }
 
                 var s = EventSupport.State(b);
                 bool? answer = s == null ? null : Evaluate(s);

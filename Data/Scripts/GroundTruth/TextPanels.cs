@@ -202,6 +202,18 @@ namespace GroundTruth
                 }
 
                 DrawSource(frame, instrument, fg);
+
+                // Off, unpowered or damaged: say so, and why, instead of showing the last
+                // reading as if it were current (Instruments.OfflineReason).
+                if (!state.Operational)
+                {
+                    Text(frame, "OFFLINE", Pad, 96, 1.5f, Caution, TextAlignment.LEFT);
+                    Text(frame, state.OfflineReason ?? "NOT WORKING", Pad, 150, 0.9f, fg * 0.7f, TextAlignment.LEFT);
+                    Text(frame, "Not measuring. Readings resume when the", Pad, 196, 0.6f, fg * 0.45f, TextAlignment.LEFT);
+                    Text(frame, "instrument is on and powered.", Pad, 222, 0.6f, fg * 0.45f, TextAlignment.LEFT);
+                    return;
+                }
+
                 Draw(frame, state, fg);
             }
         }

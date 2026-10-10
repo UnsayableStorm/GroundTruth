@@ -154,7 +154,10 @@ namespace GroundTruth
                 info.Append(b.CustomName).Append(": ");
 
                 // A dark instrument is not a reading of zero and must not clear an alarm.
-                if (!b.IsWorking) { info.Append("not working\n"); continue; }
+                // Enabled, functional AND powered: IsWorking alone ignores power on an
+                // UpgradeModule, so an unpowered instrument used to keep answering.
+                string offline = Instruments.OfflineReason(b);
+                if (offline != null) { info.Append("offline - ").Append(offline.ToLowerInvariant()).Append('\n'); continue; }
 
                 var s = EventSupport.State(b);
                 float? v = s == null ? null : Value(s);

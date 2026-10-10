@@ -132,6 +132,16 @@ namespace GroundTruth
                      fg * 0.55f, TextAlignment.LEFT);
         }
 
+        // An instrument that is off, unpowered or damaged keeps its cell - the reader
+        // needs to know it is there and silent, not that it is missing - and says why.
+        private static Cell Offline(Cell c, GroundTruthSession.BlockState s, Color fg)
+        {
+            c.Value = "OFFLINE";
+            c.Note = (s.OfflineReason ?? "NOT WORKING").ToLowerInvariant();
+            c.Accent = fg * 0.5f;
+            return c;
+        }
+
         // ---- the four headlines ----
         //
         // Each is the ONE thing a player wants at a glance. Detail stays on the
@@ -144,6 +154,7 @@ namespace GroundTruth
             if (s == null) return c;
 
             c.Present = true;
+            if (!s.Operational) return Offline(c, s, fg);
 
             if (!s.BodyHasWeather)
             {
@@ -176,6 +187,7 @@ namespace GroundTruth
             if (s == null) return c;
 
             c.Present = true;
+            if (!s.Operational) return Offline(c, s, fg);
 
             if (!s.Rad.Enabled || s.Rad.IntensitySetting <= 0)
             {
@@ -208,6 +220,7 @@ namespace GroundTruth
             if (s == null) return c;
 
             c.Present = true;
+            if (!s.Operational) return Offline(c, s, fg);
 
             if (s.Airtight)
             {
@@ -241,6 +254,7 @@ namespace GroundTruth
             if (s == null) return c;
 
             c.Present = true;
+            if (!s.Operational) return Offline(c, s, fg);
 
             if (!s.Bio.Valid)
             {

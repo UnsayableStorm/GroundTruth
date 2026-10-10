@@ -173,7 +173,10 @@ namespace GroundTruth
 
                 // A powered-down Weather Station is not calm weather and must not clear
                 // an alarm - the same rule every other Ground Truth event follows.
-                if (!b.IsWorking) { info.Append("not working\n"); continue; }
+                // Enabled, functional AND powered: IsWorking alone ignores power on an
+                // UpgradeModule, so an unpowered instrument used to keep answering.
+                string offline = Instruments.OfflineReason(b);
+                if (offline != null) { info.Append("offline - ").Append(offline.ToLowerInvariant()).Append('\n'); continue; }
 
                 // Both 0-1. The slider is LABELLED 0-100 while Threshold returns a
                 // fraction - setting 60 yields 0.6 - so the reading is compared as

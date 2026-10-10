@@ -47,6 +47,8 @@ namespace GroundTruth
         private bool _failed;
         private Matrix _local;
         private float _speed;
+        private int _checkIn;
+        private bool _operational;
 
         private SubpartSpinner(IMyFunctionalBlock block, string subpartName)
         {
@@ -76,7 +78,11 @@ namespace GroundTruth
 
             try
             {
-                bool shouldSpin = _block.IsWorking;
+                // Operational, not IsWorking: an UpgradeModule's IsWorking ignores power, so
+                // an instrument kept spinning on a dead grid (Instruments.OfflineReason).
+                // Checked once a second, not every frame - the spin-down is gradual anyway.
+                if (--_checkIn <= 0) { _checkIn = 60; _operational = Instruments.IsOperational(_block); }
+                bool shouldSpin = _operational;
                 if (!shouldSpin && Math.Abs(_speed) < 0.00001f) return;
 
                 if (shouldSpin && _speed < 1f) _speed = Math.Min(_speed + AccelPerTick, 1f);

@@ -25,10 +25,16 @@ namespace GroundTruth
     //     reported required=0.0000 while claiming powered=true: a sink that asks for
     //     nothing is always satisfied. SetRequiredInputByType plus Update is what
     //     actually enters the grid's power ledger.
-    //   - A sink attached this way DOES gate the block. Cutting grid power drops
-    //     IsWorking to false, verified in game. That matters beyond flavour: every
-    //     reading is served behind IsWorking, and GT_SysOperational reports it, so an
-    //     unpowered instrument stops answering instead of lying quietly.
+    //   - WRONG, corrected 2026-10-10: "a sink attached this way gates the block -
+    //     cutting grid power drops IsWorking to false". It does not. An UpgradeModule's
+    //     IsWorking is enabled-and-functional only (MyFunctionalBlock.CheckIsWorking,
+    //     decompiled); the engine never consults this sink. The August observation was
+    //     most likely the probe's OreDetector clone, which has a power check of its
+    //     own. Nor was "every reading served behind IsWorking" true - nothing gated
+    //     readings at all, so an instrument on a dead grid kept measuring (Jason's
+    //     report, after the Tactical release was staged). The gate now exists:
+    //     Instruments.OfflineReason checks this sink's powered state explicitly, and
+    //     readings, properties, events, panels and the spin all go through it.
     // THIS LIST MUST MATCH THE Instruments TABLE. An attribute takes compile-time
     // constants only, so it cannot read the table, and the two drift silently.
     //

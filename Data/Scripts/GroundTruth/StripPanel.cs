@@ -149,16 +149,16 @@ namespace GroundTruth
             if (Alarm(out alarm)) { list.Add(alarm); return list; }
 
             var wx = StateForRole(Instruments.RoleWeather);
-            if (wx != null) list.Add(WeatherEntry(wx, fg));
+            if (wx != null) list.Add(wx.Operational ? WeatherEntry(wx, fg) : Offline("WEATHER", wx, fg));
 
             var rad = StateForRole(Instruments.RoleRadiation);
-            if (rad != null) list.Add(RadEntry(rad, fg));
+            if (rad != null) list.Add(rad.Operational ? RadEntry(rad, fg) : Offline("RADIATION", rad, fg));
 
             var hab = StateForRole(Instruments.RoleHabitat);
-            if (hab != null) list.Add(HabEntry(hab, fg));
+            if (hab != null) list.Add(hab.Operational ? HabEntry(hab, fg) : Offline("HABITAT", hab, fg));
 
             var bio = StateForRole(Instruments.RoleBio);
-            if (bio != null) list.Add(BioEntry(bio, fg));
+            if (bio != null) list.Add(bio.Operational ? BioEntry(bio, fg) : Offline("LIFE", bio, fg));
 
             if (list.Count == 0)
                 list.Add(new Entry("GROUND TRUTH", "NO INSTRUMENTS", fg * 0.5f));
@@ -185,7 +185,9 @@ namespace GroundTruth
             entry = new Entry();
 
             var hab = StateForRole(Instruments.RoleHabitat);
-            if (hab == null || hab.Airtight || !hab.Breached) return false;
+            // An offline monitor's breach flag is stale - it is not measuring - so it cannot
+            // raise the one alarm that takes over the strip.
+            if (hab == null || !hab.Operational || hab.Airtight || !hab.Breached) return false;
 
             // Half a second on, half a second off, driven by the session frame counter
             // so every strip in the world blinks together. Dimmed rather than blanked:
@@ -200,6 +202,13 @@ namespace GroundTruth
         private static bool Hazardous(GroundTruthSession.BlockState s)
         {
             return s.Effect.HasHealth || (s.Effect.HasRadiation && s.Effect.RadiationGain > 0);
+        }
+
+        // Off, unpowered or damaged: the column stays, labelled, and says so. A missing
+        // column would read as "no instrument here", which is a different fact.
+        private static Entry Offline(string label, GroundTruthSession.BlockState s, Color fg)
+        {
+            return new Entry(label + ", " + (s.OfflineReason ?? "NOT WORKING"), "OFFLINE", fg * 0.4f);
         }
 
         // ---- one column per instrument ----

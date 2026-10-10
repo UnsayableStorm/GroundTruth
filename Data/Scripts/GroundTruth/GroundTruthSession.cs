@@ -146,6 +146,11 @@ namespace GroundTruth
             public double LastComputeSeconds = -1;
             public double AgeSeconds;
 
+            // False while the instrument is off, unpowered or damaged; OfflineReason
+            // says which. Readings below are then stale and must not be shown as current.
+            public bool Operational = true;
+            public string OfflineReason;
+
             // Reported as a reading, not used to gate anything. A real anemometer on a
             // moving ship reports apparent wind; it does not refuse to answer because
             // the platform is under way. Timing predictions are measured the same way
@@ -427,6 +432,15 @@ namespace GroundTruth
                 return;
             }
 
+            // An instrument that is off, unpowered or damaged measures nothing. Its
+            // readings are left as they were and Operational says not to trust them -
+            // every consumer (properties, events, panels, the info pane) checks this
+            // first, so nothing reports a stale value as current. See
+            // Instruments.OfflineReason for why IsWorking alone was not enough.
+            s.OfflineReason = Instruments.OfflineReason(block);
+            s.Operational = s.OfflineReason == null;
+            if (!s.Operational) return;
+
             s.Env = Readings.ReadEnvironment(block);
             Readings.ReadSeal(block, out s.Airtight, out s.RoomOxygen, out s.RoomBlocks, out s.SealStatus);
 
@@ -600,7 +614,16 @@ namespace GroundTruth
             // FunctionalBlocks that produced no info of their own. As OreDetectors they
             // generate their own custom info, and clearing the shared builder in the
             // middle of that sequence loses our text.
-            switch (Instruments.RoleOf(block.BlockDefinition.SubtypeName))
+            int role = Instruments.RoleOf(block.BlockDefinition.SubtypeName);
+            if (role != Instruments.RoleRadar && !s.Operational)
+            {
+                sb.AppendLine("OFFLINE - " + (s.OfflineReason ?? "NOT WORKING"));
+                sb.AppendLine("Not measuring. Readings resume when the");
+                sb.AppendLine("instrument is on and powered.");
+                return;
+            }
+
+            switch (role)
             {
                 case Instruments.RoleRadiation: WriteRadiation(sb, s); break;
                 case Instruments.RoleHabitat: WriteHabitat(sb, s); break;

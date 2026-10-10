@@ -803,3 +803,41 @@ type flags both as damaged when they are stock.
 **The general lesson.** "Doing X early broke things" is a statement about a build, not
 about X. Find what the build actually did at that moment; here it was one diagnostic read
 nobody suspected.
+
+---
+
+## 21. An UpgradeModule's `IsWorking` ignores power — even power you gave it
+
+**Symptom.** Instruments built on `UpgradeModule` carry a power draw (trap 13: a
+`MyResourceSinkComponent` attached in code, which shows on the grid's power use and stops
+being supplied when the grid dies). Cut the grid's power and every instrument keeps
+measuring, its LCDs keep updating, and `IsWorking` reads **true**.
+
+**The mechanism, decompiled 2026-10-10.** `MyFunctionalBlock.CheckIsWorking()` is
+`Enabled && base.CheckIsWorking()` — enabled and functional, nothing about power. Block
+types that need power override it to ask their own `ResourceSink`; `MyUpgradeModule` has
+no power of its own and does not. A sink added by a mod is a component the engine never
+consults for `IsWorking`. So "the block has a power draw" and "the block stops working
+without power" are two different things, and only the first came for free.
+
+**What made it hide.** The note written when the sink was added said the opposite —
+"cutting grid power drops IsWorking to false, verified in game" — most likely observed on
+the probe's OreDetector clone, which *does* check its own sink. It stood for two months
+because nothing read the readings through `IsWorking` either: the claim "every reading is
+served behind IsWorking" was never true in code. Trap 12 again, in a new coat.
+
+**The fix.** Ask the sink yourself, and treat that as the working state everywhere:
+
+```csharp
+var sink = block.Components.Get<MyResourceSinkComponent>();
+bool powered = sink == null || sink.IsPoweredByType(MyResourceDistributorComponent.ElectricityId);
+bool operational = block.IsFunctional && ((IMyFunctionalBlock)block).Enabled && powered && block.IsWorking;
+```
+
+Then route every consumer through that — readings, terminal properties, events, LCDs,
+animation. Ground Truth's version is `Instruments.OfflineReason`, which also says *which*
+of the four it was, so a screen can tell "switched off" from "no power".
+
+**The general lesson.** When you add a capability to a block type through a component,
+check which of the engine's own judgements consult that component. Power *draw* and power
+*gating* are separate wiring.

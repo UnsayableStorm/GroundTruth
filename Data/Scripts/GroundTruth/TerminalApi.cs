@@ -311,7 +311,10 @@ namespace GroundTruth
             Num("GT_SysBlockRole", (b, s) => Role(b));
             Num("GT_SysCapabilities", (b, s) => Capabilities(b));
             Num("GT_SysAge", (b, s) => (float)s.AgeSeconds);
-            Flag("GT_SysOperational", (b, s) => b.IsWorking);
+            // Enabled, functional AND powered - IsWorking alone ignores power on an
+            // UpgradeModule (Instruments.OfflineReason). While this is false every reading
+            // below answers -1 / false: an offline instrument has no reading.
+            Flag("GT_SysOperational", (b, s) => Instruments.IsOperational(b));
 
             // ---- GT_Env : cheap, universally useful context ----
             Flag("GT_EnvInGravityWell", (b, s) => s.Env.InGravityWell);
@@ -626,10 +629,15 @@ namespace GroundTruth
         private static void Num(string id, Func<IMyTerminalBlock, GroundTruthSession.BlockState, float> read)
         {
             var p = MyAPIGateway.TerminalControls.CreateProperty<float, IMyUpgradeModule>(id);
+            // GT_Sys* is metadata about the block and keeps answering while it is offline,
+            // so a script can still find it and see WHY it is silent. Every measurement
+            // answers "no reading" instead - the -1 convention, not a stale value.
+            bool metadata = id.StartsWith("GT_Sys");
             p.Getter = b =>
             {
                 var s = GroundTruthSession.StateFor(b);
                 if (s == null) return -1f;
+                if (!metadata && !s.Operational) return -1f;
                 try { return read(b, s); }
                 catch { return -1f; }
             };
@@ -652,10 +660,12 @@ namespace GroundTruth
         private static void Flag(string id, Func<IMyTerminalBlock, GroundTruthSession.BlockState, bool> read)
         {
             var p = MyAPIGateway.TerminalControls.CreateProperty<bool, IMyUpgradeModule>(id);
+            bool metadata = id.StartsWith("GT_Sys");
             p.Getter = b =>
             {
                 var s = GroundTruthSession.StateFor(b);
                 if (s == null) return false;
+                if (!metadata && !s.Operational) return false;
                 try { return read(b, s); }
                 catch { return false; }
             };

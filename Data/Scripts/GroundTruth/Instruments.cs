@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
 
 namespace GroundTruth
@@ -121,6 +122,62 @@ namespace GroundTruth
         {
             Info unused;
             return block != null && TryGet(block.BlockDefinition.SubtypeName, out unused);
+        }
+
+        // ---- is this instrument actually running? ----
+        //
+        // NOT IsWorking alone. For an UpgradeModule, IsWorking is "enabled and functional"
+        // and nothing else: MyFunctionalBlock.CheckIsWorking never looks at power, and the
+        // block type has none of its own (decompiled 2026-10-10). The draw InstrumentPower
+        // attaches is a separate sink the engine never consults. So with the grid dead,
+        // IsWorking stayed true and every instrument kept measuring - reported by Jason
+        // after the Tactical release was staged. The sink's own powered state is the
+        // missing half.
+        //
+        // The reason is returned rather than a bare bool so every screen can say WHY: a
+        // player who switched a block off needs a different fix from one whose reactor
+        // ran dry.
+
+        /// <summary>Null when operational; otherwise DAMAGED, SWITCHED OFF, NO POWER or NOT WORKING.</summary>
+        public static string OfflineReason(IMyTerminalBlock block)
+        {
+            if (block == null) return "NOT WORKING";
+            if (!block.IsFunctional) return "DAMAGED";
+            var f = block as IMyFunctionalBlock;
+            if (f != null && !f.Enabled) return "SWITCHED OFF";
+            if (!SinkPowered(block)) return "NO POWER";
+            if (!block.IsWorking) return "NOT WORKING";
+            return null;
+        }
+
+        public static bool IsOperational(IMyTerminalBlock block)
+        {
+            return OfflineReason(block) == null;
+        }
+
+        // True when the block's power sink is supplied, or when it has none yet (the sink
+        // is attached on the block's first frame; before that there is nothing to ask).
+        // Works for the Rotating Antenna too, whose sink is the engine's own.
+        // A throw fails SAFE - offline - and is logged once: failing open would be the
+        // silent measuring-on-a-dead-grid bug this exists to fix (review, 2026-10-10).
+        private static bool _sinkErrorLogged;
+
+        private static bool SinkPowered(IMyTerminalBlock block)
+        {
+            try
+            {
+                var sink = block.Components.Get<MyResourceSinkComponent>();
+                return sink == null || sink.IsPoweredByType(MyResourceDistributorComponent.ElectricityId);
+            }
+            catch (System.Exception e)
+            {
+                if (!_sinkErrorLogged)
+                {
+                    _sinkErrorLogged = true;
+                    VRage.Utils.MyLog.Default.WriteLineAndConsole("GroundTruth power check failed, treating as unpowered: " + e);
+                }
+                return false;
+            }
         }
 
         public static int RoleOf(string subtype)

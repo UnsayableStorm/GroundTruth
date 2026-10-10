@@ -330,7 +330,10 @@ namespace GroundTruth
                 // The instrument must be a working one. A powered-down Weather Station
                 // reporting nothing is not the same as clear skies, and must not clear
                 // an alarm.
-                if (!b.IsWorking) { info.Append("not working\n"); continue; }
+                // Enabled, functional AND powered: IsWorking alone ignores power on an
+                // UpgradeModule, so an unpowered instrument used to keep answering.
+                string offline = Instruments.OfflineReason(b);
+                if (offline != null) { info.Append("offline - ").Append(offline.ToLowerInvariant()).Append('\n'); continue; }
 
                 sawInstrument = true;
 

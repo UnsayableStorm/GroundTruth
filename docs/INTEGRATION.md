@@ -158,6 +158,28 @@ if (rads < 0) { /* this block cannot answer - do not treat as safe */ }
 Treating −1 as a measurement produces alarms that never fire and dashboards that report
 perfect safety on a block that is not a radiation monitor.
 
+### An offline instrument has no reading
+
+An instrument that is **switched off, damaged, or unpowered** measures nothing. While it is
+offline:
+
+- every measurement property returns **−1** (numbers) or **false** (flags) — the "no
+  reading" convention, never the last value it measured;
+- the **`GT_Sys` metadata keeps answering**, so a script can still find the block and
+  learn why it is silent: `GT_SysOperational` is **false**, `GT_SysBlockRole` and
+  `GT_SysCapabilities` are unchanged;
+- Event Controller events **skip** it (it neither raises nor clears an alarm);
+- the LCD apps show **OFFLINE** with the reason — `SWITCHED OFF`, `DAMAGED`, `NO POWER` or
+  `NOT WORKING` — and Overview and Strip keep its cell, marked offline, rather than hiding it.
+
+Check `GT_SysOperational` before trusting a −1 to mean "nothing to measure here": on an
+offline block it means "not measuring right now".
+
+"Powered" means the instrument's own power draw is supplied by the grid. This matters
+because the block's vanilla `IsWorking` does **not** include power for this block type, so
+code that tests `IsWorking` on an instrument will see `true` on a dead grid — use
+`GT_SysOperational` instead.
+
 ### Units are part of the meaning
 
 Every property below states its unit. Where the engine quantises a value it is noted —
@@ -180,7 +202,7 @@ gets a new name.
 | `GT_SysApiVersion` | float | MAJOR.MINOR. See [Versioning](#versioning). |
 | `GT_SysBlockRole` | float | 1 rad, 2 hab, 3 weather, 4 bio |
 | `GT_SysCapabilities` | float | bitmask |
-| `GT_SysOperational` | bool | |
+| `GT_SysOperational` | bool | on, functional **and** powered. While false, every non-`GT_Sys` property answers −1 / false. See [An offline instrument has no reading](#an-offline-instrument-has-no-reading). |
 | `GT_SysAge` | float | s since computed |
 
 ### `GT_Env` — position, on every instrument
