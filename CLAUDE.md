@@ -8,7 +8,7 @@ report what is measured and nothing more. Scripts are in `Data/Scripts/GroundTru
 
 The `df29ffd` regression (instruments always OFFLINE) is **fixed and checked in game**
 (`869b967` power from the grid's distributor, `7a0374b` open info pane redraws). Grid
-power cut also checked. Open decision: the instruments draw no real
+power cut also checked. Real power draw now attached in Init (cfe957a, untested in game; WarpDrive test owed). Formerly: no real
 power (ENGINE_TRAPS 22). The handoff's 2026-10-15 update has the details and the release
 checklist.
 

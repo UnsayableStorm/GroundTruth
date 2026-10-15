@@ -23,11 +23,21 @@ by Jason (single player, "Tactical Test Single Player" world):
 ENGINE_TRAPS 13 and 21 corrected; new traps 22 and 23 (Science copy mirrored);
 reference-library `08-gotchas.md` updated.
 
-**Known, not fixed, needs Jason's call:** the instruments have drawn **no real power** since
-2026-08-11 - the late-attached sink never enters the grid's ledger (trap 22). Getting a real
-draw back means attaching the sink in `Init`, which is exactly what the WarpDrive note in
-`InstrumentPower.cs` forbids, so it needs a Long Haul / WarpDrive test first. Shipping without
-it is honest as long as no doc claims a draw (none does as of 2026-10-15).
+**`cfe957a` real power draw (Jason approved 2026-10-15), NOT yet tested in game.** The sink
+attaches in `InstrumentPower.Init` again - `GameLogic.Init` runs inside `MySlimBlock.Init`,
+before `RegisterInSystems`, so the grid registers it. Since 2026-08-11 the instruments drew
+nothing (trap 22). The old WarpDrive objection was checked against WarpDrive's source
+(2640137506 `GridSystem.cs`): it listens only to grid block add/remove, split, static and
+close, never to components, so sink timing cannot reach it. `EnabledChanged` now updates the
+sink (off = 0 kW); the info pane shows `Power: X kW of Y kW` (MyUpgradeModule prints no power
+of its own). di-review: one finding taken (guard the frame-one Update).
+
+**WarpDrive test, owed before release** - world "Tactical Test Single Player" (loads
+WarpDrive 2640137506 and the local test build): pane shows the draw and 0 when off; the grid's
+power use rises by the instruments' draw; then, on a grid with a warp drive (FSD) and an
+instrument, place and grind instruments, merge/split the grid (merge block, or grind a
+bridging block) and save/reload; then engage the FSD. Pass = no crash, and no `WarpDrive` or
+`GroundTruth` exception in the log. Claude reads the log afterwards.
 
 `Mods\GroundTruth` (the publish folder) still holds the pre-`df29ffd` build. The release
 checklist at the bottom now applies, starting at step 2 once the power-cut check is done.
