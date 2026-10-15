@@ -33,8 +33,9 @@ namespace GroundTruth
     //     own. Nor was "every reading served behind IsWorking" true - nothing gated
     //     readings at all, so an instrument on a dead grid kept measuring (Jason's
     //     report, after the Tactical release was staged). The gate now exists:
-    //     Instruments.OfflineReason checks this sink's powered state explicitly, and
-    //     readings, properties, events, panels and the spin all go through it.
+    //     Instruments.OfflineReason checks power explicitly - from the grid's
+    //     distributor, not this sink (trap 22) - and readings, properties, events,
+    //     panels and the spin all go through it.
     // THIS LIST MUST MATCH THE Instruments TABLE. An attribute takes compile-time
     // constants only, so it cannot read the table, and the two drift silently.
     //
@@ -91,31 +92,67 @@ namespace GroundTruth
             _megawatts = Instruments.PowerKWOf(_block.BlockDefinition.SubtypeName) / 1000f;
             if (_megawatts <= 0f) return;
 
-            // DO NOT ADD COMPONENTS DURING Init.
+            // THE SINK IS ATTACHED HERE, IN Init, AND NOWHERE LATER.
             //
-            // The sink used to be attached here, which mutates the block while the grid
-            // is still building. Other mods watch the grid for exactly that and rebuild
-            // their own systems in response - and at least one of them, WarpDrive, has a
-            // constructor that dereferences its block BEFORE its own null check:
+            // The grid hands a block's sink to its power distributor in exactly one place,
+            // MyCubeGridSystems.RegisterInSystems, once, when the block is added (and again
+            // on a merge or split). GameLogic.Init runs inside MySlimBlock.Init, BEFORE
+            // that call, in both of MyCubeGrid's add paths (decompiled 2026-10-15). A sink
+            // attached any later is never registered: never supplied, IsPowered false
+            // forever, and its draw missing from the grid's power use. AddSink is not on
+            // the ModAPI, so there is no registering late (ENGINE_TRAPS trap 22).
             //
-            //     if (block.Block.BlockDefinition.SubtypeId == "PrototechFSDriveLarge")
-            //     if (block == null || block.Block == null)   // one statement too late
-            //
-            // Their bug, our trigger. Warp drives are UpgradeModule blocks too, so the
-            // instruments only started sharing a grid update path with them when they
-            // moved to that base type on 2026-08-11 - and Long Haul started crashing
-            // clients on join at the same time, having run that mod for months.
-            //
-            // Waiting one frame costs nothing: the sink is registered with the
-            // distributor by Set + Update below either way.
+            // From 2026-08-11 to 2026-10-15 the attach sat in UpdateOnceBeforeFrame, and the
+            // instruments drew nothing at all for those two months. It had been moved there
+            // on the theory that attaching here "mutates the block while the grid is still
+            // building" and tripped a WarpDrive crash on Long Haul. Read against WarpDrive's
+            // own source (2640137506, GridSystem.cs) that theory does not hold: its grid
+            // system listens to OnBlockAdded, OnBlockRemoved, OnGridSplit, OnStaticChanged
+            // and OnClose - never to a block's components - and this runs before the block
+            // is even added. The crash that is actually on record (2026-08-28) is a null
+            // GameLogic in WarpSystem's BlockCounter predicate during a split, which no sink
+            // timing touches. The base-type change of 2026-08-11 coincided with the
+            // crashes; the sink timing was blamed with it. Re-tested against WarpDrive on
+            // 2026-10-15 before shipping - see docs/HANDOFF.md.
+            try
+            {
+                _sink = Entity.Components.Get<MyResourceSinkComponent>();
+                if (_sink == null)
+                {
+                    var info = new MyResourceSinkInfo
+                    {
+                        ResourceTypeId = MyResourceDistributorComponent.ElectricityId,
+                        MaxRequiredInput = _megawatts,
+                        RequiredInputFunc = Required
+                    };
+
+                    _sink = new MyResourceSinkComponent();
+                    _sink.Init(MyStringHash.GetOrCompute("Utility"), info);
+                    Entity.Components.Add<MyResourceSinkComponent>(_sink);
+                }
+
+                // SetRequired + Update: a sink that asks for nothing is always satisfied
+                // (trap 13). Update re-reads Required(), so off costs nothing from the start.
+                var id = MyResourceDistributorComponent.ElectricityId;
+                _sink.SetMaxRequiredInputByType(id, _megawatts);
+                _sink.SetRequiredInputByType(id, _megawatts);
+                _sink.Update();
+            }
+            catch (Exception e)
+            {
+                MyLog.Default.WriteLineAndConsole("GroundTruth InstrumentPower init: " + e);
+            }
+
+            // Everything else still waits a frame: SealSync, the PB handshake, property
+            // registration and the spinner all want a block that is on its grid.
             NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
         }
 
         public override void UpdateOnceBeforeFrame()
         {
             // The server keeps a list of instruments so it can answer the one question
-            // clients cannot - see SealSync. Registering here rather than in Init for
-            // the same reason the sink attaches here.
+            // clients cannot - see SealSync. Registered here rather than in Init so the
+            // block is already on its grid.
             SealSync.Register(Entity as IMyCubeBlock);
 
             // The PB handshake that gives dedicated servers the property API - see the
@@ -152,37 +189,25 @@ namespace GroundTruth
                 if (_spinner != null) NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
             }
 
-            if (_megawatts <= 0f) return;
-
-            try
+            // Switching off must drop the draw at once. RequiredInputFunc is only consulted
+            // when the sink is told to Update; nothing in the engine does that for an
+            // UpgradeModule's Enabled, so it is done here.
+            //
+            // No retry here when Init failed to attach: a sink attached this late is never
+            // registered (see Init), so it would only report a draw that is not happening.
+            if (_sink != null && _block != null)
             {
-                if (_sink == null)
-                {
-                    _sink = Entity.Components.Get<MyResourceSinkComponent>();
-                    if (_sink == null)
-                    {
-                        var info = new MyResourceSinkInfo
-                        {
-                            ResourceTypeId = MyResourceDistributorComponent.ElectricityId,
-                            MaxRequiredInput = _megawatts,
-                            RequiredInputFunc = Required
-                        };
-
-                        _sink = new MyResourceSinkComponent();
-                        _sink.Init(MyStringHash.GetOrCompute("Utility"), info);
-                        Entity.Components.Add<MyResourceSinkComponent>(_sink);
-                    }
-                }
-
-                var id = MyResourceDistributorComponent.ElectricityId;
-                _sink.SetMaxRequiredInputByType(id, _megawatts);
-                _sink.SetRequiredInputByType(id, _megawatts);
-                _sink.Update();
+                _block.EnabledChanged -= OnEnabledChanged;
+                _block.EnabledChanged += OnEnabledChanged;
+                try { _sink.Update(); }
+                catch (Exception e) { MyLog.Default.WriteLineAndConsole("GroundTruth InstrumentPower update: " + e); }
             }
-            catch (Exception e)
-            {
-                MyLog.Default.WriteLineAndConsole("GroundTruth InstrumentPower update: " + e);
-            }
+        }
+
+        private void OnEnabledChanged(IMyTerminalBlock unused)
+        {
+            try { if (_sink != null) _sink.Update(); }
+            catch (Exception e) { MyLog.Default.WriteLineAndConsole("GroundTruth InstrumentPower enabled: " + e); }
         }
 
         public override void UpdateBeforeSimulation()
@@ -193,6 +218,7 @@ namespace GroundTruth
         public override void Close()
         {
             SealSync.Unregister(Entity as IMyCubeBlock);
+            if (_block != null) _block.EnabledChanged -= OnEnabledChanged;
 
             var terminal = Entity as IMyTerminalBlock;
             if (terminal != null)

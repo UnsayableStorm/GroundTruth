@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
@@ -628,6 +629,7 @@ namespace GroundTruth
             // generate their own custom info, and clearing the shared builder in the
             // middle of that sequence loses our text.
             int role = Instruments.RoleOf(block.BlockDefinition.SubtypeName);
+            if (role != Instruments.RoleRadar) WritePower(block, sb);
             if (role != Instruments.RoleRadar && !s.Operational)
             {
                 sb.AppendLine("OFFLINE - " + (s.OfflineReason ?? "NOT WORKING"));
@@ -644,6 +646,22 @@ namespace GroundTruth
                 case Instruments.RoleBio: WriteBio(sb, s); break;
                 case Instruments.RoleRadar: WriteRadar(block, sb); break;
             }
+        }
+
+        // The draw, as the grid actually supplies it. An UpgradeModule prints no power
+        // lines of its own - MyUpgradeModule has no UpdateDetailedInfo, unlike the block
+        // types whose panes show "Required input" (decompiled 2026-10-15) - so without
+        // this the cost of an instrument was invisible even once the sink was real.
+        // CurrentInput, not Required: it reads 0 on a dead grid, which is the truth.
+        // The dish is left out: it is a RadioAntenna, and vanilla prints its power already.
+        private static void WritePower(IMyTerminalBlock block, StringBuilder sb)
+        {
+            var sink = block.Components.Get<MyResourceSinkComponent>();
+            if (sink == null) return;
+            var id = MyResourceDistributorComponent.ElectricityId;
+            sb.Append("Power: ").Append((sink.CurrentInputByType(id) * 1000f).ToString("0.0"))
+              .Append(" kW of ").Append((sink.MaxRequiredInputByType(id) * 1000f).ToString("0.0"))
+              .AppendLine(" kW");
         }
 
         private static readonly List<Tactical.Contact> _paneContacts = new List<Tactical.Contact>();
