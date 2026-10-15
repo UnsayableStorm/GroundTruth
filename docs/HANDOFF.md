@@ -3,6 +3,35 @@
 Read this first, then `CLAUDE.md`. Written at the end of a long session; everything below
 is verified against the code or a log unless it says otherwise.
 
+## UPDATE 2026-10-15 — the regression is fixed (read this before the rest)
+
+Two commits on `main`, both deployed to `Mods\GroundTruthTacticalTest` and checked in game
+by Jason (single player, "Tactical Test Single Player" world):
+
+- **`869b967` power check.** Decompile confirmed the diagnosis below: the grid registers a
+  block's sink only when the block joins (`MyCubeGridSystems.RegisterInSystems`), and ours
+  attaches a frame later, so it is never supplied. `Instruments.SinkPowered` now asks
+  `block.CubeGrid.ResourceDistributor.MaxAvailableResourceByType(ElectricityId) > 0` -
+  candidate fix 3 below. **In game: the pod spins again and stops when switched off.**
+  Cutting grid power to see NO POWER has **not** been tested yet.
+- **`7a0374b` info pane redraw.** Found by Jason: switching an instrument off did not change
+  the open terminal pane until he clicked another block and back. `RefreshCustomInfo` does
+  not mark the block dirty, and the pane only redraws a dirty block.
+  `GroundTruthSession.Refresh` now calls `SetDetailedInfoDirty()` too (instrument and Event
+  Controller panes). **In game: the pane flips OFFLINE / back while it stays open.**
+
+ENGINE_TRAPS 13 and 21 corrected; new traps 22 and 23 (Science copy mirrored);
+reference-library `08-gotchas.md` updated.
+
+**Known, not fixed, needs Jason's call:** the instruments have drawn **no real power** since
+2026-08-11 - the late-attached sink never enters the grid's ledger (trap 22). Getting a real
+draw back means attaching the sink in `Init`, which is exactly what the WarpDrive note in
+`InstrumentPower.cs` forbids, so it needs a Long Haul / WarpDrive test first. Shipping without
+it is honest as long as no doc claims a draw (none does as of 2026-10-15).
+
+`Mods\GroundTruth` (the publish folder) still holds the pre-`df29ffd` build. The release
+checklist at the bottom now applies, starting at step 2 once the power-cut check is done.
+
 ## Where the release stands
 
 `tactical` was merged into `main` (fast-forward) and **`main` is the only line now** — the

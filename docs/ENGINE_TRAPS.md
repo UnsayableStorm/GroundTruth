@@ -483,10 +483,11 @@ sink.Update();
 `current` tracking `required` is the proof the distributor is actually supplying it —
 read all three, because required-without-current is a sink nobody is feeding.
 
-**It does gate the block.** With the sink wired, cutting grid power drops `IsWorking` to
-false, verified in game. That matters beyond flavour: if readings are served behind
-`IsWorking`, an unpowered instrument stops answering instead of quietly serving stale
-numbers.
+**It does not gate the block** - corrected 2026-10-10, see trap 21. The note that stood here
+("cutting grid power drops `IsWorking` to false") was most likely observed on an OreDetector
+clone, which checks its own sink. And the two steps only work if the sink is attached
+**before the block joins the grid** - attach it later and the grid never supplies it at all
+(trap 22).
 
 ---
 
@@ -826,13 +827,19 @@ the probe's OreDetector clone, which *does* check its own sink. It stood for two
 because nothing read the readings through `IsWorking` either: the claim "every reading is
 served behind IsWorking" was never true in code. Trap 12 again, in a new coat.
 
-**The fix.** Ask the sink yourself, and treat that as the working state everywhere:
+**The fix.** Check power yourself, and treat that as the working state everywhere.
+**Not** through your own sink, as first written here: unless the sink was attached before the
+block joined the grid, the grid never supplies it and `IsPoweredByType` is false forever
+(trap 22). Ask the grid's distributor instead:
 
 ```csharp
-var sink = block.Components.Get<MyResourceSinkComponent>();
-bool powered = sink == null || sink.IsPoweredByType(MyResourceDistributorComponent.ElectricityId);
+var d = block.CubeGrid?.ResourceDistributor;   // IMyResourceDistributorComponent, ModAPI
+bool powered = d != null && d.MaxAvailableResourceByType(MyResourceDistributorComponent.ElectricityId) > 0f;
 bool operational = block.IsFunctional && ((IMyFunctionalBlock)block).Enabled && powered && block.IsWorking;
 ```
+
+Leave the `grid` argument null: given a grid, `GetElectricalGroupIndex` *creates* a
+distribution group for an id it has not seen - a side effect from what should be a read.
 
 Then route every consumer through that — readings, terminal properties, events, LCDs,
 animation. Ground Truth's version is `Instruments.OfflineReason`, which also says *which*
@@ -841,3 +848,58 @@ of the four it was, so a screen can tell "switched off" from "no power".
 **The general lesson.** When you add a capability to a block type through a component,
 check which of the engine's own judgements consult that component. Power *draw* and power
 *gating* are separate wiring.
+
+---
+
+## 22. A sink attached after the block joins the grid is never supplied
+
+**Symptom.** Every instrument reads OFFLINE - NO POWER on a powered grid, and the Weather
+Station's pod stops spinning. Nothing in the log. Reported by Jason 2026-10-10, the moment
+power gating (trap 21) went in.
+
+**The mechanism, decompiled 2026-10-15.** `MyResourceSinkComponent.IsPowered` is written
+only by `SetInputFromDistributor`, which the grid's distributor calls for the sinks it holds,
+and it starts **false**. A block's sink reaches the distributor in exactly one place:
+`MyCubeGridSystems.RegisterInSystems`, once, when the block is added to the grid (plus
+re-registration on a grid merge or split). Ground Truth attaches its sink in
+`UpdateOnceBeforeFrame`, a frame after `Init`, to avoid a WarpDrive crash
+(`InstrumentPower.cs`). By then registration is over. `AddSink` is not on the ModAPI, so
+there is no way to register late.
+
+**Consequence.** Such a sink reports nothing true: not powered, not supplied, and its draw
+never appears in the grid's power use. Ground Truth's instruments have in fact drawn no
+power since 2026-08-11, when the attach moved out of `Init`.
+
+**The fix.** Read power from the grid, which the engine maintains and the ModAPI exposes:
+`block.CubeGrid.ResourceDistributor.MaxAvailableResourceByType(ElectricityId) > 0` (trap
+21's snippet). Verified in game 2026-10-15: the pod spins on a powered grid and stops when
+switched off. To get a real draw back, the sink must be attached in `Init` - which needs
+re-testing against WarpDrive first.
+
+---
+
+## 23. `RefreshCustomInfo` does not redraw a terminal that is already open
+
+**Symptom.** Switch an instrument off with its terminal open and the info pane carries on
+showing the live readings. Click another block and back, and it reads OFFLINE. The text was
+right all along; the screen was stale. Found by Jason 2026-10-15.
+
+**The mechanism, decompiled 2026-10-15.** `RefreshCustomInfo` clears `CustomInfo` and
+re-raises `AppendingCustomInfo` - that is all. The pane
+(`MyGuiControlGenericFunctionalBlock.Update`) redraws only when the selected block's
+`IsDetailedInfoDirty` is set, or when its properties change. Selecting the block forces a
+redraw, which is why clicking away and back "fixes" it.
+
+**The fix.** Flag the block after every refresh:
+
+```csharp
+block.RefreshCustomInfo();
+block.SetDetailedInfoDirty();   // IMyTerminalBlock, ModAPI
+```
+
+It costs a bool. The vanilla detailed info is rebuilt only when something reads it.
+Ground Truth's version is `GroundTruthSession.Refresh`, used for both the instrument and the
+Event Controller panes. Verified in game 2026-10-15.
+
+**What made it hide.** Readings drift slowly, so a pane that never redrew still looked
+right. Only a sudden change - off, on, OFFLINE - shows it.

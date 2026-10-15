@@ -77,7 +77,7 @@ is reading in the controller's info panel.
 | `Data/` | the mod — block definitions, scripts, LCD textures |
 | `Models/`, `Textures/` | art |
 | `docs/INTEGRATION.md` | **API reference and integration guide** for scripters and modders — every property, event, LCD option and the tactical sensor's rules |
-| `docs/ENGINE_TRAPS.md` | **engine findings** — twenty-one things that cost real time, published so nobody else pays for them twice |
+| `docs/ENGINE_TRAPS.md` | **engine findings** — twenty-three things that cost real time, published so nobody else pays for them twice |
 | `docs/TACTICAL_PLAN.md` | the tactical sensor's design record: decisions, probe results, and what changed in testing |
 | `probes/` | whitelist probe mods, ready to copy |
 | `tools/` | the icon build pipeline |
@@ -145,6 +145,9 @@ you meet them:
   moment when registering early is provably safe
 - An `UpgradeModule` whose `IsWorking` ignores the power draw you gave it, so it keeps
   working on a dead grid
+- A power sink attached a frame late, which the grid never supplies, so the block reads
+  unpowered forever
+- An open terminal pane that never redraws after `RefreshCustomInfo`
 
 `probes/` holds the probe mods these came from. Most are tiny and execute nothing behind a
 `const false` guard, answering "can mod code reach this" in one game load. Two of them do

@@ -175,7 +175,7 @@ offline:
 Check `GT_SysOperational` before trusting a −1 to mean "nothing to measure here": on an
 offline block it means "not measuring right now".
 
-"Powered" means the instrument's own power draw is supplied by the grid. This matters
+"Powered" means the instrument's grid has electricity available. This matters
 because the block's vanilla `IsWorking` does **not** include power for this block type, so
 code that tests `IsWorking` on an instrument will see `true` on a dead grid — use
 `GT_SysOperational` instead.

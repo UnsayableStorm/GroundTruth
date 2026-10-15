@@ -4,12 +4,13 @@ A Space Engineers mod: environmental instruments (radiation, weather, habitat, l
 report what is measured and nothing more. Scripts are in `Data/Scripts/GroundTruth`. Read
 `README.md` for what ships.
 
-## START HERE: `docs/HANDOFF.md` (2026-10-10)
+## START HERE: `docs/HANDOFF.md` (updated 2026-10-15)
 
-Release is staged but **blocked on a regression**: `df29ffd` made instruments report
-OFFLINE always, because a mod-attached `MyResourceSinkComponent` on an `UpgradeModule`
-never has `IsPowered` set by the grid's distributor. The handoff has the diagnosis, the
-diagnostic to run first, the candidate fixes and everything else outstanding.
+The `df29ffd` regression (instruments always OFFLINE) is **fixed and checked in game**
+(`869b967` power from the grid's distributor, `7a0374b` open info pane redraws). Still
+untested: cutting grid power to see NO POWER. Open decision: the instruments draw no real
+power (ENGINE_TRAPS 22). The handoff's 2026-10-15 update has the details and the release
+checklist.
 
 ## Current state (2026-10-09) — read this first
 
