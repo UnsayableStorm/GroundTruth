@@ -180,7 +180,7 @@ namespace GroundTruth
             var text = _next.ToString();
             if (text == _shown) return;
             _shown = text;
-            controller.RefreshCustomInfo();
+            GroundTruthSession.Refresh(controller);
         }
 
         /// <summary>Withdraw from the pane, once, when no longer the selected event.</summary>
@@ -188,7 +188,7 @@ namespace GroundTruth
         {
             if (_shown.Length == 0) return;
             _shown = "";
-            if (controller != null) controller.RefreshCustomInfo();
+            if (controller != null) GroundTruthSession.Refresh(controller);
         }
 
         public void Unhook()

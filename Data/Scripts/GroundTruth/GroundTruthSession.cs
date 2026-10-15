@@ -346,7 +346,7 @@ namespace GroundTruth
                     if (b == null || b.Closed) continue;
 
                     Recompute(b, s);
-                    b.RefreshCustomInfo();
+                    Refresh(b);
                 }
                 _pending.Clear();
             }
@@ -379,11 +379,24 @@ namespace GroundTruth
                 var block = MyAPIGateway.Entities.GetEntityById(pair.Key) as IMyTerminalBlock;
                 if (block == null || block.Closed) { stale.Add(pair.Key); continue; }
                 Recompute(block, pair.Value);
-                block.RefreshCustomInfo();
+                Refresh(block);
             }
             foreach (var id in stale) _state.Remove(id);
 
             Tactical.Forget(_seconds);
+        }
+
+        // RefreshCustomInfo rebuilds the text and nothing else. A terminal that is open
+        // on the block only redraws its info pane when the block is flagged dirty
+        // (MyGuiControlGenericFunctionalBlock.Update checks IsDetailedInfoDirty, decompiled
+        // 2026-10-15), so without the flag the pane kept showing the old text until the
+        // player clicked another block and back - switching an instrument off appeared
+        // to change nothing (Jason). Setting the flag is a bool; the vanilla detailed info
+        // is only rebuilt when something actually reads it.
+        public static void Refresh(IMyTerminalBlock block)
+        {
+            block.RefreshCustomInfo();
+            block.SetDetailedInfoDirty();
         }
 
         private static void TickEvents()
