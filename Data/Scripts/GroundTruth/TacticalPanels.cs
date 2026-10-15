@@ -388,17 +388,20 @@ namespace GroundTruth
             float r = Math.Min((bottom - top) * 0.5f, CanvasWidth * 0.5f - Pad);
             float cx = CanvasWidth * 0.5f, cy = top + (bottom - top) * 0.5f;
 
-            Color ring = fg * 0.22f;
+            // Rings were fg * 0.22 until 2026-10-15; in game they read as too dim (Jason) -
+            // Color * float scales alpha too, so 0.22 was barely there on a lit screen.
+            // Still well under the contacts, which draw at full relation colour.
+            Color ring = fg * 0.4f;
             for (int k = 1; k <= 4; k++)
             {
                 float rr = r * k / 4f;
-                Ring(frame, cx, cy, rr, k == 4 ? 2f : 1.2f, ring, 32 + k * 12);
-                Text(frame, Range(rangeM * k / 4.0), cx + rr * 0.72f + 4f, cy - rr * 0.72f - 14f, 0.4f, fg * 0.4f, TextAlignment.LEFT);
+                Ring(frame, cx, cy, rr, k == 4 ? 2.2f : 1.5f, k == 4 ? fg * 0.5f : ring, 32 + k * 12);
+                Text(frame, Range(rangeM * k / 4.0), cx + rr * 0.72f + 4f, cy - rr * 0.72f - 14f, 0.4f, fg * 0.55f, TextAlignment.LEFT);
             }
 
             // The dark-return boundary, where it fits on the plot: inside it nothing hides.
             if (Tactical.DarkReturnRange < rangeM)
-                Ring(frame, cx, cy, (float)(r * Tactical.DarkReturnRange / rangeM), 1.2f, Caution * 0.25f, 48);
+                Ring(frame, cx, cy, (float)(r * Tactical.DarkReturnRange / rangeM), 1.5f, Caution * 0.4f, 48);
 
             // Own ship. Ship-relative: always nose-up. North-up: rotated to the heading.
             float heading = 0f;
