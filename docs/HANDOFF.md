@@ -39,6 +39,12 @@ instrument, place and grind instruments, merge/split the grid (merge block, or g
 bridging block) and save/reload; then engage the FSD. Pass = no crash, and no `WarpDrive` or
 `GroundTruth` exception in the log. Claude reads the log afterwards.
 
+**Projection check, same session:** paste a ship whose repair projector shows instruments.
+Decompile (MyGridClipboard.ChangeClipboardPreview) says our Init runs for projected and
+paste-ghost blocks - it always has; now they also get a sink, on the preview grid's own
+unpowered distributor. Pass = projected instruments add nothing to the real grid's power use,
+a welded one starts drawing and shows it in its pane, and no exception on paste or projector off.
+
 `Mods\GroundTruth` (the publish folder) still holds the pre-`df29ffd` build. The release
 checklist at the bottom now applies, starting at step 2 once the power-cut check is done.
 
