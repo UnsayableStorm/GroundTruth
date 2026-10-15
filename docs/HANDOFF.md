@@ -62,6 +62,18 @@ paste-ghost blocks - it always has; now they also get a sink, on the preview gri
 unpowered distributor. Pass = projected instruments add nothing to the real grid's power use,
 a welded one starts drawing and shows it in its pane, and no exception on paste or projector off.
 
+**Projection check DONE 2026-10-15 (Jason).** Log `SpaceEngineers_20261015_175825681.log`:
+one GT assembly (test build only), no GroundTruth or WarpDrive exception.
+
+**Also since then, deployed to the test build:** `1bcfffd` slim LCARS accent on every LCD app's
+header, `0af4f8e` brighter tactical radar rings (Jason: "they look good").
+
+**DS run, owed before release** (Jason's call, 2026-10-15): everything since the 2026-10-10 MP
+acceptance (`df29ffd`..`0af4f8e`) has only run in single player. Re-upload 3813774178 from
+`Mods\GroundTruthTacticalTest`, restart KORRIBAN *Tactical Test Server*, join, and check: instrument
+pane shows the power line and 0 when off; grid power cut takes instruments offline on the client;
+LCD apps show the new header; radar draws. Claude reads the server log afterwards.
+
 `Mods\GroundTruth` (the publish folder) still holds the pre-`df29ffd` build. The release
 checklist at the bottom now applies, starting at step 2 once the power-cut check is done.
 
