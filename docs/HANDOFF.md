@@ -39,6 +39,14 @@ instrument, place and grind instruments, merge/split the grid (merge block, or g
 bridging block) and save/reload; then engage the FSD. Pass = no crash, and no `WarpDrive` or
 `GroundTruth` exception in the log. Claude reads the log afterwards.
 
+**Test world fixed 2026-10-15:** CompleteModAssembly pulls live Ground Truth 3781444888 in as a
+DEPENDENCY, so any world with CMA loads it beside the test build (log: both
+`GroundTruthTacticalTest_GroundTruth` and `3781444888.sbm_GroundTruth` script lines). Earlier
+"full pack" SP passes in Tactical Test Single Player ran with both; the clean full-pack result is
+KORRIBAN MP (CMA removed). That world now loads TD_LargeLogicModel + WarpDrive 2640137506 +
+GroundTruthTacticalTest only. Originals: session scratchpad `world-backup-2026-10-15/full`.
+Also: live 3781444888 was updated 2026-10-10 09:08 with the pre-`df29ffd` build - Jason did publish.
+
 **Projection check, same session:** paste a ship whose repair projector shows instruments.
 Decompile (MyGridClipboard.ChangeClipboardPreview) says our Init runs for projected and
 paste-ghost blocks - it always has; now they also get a sink, on the preview grid's own
