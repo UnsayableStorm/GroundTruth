@@ -155,9 +155,20 @@ namespace GroundTruth
             return OfflineReason(block) == null;
         }
 
-        // True when the block's power sink is supplied, or when it has none yet (the sink
-        // is attached on the block's first frame; before that there is nothing to ask).
-        // Works for the Rotating Antenna too, whose sink is the engine's own.
+        // True when the grid the block sits on has electricity available.
+        //
+        // NOT the block's own sink. The first version (df29ffd) asked
+        // sink.IsPoweredByType and every instrument read NO POWER forever - the weather
+        // pod stopped dead on a powered grid. Decompiled 2026-10-15: the grid only adds
+        // a block's sink to its distributor in MyCubeGridSystems.RegisterInSystems, once,
+        // when the block joins the grid. InstrumentPower attaches ours a frame later (the
+        // WarpDrive note there), so the distributor never sees it and IsPowered - set only
+        // by the distributor - stays at its initial false. AddSink is not on the ModAPI.
+        //
+        // The grid's own distributor is engine-maintained and on the ModAPI. Grid null,
+        // deliberately: with a grid, GetElectricalGroupIndex ADDS a group for an id it
+        // has not seen - a side effect we have no business causing from a read.
+        //
         // A throw fails SAFE - offline - and is logged once: failing open would be the
         // silent measuring-on-a-dead-grid bug this exists to fix (review, 2026-10-10).
         private static bool _sinkErrorLogged;
@@ -166,8 +177,9 @@ namespace GroundTruth
         {
             try
             {
-                var sink = block.Components.Get<MyResourceSinkComponent>();
-                return sink == null || sink.IsPoweredByType(MyResourceDistributorComponent.ElectricityId);
+                var distributor = block.CubeGrid?.ResourceDistributor;
+                return distributor != null
+                    && distributor.MaxAvailableResourceByType(MyResourceDistributorComponent.ElectricityId) > 0f;
             }
             catch (System.Exception e)
             {
