@@ -142,10 +142,7 @@ namespace GroundTruth
                 using (var multi = Surface.DrawFrame())
                 {
                     if (DrawsChrome)
-                    {
-                        Text(multi, Title, Pad, 16, TitleScale, fg, TextAlignment.LEFT);
-                        Rule(multi, 58, fg * 0.9f, 2f);
-                    }
+                        Chrome(multi, fg);
                     DrawStandalone(multi, fg);
                 }
                 return;
@@ -158,8 +155,7 @@ namespace GroundTruth
 
             using (var frame = Surface.DrawFrame())
             {
-                Text(frame, Title, Pad, 16, TitleScale, fg, TextAlignment.LEFT);
-                Rule(frame, 58, fg * 0.9f, 2f);
+                Chrome(frame, fg);
 
                 if (state == null)
                 {
@@ -216,6 +212,96 @@ namespace GroundTruth
 
                 Draw(frame, state, fg);
             }
+        }
+
+        // ---- the header: title, rule, and a slim LCARS accent ----
+        //
+        // The title and the rule under it are the panel's chrome and always were. Since
+        // 2026-10-15 the rule carries a light LCARS touch, to meet the Threshold Dynamics
+        // Large Logic Model screens halfway: the left end turns down the gutter as a slim
+        // elbow (rounded outside corner, filleted inside corner), the gutter below it holds
+        // two short colour blocks, and the right end breaks into three short segments with a
+        // round cap. Jason's brief was to keep it light - "we don't want to scare off the
+        // Star Wars fans" - so it is an accent on GT's own header and nothing more: no
+        // pill-block sidebar, no heavy bars, and nothing moves in the content.
+        //
+        // Everything sits in the Pad gutter or on the rule's own line, so no app's layout
+        // changed. The radar ring is the closest neighbour and still clears the sidebar.
+        //
+        // The elbow and rule keep the surface's script colour, so a themed cockpit stays
+        // themed. The segments are fixed LCARS peach, lavender and periwinkle, dimmed so
+        // they read as chrome: green, amber and red are deliberately absent, because on
+        // these panels those colours are state and chrome must never look like a reading.
+        //
+        // tools/mock_lcars_chrome.py draws the same shapes in the same units for a preview.
+        private static readonly Color LcarsPeach = new Color(255, 168, 110) * 0.75f;
+        private static readonly Color LcarsLavender = new Color(172, 150, 222) * 0.75f;
+        private static readonly Color LcarsPeriwinkle = new Color(112, 142, 232) * 0.75f;
+
+        private const float ElbowX = 6f, ElbowY = 55f;          // outside corner of the elbow
+        private const float SideW = 9f, BarH = 5f;              // sidebar width, bar height
+        private const float OuterR = 12f, InnerR = 6f;
+        private const float ElbowRun = 64f;                     // the bar's length before the hairline rule
+        private const float SideEnd = 128f;                     // the sidebar's foot, above the colour blocks
+
+        private void Chrome(MySpriteDrawFrame frame, Color fg)
+        {
+            Text(frame, Title, Pad, 16, TitleScale, fg, TextAlignment.LEFT);
+
+            Color ink = fg * 0.9f;
+            Color bg = Surface.ScriptBackgroundColor;
+
+            // The elbow. SE has no quarter-circle sprite, so: a full circle for the
+            // outside corner, the inside quadrant blanked back to the background, the two
+            // straight runs, then the inside fillet as a square with a background circle
+            // bitten out of it. Order matters; each step paints over the last.
+            Dot(frame, ElbowX + OuterR, ElbowY + OuterR, OuterR, ink);
+            Box(frame, ElbowX + SideW, ElbowY + BarH, ElbowX + 2f * OuterR, ElbowY + 2f * OuterR, bg);
+            Box(frame, ElbowX, ElbowY + OuterR, ElbowX + SideW, SideEnd, ink);
+            Box(frame, ElbowX + OuterR, ElbowY, ElbowX + ElbowRun, ElbowY + BarH, ink);
+            Box(frame, ElbowX + SideW, ElbowY + BarH, ElbowX + SideW + InnerR, ElbowY + BarH + InnerR, ink);
+            Dot(frame, ElbowX + SideW + InnerR, ElbowY + BarH + InnerR, InnerR, bg);
+
+            Box(frame, ElbowX, SideEnd + 6f, ElbowX + SideW, SideEnd + 42f, LcarsPeach);
+            Box(frame, ElbowX, SideEnd + 48f, ElbowX + SideW, SideEnd + 62f, LcarsLavender);
+
+            // The rule, then the segments at its right end. A panel too narrow for them
+            // gets the plain rule rather than a crowded one.
+            float right = CanvasWidth - Pad;
+            const float gap = 4f;
+            float start = right - (40f + 14f + 26f + gap * 2f);
+            if (start - 6f > ElbowX + ElbowRun + 20f)
+            {
+                Box(frame, ElbowX + ElbowRun, 57f, start - 6f, 59f, ink);
+                Box(frame, start, ElbowY, start + 40f, ElbowY + BarH, LcarsPeach);
+                start += 40f + gap;
+                Box(frame, start, ElbowY, start + 14f, ElbowY + BarH, LcarsLavender);
+                start += 14f + gap;
+                Box(frame, start, ElbowY, right - BarH * 0.5f, ElbowY + BarH, LcarsPeriwinkle);
+                Dot(frame, right - BarH * 0.5f, ElbowY + BarH * 0.5f, BarH * 0.5f, LcarsPeriwinkle);
+            }
+            else
+            {
+                Box(frame, ElbowX + ElbowRun, 57f, right, 59f, ink);
+            }
+        }
+
+        // A filled rectangle by its corners, and a filled circle by centre and radius,
+        // both in canvas units.
+        private void Box(MySpriteDrawFrame frame, float x0, float y0, float x1, float y1, Color color)
+        {
+            var s = MySprite.CreateSprite("SquareSimple",
+                Org + new Vector2((x0 + x1) * 0.5f * U, (y0 + y1) * 0.5f * U),
+                new Vector2((x1 - x0) * U, (y1 - y0) * U));
+            s.Color = color;
+            frame.Add(s);
+        }
+
+        private void Dot(MySpriteDrawFrame frame, float cx, float cy, float r, Color color)
+        {
+            var s = MySprite.CreateSprite("Circle", Org + new Vector2(cx * U, cy * U), new Vector2(2f * r * U, 2f * r * U));
+            s.Color = color;
+            frame.Add(s);
         }
 
         // The name of the block this panel is reading, in the header beside the title.
