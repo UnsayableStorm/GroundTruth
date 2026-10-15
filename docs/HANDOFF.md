@@ -47,6 +47,15 @@ KORRIBAN MP (CMA removed). That world now loads TD_LargeLogicModel + WarpDrive 2
 GroundTruthTacticalTest only. Originals: session scratchpad `world-backup-2026-10-15/full`.
 Also: live 3781444888 was updated 2026-10-10 09:08 with the pre-`df29ffd` build - Jason did publish.
 
+**RESULTS 2026-10-15 (lean world, Jason + log):** power line, off = 0, WarpDrive place/grind/
+merge/split/save-reload/FSD all good; log for both lean sessions (16:35, 16:40) has no GroundTruth
+or WarpDrive exception. The earlier DOUBLE-LOADED attempt (16:32, CMA + live GT + test build)
+FAILED to load: NRE in MyComponentContainer.Deserialize inside MyEventControllerBlock.Init, five
+grids - almost certainly two assemblies registering the same custom event / ModCustomComponent
+names. Not a user scenario (nobody loads two GTs); recorded so it is recognised if seen again.
+Projected instruments cannot be inspected in game (no terminal); by decompile they sit on the
+preview grid's own distributor, which has no sources.
+
 **Projection check, same session:** paste a ship whose repair projector shows instruments.
 Decompile (MyGridClipboard.ChangeClipboardPreview) says our Init runs for projected and
 paste-ghost blocks - it always has; now they also get a sink, on the preview grid's own
