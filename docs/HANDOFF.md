@@ -13,7 +13,7 @@ by Jason (single player, "Tactical Test Single Player" world):
   attaches a frame later, so it is never supplied. `Instruments.SinkPowered` now asks
   `block.CubeGrid.ResourceDistributor.MaxAvailableResourceByType(ElectricityId) > 0` -
   candidate fix 3 below. **In game: the pod spins again and stops when switched off.**
-  Cutting grid power to see NO POWER has **not** been tested yet.
+  Grid power cut (Y key, whole grid) tested by Jason 2026-10-15: pods stop turning and the panes show the instruments offline.
 - **`7a0374b` info pane redraw.** Found by Jason: switching an instrument off did not change
   the open terminal pane until he clicked another block and back. `RefreshCustomInfo` does
   not mark the block dirty, and the pane only redraws a dirty block.
