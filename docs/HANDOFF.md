@@ -68,7 +68,11 @@ one GT assembly (test build only), no GroundTruth or WarpDrive exception.
 **Also since then, deployed to the test build:** `1bcfffd` slim LCARS accent on every LCD app's
 header, `0af4f8e` brighter tactical radar rings (Jason: "they look good").
 
-**DS run, owed before release** (Jason's call, 2026-10-15): everything since the 2026-10-10 MP
+**2026-10-24 RELEASE STAGED (checklist step 2 done):** `deploy-local.ps1` -> `Mods\GroundTruth` at
+`da3c139`; all 29 Data files identical to `main`, no extras, `modinfo.sbmi` = 3781444888. Jason
+publishing in game. No DS run result was recorded before staging (Jason's call to publish).
+
+**DS run, owed before release (superseded by the line above)** (Jason's call, 2026-10-15): everything since the 2026-10-10 MP
 acceptance (`df29ffd`..`0af4f8e`) has only run in single player. Re-upload 3813774178 from
 `Mods\GroundTruthTacticalTest`, restart KORRIBAN *Tactical Test Server*, join, and check: instrument
 pane shows the power line and 0 when off; grid power cut takes instruments offline on the client;
